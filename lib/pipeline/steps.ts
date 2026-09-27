@@ -16,6 +16,8 @@ import type { GeocoderProvider } from "../providers/geocoder";
 import type { MediaProvider } from "../providers/media";
 import { assign, type AssignmentMethod } from "./assign";
 import { computeTrust, rescoreMatches, statusFor, trustAuditDetail, trustPatch, writeBack, writeDuplicates } from "./score";
+import { measureAsset, measureKind, measurePair, pairPhotoOf, pairProjectOf, pairSpotOf, refreshBaseline } from "../measure/measure";
+import { evaluatePair, exclusionsOf } from "../measure/pairing";
 import { parseAssetMetadata, type MetadataInput } from "./metadata";
 
 export interface PipelineDeps {
@@ -26,6 +28,8 @@ export interface PipelineDeps {
   geocoder: GeocoderProvider;
   exifDefaultOffset: string;
   similarityThreshold: number;
+  /** MEASURE_MAX_PER_PROJECT (default 40). */
+  measureMax?: number;
 }
 
 export interface StepResult {
@@ -38,7 +42,7 @@ export interface StepResult {
 export type Step = (deps: PipelineDeps, asset: Asset) => Promise<StepResult>;
 
 /** Order matters: later steps read earlier steps' columns. */
-export const STEP_ORDER: PipelineStepName[] = ["parseMetadata", "analyze", "understand", "embed", "assign", "score", "finalize"];
+export const STEP_ORDER: PipelineStepName[] = ["parseMetadata", "analyze", "understand", "embed", "assign", "score", "measure", "finalize"];
 
 /** Signed, w_1024 derivative sent to the vision model (never the original). */
 export const UNDERSTAND_TRANSFORM = [{ width: 1024, crop: "limit" as const }, { format: "jpg" as const, quality: "auto" as const }];
@@ -161,6 +165,36 @@ export async function scoreAndWriteBack(deps: PipelineDeps, asset: Asset): Promi
   };
 }
 
+/**
+ * Measures a photo at a spot (for the spot's trend, within MEASURE_MAX_PER_PROJECT) and, for a
+ * Witness check-in, compares it with the spot's baseline under the normal pairing rules.
+ */
+const measureStep: Step = async (deps, asset) => {
+  if (!asset.projectId || !asset.spotId) return { output: { skipped: "not at a spot" }, patch: {} };
+  const [[project], [spot]] = await Promise.all([
+    deps.db.select().from(projects).where(eq(projects.id, asset.projectId)).limit(1),
+    deps.db.select().from(spots).where(eq(spots.id, asset.spotId)).limit(1),
+  ]);
+  const kind = project ? measureKind(project.type) : null;
+  if (!project || !spot || !kind) return { output: { skipped: `${project?.type ?? "no"} project: nothing to measure` }, patch: {} };
+  const excluded = exclusionsOf(pairPhotoOf(asset));
+  if (excluded.length) return { output: { skipped: excluded.join(", ") }, patch: {} };
+
+  const measured = await measureAsset(deps, asset, kind);
+  const output: Record<string, unknown> = { status: measured.status, values: Object.fromEntries(measured.rows.map((r) => [r.metric, r.value])) };
+  const baselineId = await refreshBaseline(deps.db, spot.id);
+  output.baseline = baselineId;
+  if (asset.source === "witness" && baselineId && baselineId !== asset.id) {
+    const [baseline] = await deps.db.select().from(assets).where(eq(assets.id, baselineId)).limit(1);
+    const candidate = evaluatePair(pairProjectOf(project), pairSpotOf(spot), pairPhotoOf(baseline), pairPhotoOf(asset));
+    if (candidate.ok) {
+      const rows = await measurePair(deps, project, baseline, asset, { origin: "checkin", candidate });
+      output.checkin = rows.map((r) => ({ metric: r.metric, before: r.beforeValue, after: r.afterValue, delta: r.delta }));
+    } else output.checkin = { rejected: candidate.rejects };
+  }
+  return { output, patch: {} };
+};
+
 const finalize: Step = async (_deps, asset) => {
   const status = statusFor(asset.trustBand, asset.status);
   return { output: { status, band: asset.trustBand, score: asset.trustScore }, patch: { status } };
@@ -173,6 +207,7 @@ export const STEPS: Record<PipelineStepName, Step> = {
   embed,
   assign: assignStep,
   score: scoreAndWriteBack,
+  measure: measureStep,
   finalize,
 };
 

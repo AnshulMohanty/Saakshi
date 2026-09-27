@@ -128,7 +128,7 @@ export function ReviewClient({ initial, initialReason }: { initial: ReviewQueue;
         <div>
           <h1 className="font-heading text-2xl font-semibold">Review</h1>
           <p className="text-sm text-muted-foreground">
-            {queue.total} photo(s) the Trust Engine did not verify. <kbd>J</kbd>/<kbd>K</kbd> move, <kbd>A</kbd> approve, <kbd>R</kbd> reject; a note is required. A decision never changes the score.
+            {queue.total} photo(s) the Trust Engine did not verify, newest first. <kbd>J</kbd>/<kbd>K</kbd> move, <kbd>A</kbd> approve, <kbd>R</kbd> reject; a note is required. A decision never changes the score.
           </p>
         </div>
         <label className="flex items-center gap-2 text-sm">
@@ -175,8 +175,27 @@ export function ReviewClient({ initial, initialReason }: { initial: ReviewQueue;
           </ol>
 
           <article className="flex flex-col gap-3" data-testid="review-current" data-asset={current.id}>
-            {/* eslint-disable-next-line @next/next/no-img-element -- signed, face-blurred preview */}
-            <img src={current.previewUrl} alt={current.caption ?? "Photo under review"} className="max-h-[50vh] w-full rounded-md border bg-muted object-contain" />
+            <div className={`grid gap-2 ${current.duplicate ? "sm:grid-cols-2" : ""}`}>
+              <figure className="flex flex-col gap-1">
+                {/* eslint-disable-next-line @next/next/no-img-element -- signed, face-blurred preview */}
+                <img src={current.previewUrl} alt={current.caption ?? "Photo under review"} className="max-h-[50vh] w-full rounded-md border bg-muted object-contain" />
+                {current.duplicate ? <figcaption className="text-xs text-muted-foreground">This photo</figcaption> : null}
+              </figure>
+              {current.duplicate ? (
+                <figure className="flex flex-col gap-1" data-testid="review-duplicate">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- signed, face-blurred preview */}
+                  <img src={current.duplicate.previewUrl} alt="Closest near-duplicate" className="max-h-[50vh] w-full rounded-md border bg-muted object-contain" />
+                  <figcaption className="text-xs text-muted-foreground">
+                    {current.duplicate.exact ? "Identical file" : `${current.duplicate.similarityPct}% match`} · {current.duplicate.project ?? "Unassigned"}
+                    {current.duplicate.capturedAt ? ` · ${new Date(current.duplicate.capturedAt).toLocaleDateString()}` : ""} ·{" "}
+                    {current.duplicate.isLater ? "submitted later" : "the earlier photo"}{" "}
+                    <Link href={`/library?asset=${current.duplicate.id}`} className="underline underline-offset-2">
+                      open
+                    </Link>
+                  </figcaption>
+                </figure>
+              ) : null}
+            </div>
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <BandBadge band={current.band} score={current.score} />
               <HistoryIntact assetId={current.id} />

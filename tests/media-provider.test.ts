@@ -178,3 +178,36 @@ describe("mock delivery route", () => {
     expect(b.equals(a)).toBe(true);
   });
 });
+
+describe("composites and same-frame masks", () => {
+  it("compiles the side-by-side composite (snapshot) and renders it at twice the width", async () => {
+    const { compositeTransform, shortDate } = await import("@/lib/media/composite");
+    const { compileTransform } = await import("@/lib/media/transform");
+    const a = await media.upload({ file: await fixture("scene-a.png"), folder: "saakshi/test" });
+    const b = await media.upload({ file: await fixture("scene-b.png"), folder: "saakshi/test" });
+    const t = compositeTransform({ publicId: a.publicId, label: shortDate("2017-09-05T12:45:00Z") }, { publicId: b.publicId, label: shortDate("2017-09-05T14:30:00Z") }, { width: 400, height: 300 });
+    expect(compileTransform(t).replaceAll(b.publicId.replaceAll("/", ":"), "AFTER")).toBe(
+      "c_fill,g_auto,w_400,h_300/e_blur_faces/c_pad,g_west,w_800,h_300,b_rgb:111111" +
+        "/l_authenticated:AFTER,c_fill,g_auto,w_400,h_300,e_blur_faces/fl_layer_apply,g_east" +
+        "/l_text:Arial_28_bold:Before%20%C2%B7%205%20Sep%202017,co_rgb:FFFFFF,b_rgb:000000A0/fl_layer_apply,g_south_west,x_16,y_16" +
+        "/l_text:Arial_28_bold:After%20%C2%B7%205%20Sep%202017,co_rgb:FFFFFF,b_rgb:000000A0/fl_layer_apply,g_south_east,x_16,y_16" +
+        "/f_auto,q_auto",
+    );
+    const res = await get(media.url(a.publicId, t, { signed: true }));
+    expect(res.status).toBe(200);
+    const meta = await sharp(Buffer.from(await res.arrayBuffer())).metadata();
+    expect([meta.width, meta.height]).toEqual([800, 300]);
+    // The right half is the "after" photo, not padding.
+    const right = await sharp(Buffer.from(await (await get(media.url(a.publicId, t, { signed: true }))).arrayBuffer())).extract({ left: 600, top: 100, width: 50, height: 50 }).stats();
+    expect(right.channels.some((c) => Math.abs(c.mean - 0x11) > 10)).toBe(true);
+  });
+
+  it("masks on the same frame: a list prompt with multiple, at the frame's size", async () => {
+    const { publicId: litter } = await media.upload({ file: await fixture("litter-grass.png"), folder: "saakshi/test" });
+    const frame = [{ crop: "fill" as const, gravity: "auto" as const, width: 200, height: 150 }];
+    const { maskUrl, buffer } = await media.extractMask(litter, ["litter", "garbage", "plastic waste"], { multiple: true, frame });
+    expect(maskUrl).toContain("c_fill,g_auto,w_200,h_150/e_extract:prompt_(litter;garbage;plastic%20waste);multiple_true;mode_mask/f_png");
+    const meta = await sharp(buffer).metadata();
+    expect([meta.width, meta.height, meta.format]).toEqual([200, 150, "png"]);
+  });
+});

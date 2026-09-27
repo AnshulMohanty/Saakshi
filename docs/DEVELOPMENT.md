@@ -31,7 +31,8 @@ The app also migrates PGlite on first connection.
 ## Folder conventions
 
 - `app/(marketing)` landing · `app/(app)` product pages (library, capture, …) · `app/(public)`
-  shareable pages with a minimal layout (`/e/[assetId]`, `/spots/[id]`, later `/r/[reportId]`) ·
+  shareable pages with a minimal layout (`/e/[assetId]`, `/spots/[slug]`, later `/r/[reportId]`) ·
+  `app/(print)` chrome-free print pages (`/spots/[slug]/poster`, one A4 sheet) ·
   `app/dev/*` dev tools (404 in production unless `DEV_TOOLS=1`) · `app/api/*` routes.
 - `lib/providers/<name>/`: `index.ts` (interface + factory), `mock.ts`, `real.ts`.
 - `lib/media/transform.ts`: structured transforms, Cloudinary URL compiler/parser, signing.
@@ -42,10 +43,13 @@ The app also migrates PGlite on first connection.
   (idempotency, step records, audit), pure `assign.ts` and `metadata.ts`, `inngest.ts`.
 - `lib/capture/token.ts` (capture tokens, pure `validateCapture`) · `lib/ingest/` (upload
   tickets, provider response verification, the shared ingest path) · `lib/demo/` (import, plant,
-  reset) · `lib/library.ts` (library queries) · `lib/client/` (browser-only helpers).
+  reset) · `lib/library.ts` (library queries) · `lib/review.ts` (review queue, decisions) ·
+  `lib/pipeline/score.ts` (Trust Engine against the DB: write-back, re-scoring) · `lib/measure/`
+  (pure `cover.ts`, `pairing.ts`; `measure.ts` masks, comparisons, baselines; `views.ts` read
+  models) · `lib/media/composite.ts` (side-by-side Transform) · `lib/client/` (browser-only helpers).
 - Pure, tested modules: `lib/geo.ts`, `lib/phash.ts`, `lib/hashchain.ts`, `lib/claims.ts`,
-  `lib/archive/{parse,cluster,build}.ts`, `lib/pipeline/{assign,metadata}.ts`, `lib/capture/token.ts`
-  (later `lib/trust`, `lib/measure`). Tests live in `tests/*.test.ts`; fixtures in `tests/fixtures`
+  `lib/archive/{parse,cluster,build}.ts`, `lib/pipeline/{assign,metadata}.ts`, `lib/capture/token.ts`,
+  `lib/trust/*` (browser-safe: a test walks its imports), `lib/measure/{cover,pairing}.ts`. Tests live in `tests/*.test.ts`; fixtures in `tests/fixtures`
   (`tests/fixtures/commons/` are trimmed real API responses). `tests/helpers.ts` builds an
   in-memory PGlite + mock-provider context.
 - `drizzle/` generated SQL migrations (commit them) · `scripts/` CLI scripts (run with tsx) · `docs/`.
@@ -96,8 +100,11 @@ Details and mock limitations: `docs/providers.md`.
 ## Pipeline
 
 - `asset.uploaded` runs `STEP_ORDER` in `lib/pipeline/steps.ts`: parseMetadata → analyze →
-  understand → embed → assign → score (Phase 4 hook `scoreAndWriteBack`) → finalize.
-- Steps return `{ output, patch }` and never write. The runner skips steps already `done`, and
+  understand → embed → assign → score → measure → finalize. `score` runs the Trust Engine and
+  re-scores the photo's near-duplicates; `measure` measures spot photos (cached, capped by
+  MEASURE_MAX_PER_PROJECT) and compares Witness check-ins with the spot's baseline.
+- Steps return `{ output, patch, apply? }` (`apply` writes side tables inside the step
+  transaction) and never write the asset row themselves. The runner skips steps already `done`, and
   writes patch + step record + one audit row in a transaction. Add a step by adding it to
   `STEPS` and `STEP_ORDER`, never by writing to `assets` elsewhere.
 - Inline queue (default) runs in-process with concurrency 4; `QUEUE=inngest-dev` uses the local

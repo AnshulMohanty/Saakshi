@@ -37,6 +37,8 @@ export async function createStageProject(db: DB, { lat, lng, now = new Date() }:
     sdgs: [11, 12],
     minPairGapHours: 0,
     source: "user" as const,
+    // Indoor venue GPS drifts tens of metres: labelled approximate, so the 150 m spot applies.
+    locationApproximate: true,
   };
   await db.insert(projects).values({ id: projectId, ...values }).onConflictDoUpdate({ target: projects.id, set: { ...values, embedding: null } });
   const spotId = uuidv5(`spot:${STAGE_SPOT_SLUG}`);

@@ -53,6 +53,26 @@ export const assignmentMethod = pgEnum("assignment_method", ["capture_hint", "ge
 export const projectSource = pgEnum("project_source", ["demo_archive", "user"]);
 export const spotOrigin = pgEnum("spot_origin", ["auto_cluster", "manual"]);
 
+/** What a comparison or measurement measures. Percentages are 0–100; items is a count. */
+export type MetricId = "litter_cover" | "items_visible" | "green_cover" | "exg_green_cover";
+export type ComparisonOrigin = "auto" | "manual" | "checkin";
+
+export interface ComparisonDetail {
+  caveat: string;
+  unit: "%" | "items";
+  /** Pairing facts at the time the pair was chosen. */
+  stageScore?: number;
+  hamming?: number | null;
+  /** Plantation: |mask − ExG| in points, and whether that made the reading low-confidence. */
+  agreement?: { before: number | null; after: number | null; lowConfidence: boolean };
+  /** Signed, face-blurred, same-frame URLs of each side (for the slider). */
+  frameBeforeUrl?: string;
+  frameAfterUrl?: string;
+  /** Who chose a manual pair, and why. */
+  chosenBy?: string;
+  note?: string;
+}
+
 /** Deliberately planted test inputs (source = planted_test). */
 export type TestCase = "reused" | "stock" | "location_mismatch" | "stamp_mismatch";
 
@@ -116,7 +136,7 @@ export interface CaptureInfo {
   reasons: Array<{ code: string; message: string }>;
 }
 
-export type PipelineStepName = "parseMetadata" | "analyze" | "understand" | "embed" | "assign" | "score" | "finalize";
+export type PipelineStepName = "parseMetadata" | "analyze" | "understand" | "embed" | "assign" | "score" | "measure" | "finalize";
 
 export interface PipelineStepRecord {
   status: "running" | "done" | "error";
@@ -163,6 +183,8 @@ export const projects = pgTable("projects", {
   /** Embedding of the project description, for similarity-based assignment. */
   embedding: vector("embedding", { dimensions: EMBEDDING_DIMENSIONS }),
   source: projectSource("source").notNull().default("user"),
+  /** Photo GPS is approximate (archive projects: Commons coordinates), so pairs may be up to 150 m apart. */
+  locationApproximate: boolean("location_approximate").notNull().default(false),
   slug: text("slug").unique(),
   ...timestamps(),
 });
@@ -304,12 +326,41 @@ export const comparisons = pgTable(
     maskBeforeUrl: text("mask_before_url"),
     maskAfterUrl: text("mask_after_url"),
     compositeUrl: text("composite_url"),
+    /** The composite's Transform (the URL is signed and short-lived; this is the edit record). */
+    compositeTransforms: jsonb("composite_transforms").$type<TransformStep[]>(),
+    /** auto (pairing), manual (a person chose the pair) or checkin (baseline → Witness check-in). */
+    origin: text("origin").$type<ComparisonOrigin>().notNull().default("auto"),
+    detail: jsonb("detail").$type<ComparisonDetail>(),
     ...timestamps(),
   },
   (t) => [
     index("comparisons_project_idx").on(t.projectId),
     uniqueIndex("comparisons_pair_metric_key").on(t.beforeAssetId, t.afterAssetId, t.metric),
   ],
+);
+
+/**
+ * One measurement of one photo, cached forever: masks are deterministic for a given photo, frame
+ * and prompt, so they are computed once (Cloudinary caches the derived mask too).
+ */
+export const measurements = pgTable(
+  "measurements",
+  {
+    id: id(),
+    assetId: uuid("asset_id")
+      .notNull()
+      .references(() => assets.id, { onDelete: "cascade" }),
+    metric: text("metric").$type<MetricId>().notNull(),
+    /** Compiled frame Transform the photo was measured on, e.g. "c_fill,g_auto,w_800,h_600". */
+    frame: text("frame").notNull(),
+    value: doublePrecision("value").notNull(),
+    method: measureMethod("method").notNull(),
+    confidence: real("confidence"),
+    maskUrl: text("mask_url"),
+    detail: jsonb("detail").$type<Record<string, unknown>>(),
+    ...timestamps(),
+  },
+  (t) => [uniqueIndex("measurements_asset_metric_frame_key").on(t.assetId, t.metric, t.frame), index("measurements_asset_idx").on(t.assetId)],
 );
 
 export const reports = pgTable(
@@ -399,6 +450,8 @@ export const geocache = pgTable(
 );
 
 export type Project = typeof projects.$inferSelect;
+export type Comparison = typeof comparisons.$inferSelect;
+export type Measurement = typeof measurements.$inferSelect;
 export type Spot = typeof spots.$inferSelect;
 export type Asset = typeof assets.$inferSelect;
 export type NewAsset = typeof assets.$inferInsert;

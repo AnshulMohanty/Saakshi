@@ -43,6 +43,17 @@ export interface UrlOptions {
   signed?: boolean;
 }
 
+export interface MaskOptions {
+  multiple?: boolean;
+  /** Steps applied before extraction, e.g. [{crop: "fill", gravity: "auto", width: 800, height: 600}]. */
+  frame?: Transform;
+}
+
+/** The URL steps for a mask: frame, then e_extract in mask mode, delivered as PNG. */
+export function maskTransform(prompt: string | string[], { multiple, frame = [] }: MaskOptions = {}): Transform {
+  return [...frame, { effect: "extract", prompt, ...(multiple ? { multiple: true } : {}), mode: "mask" }, { format: "png" }];
+}
+
 export interface MetadataTags {
   tags?: string[];
   removeTags?: string[];
@@ -55,8 +66,11 @@ export interface MediaProvider {
   /** Contextual metadata (key/values, merged), tags to add and tags to remove (real: add_context, add_tag, remove_tag). */
   updateMetadata(publicId: string, fields: Record<string, string>, opts?: MetadataTags): Promise<void>;
   setModeration(publicId: string, status: "approved" | "rejected"): Promise<void>;
-  /** Segmentation mask for `prompt` (real: e_extract:prompt_…;mode_mask). */
-  extractMask(publicId: string, prompt: string): Promise<{ maskUrl: string; buffer: Buffer }>;
+  /**
+   * Segmentation mask for `prompt` (real: e_extract:prompt_(…);multiple_true;mode_mask, PNG),
+   * computed on the `frame` derivative so two photos can be masked on the same crop.
+   */
+  extractMask(publicId: string, prompt: string | string[], opts?: MaskOptions): Promise<{ maskUrl: string; buffer: Buffer }>;
   /** Bytes of a derived image (server-side; e.g. to re-upload a watermarked variant). */
   fetchDerived(publicId: string, transforms: Transform): Promise<Buffer>;
 }

@@ -69,6 +69,8 @@ async function upsertProject(deps: DemoDeps, p: ProjectPlan): Promise<ImportedPr
     sdgs: p.sdgs,
     minPairGapHours: p.minPairGapHours,
     source: "demo_archive" as const,
+    // Commons coordinates are set by uploaders, often for a whole batch: approximate.
+    locationApproximate: true,
   };
   const [before] = await deps.db.select().from(projects).where(eq(projects.id, id)).limit(1);
   const [row] = await deps.db.insert(projects).values({ id, ...values }).onConflictDoUpdate({ target: projects.id, set: { ...values, embedding: null } }).returning();

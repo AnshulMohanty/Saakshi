@@ -8,7 +8,6 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp, { type Metadata } from "sharp";
 import { readExifTags, summarizeExif, toMediaMetadata } from "../../media/exif";
-import { computeMask, maskKindForPrompt } from "../../media/mask";
 import {
   buildMockUrl,
   parseTransformation,
@@ -18,7 +17,7 @@ import {
   type Transform,
 } from "../../media/transform";
 import { phash } from "../../phash";
-import type { MediaAsset, MediaProvider, MetadataTags, UploadInput, UrlOptions } from "./index";
+import { maskTransform, type MaskOptions, type MediaAsset, type MediaProvider, type MetadataTags, type UploadInput, type UrlOptions } from "./index";
 import { mockHaystack, MockMediaStore } from "./mock-store";
 import { renderTransform, type Rendered } from "./mock-render";
 
@@ -156,14 +155,9 @@ export class MockMediaProvider implements MediaProvider {
     await this.store.update(publicId, (s) => ({ ...s, moderation: status }));
   }
 
-  async extractMask(publicId: string, prompt: string): Promise<{ maskUrl: string; buffer: Buffer }> {
-    const original = await this.store.readOriginal(publicId);
-    if (!original) throw new Error(`Unknown mock asset "${publicId}"`);
-    const mask = await computeMask(original.bytes, maskKindForPrompt(prompt));
-    return {
-      maskUrl: this.url(publicId, [{ effect: "extract", prompt, mode: "mask" }], { signed: true }),
-      buffer: mask.png,
-    };
+  async extractMask(publicId: string, prompt: string | string[], opts: MaskOptions = {}): Promise<{ maskUrl: string; buffer: Buffer }> {
+    const steps = maskTransform(prompt, opts);
+    return { maskUrl: this.url(publicId, steps, { signed: true }), buffer: await this.fetchDerived(publicId, steps) };
   }
 
   /** Text the deterministic analysis/AI mocks key on. */
@@ -203,7 +197,10 @@ export class MockMediaProvider implements MediaProvider {
     return {
       accept,
       facesCount,
-      loadOverlay: async (id: string) => (await this.store.readOriginal(id))?.bytes ?? null,
+      loadOverlay: async (id: string) => {
+        const o = await this.store.readOriginal(id);
+        return o ? { bytes: o.bytes, facesCount: o.sidecar.asset.facesCount } : null;
+      },
       log: (message: string) => {
         if (this.logged.has(message)) return;
         this.logged.add(message);

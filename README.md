@@ -20,6 +20,8 @@ pnpm dev           # http://localhost:3000
 
 - `/library`: every photo on a map or grid, with filters. Click one for provenance, AI output, pipeline steps and audit trail.
 - `/review`: photos the Trust Engine did not verify, with its reasons. Approve or reject with a note (keys J/K/A/R).
+- `/projects/<slug>`: before/after cards (slider, the measured mask, values, method, confidence).
+- `/spots/<slug>`: a spot's public page with its trend and a check-in link. `/spots/<slug>/poster` is a printable A4 QR poster.
 - `/capture?project=<slug>`: Witness Capture (live camera and GPS, capture token, attestation).
 - `/dev/status`: which providers are mocked or real, and a **Run demo import** button that works while `pnpm dev` is running.
 
@@ -37,6 +39,7 @@ PGlite allows one process at a time, so run the `demo:*` scripts with `pnpm dev`
 | `pnpm demo:import` | Build the 3 demo projects and import their photos (idempotent) |
 | `pnpm demo:plant` | Add the 4 planted test inputs |
 | `pnpm demo:reset` | Rebuild archive + planted photos **offline** from the cache; witness photos are kept (`--online`, `--include-witness` for a full wipe) |
+| `pnpm measure:pairs [slug]` | Re-pair projects by the rules, measure, and print every candidate with why rejects failed |
 | `pnpm demo:stage` | Create the "Live stage demo" project at `STAGE_LAT`/`STAGE_LNG` (0 h pair gap) |
 | `pnpm tunnel` | HTTPS quick tunnel for phone testing (needs `cloudflared`) |
 
@@ -91,9 +94,16 @@ archive photos are VERIFIED with no hard flag, and each planted input is FLAGGED
 
 ```
 $ pnpm test
- Test Files  19 passed (19)
-      Tests  276 passed (276)
+ Test Files  22 passed (22)
+      Tests  307 passed (307)
 ```
+
+## Before/after
+
+Pairs follow fixed rules: same spot, ≤ 30 m apart (≤ 150 m for approximate archive locations),
+in time order, a gap of at least the project's `min_pair_gap_hours`, and neither photo flagged.
+They are never loosened to produce a pair. Both photos are masked on the same 800×600 frame, and
+measurements are cached forever. Details and demo results: [docs/measure.md](docs/measure.md).
 
 ## Stack
 
@@ -106,8 +116,8 @@ locally / Postgres in production · Inngest · Zod · Vitest · sharp · exifr �
 2. Open-data importer (Wikimedia Commons) ✓
 3. Witness Capture + ingest pipeline ✓
 4. Trust Engine + review ✓
-5. Before/after + monitoring ← next
-6. Search + outputs (reports, evidence pages)
+5. Before/after + monitoring ✓
+6. Search + outputs (reports, evidence pages) ← next
 7. Design system + demo mode
 8. Real keys + deploy
 

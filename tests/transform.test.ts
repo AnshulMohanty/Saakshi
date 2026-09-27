@@ -114,7 +114,18 @@ describe("parseTransformation", () => {
     [{ overlay: { publicId: "saakshi/x/y", width: 200 }, gravity: "north_east", x: 5 }, { angle: 180 }],
     [{ effect: "extract", prompt: "litter", mode: "mask" }, { effect: "grayscale" }, { quality: 55 }],
     [{ crop: "pad", width: 10, height: 20, background: "#ABCDEF", gravity: "west" }],
+    [{ crop: "fill", gravity: "auto", width: 800, height: 600 }, { effect: "extract", prompt: ["litter", "garbage", "plastic waste"], multiple: true, mode: "mask" }, { format: "png" }],
+    [{ overlay: { publicId: "saakshi/evidence/b", type: "authenticated", crop: "fill", gravity: "auto", width: 800, height: 600, effect: "blur_faces" }, gravity: "east" }],
   ];
+
+  it("compiles prompt lists, multiple and authenticated face-blurred layers", () => {
+    expect(compileTransform([{ effect: "extract", prompt: ["litter", "floating waste"], multiple: true, mode: "mask" }])).toBe(
+      "e_extract:prompt_(litter;floating%20waste);multiple_true;mode_mask",
+    );
+    expect(compileTransform([{ overlay: { publicId: "saakshi/evidence/b", type: "authenticated", crop: "fill", gravity: "auto", width: 8, height: 6, effect: "blur_faces" }, gravity: "east" }])).toBe(
+      "l_authenticated:saakshi:evidence:b,c_fill,g_auto,w_8,h_6,e_blur_faces/fl_layer_apply,g_east",
+    );
+  });
 
   it("round-trips compile → parse", () => {
     for (const t of cases) expect(parseTransformation(compileTransform(t))).toEqual(Transform.parse(t));

@@ -4,10 +4,11 @@
  * asset's status and moderation, Cloudinary's moderation status, and appends an audit row with
  * the reviewer's note.
  */
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { appendAudit } from "./audit";
 import type { DB } from "./db/client";
-import { assets, projects, type ReviewDecision } from "./db/schema";
+import { assets, duplicates, projects, type ReviewDecision } from "./db/schema";
+import { similarityPct } from "./hamming";
 import { PREVIEW, THUMB } from "./library";
 import type { MediaProvider } from "./providers/media";
 import { describeReason, type ReasonCode, type TrustBand, type TrustReason } from "./trust";
@@ -27,18 +28,20 @@ export interface ReviewItem {
   reasons: Array<TrustReason & { sentence: string }>;
   thumbUrl: string;
   previewUrl: string;
+  /** The closest near-duplicate, shown side by side. */
+  duplicate: { id: string; previewUrl: string; project: string | null; hamming: number; exact: boolean; similarityPct: number; isLater: boolean; capturedAt: string | null } | null;
 }
 
 const withSentences = (rs: TrustReason[] | null) => (rs ?? []).map((r) => ({ ...r, sentence: describeReason(r) }));
 const flagsOf = (rs: TrustReason[] | null) => (rs ?? []).filter((r) => r.kind === "hard" || r.kind === "review").map((r) => r.code);
 
-/** Photos awaiting review (status flagged), worst first; `reason` filters to one reason code. */
+/** Photos awaiting review (status flagged), newest first; `reason` filters to one reason code. */
 export async function listReviewQueue(db: DB, media: MediaProvider, { reason, limit = 200 }: { reason?: string | null; limit?: number } = {}) {
   const rows = await db
     .select()
     .from(assets)
     .where(and(eq(assets.status, "flagged"), inArray(assets.trustBand, ["NEEDS_REVIEW", "FLAGGED"])))
-    .orderBy(assets.trustScore, desc(assets.uploadedAt))
+    .orderBy(desc(assets.uploadedAt), assets.id)
     .limit(1000);
   const names = new Map((await db.select({ id: projects.id, name: projects.name }).from(projects)).map((p) => [p.id, p.name]));
 
@@ -47,10 +50,21 @@ export async function listReviewQueue(db: DB, media: MediaProvider, { reason, li
   const filterable = (x: TrustReason) => x.kind === "hard" || x.kind === "review" || (x.kind === "points" && x.points < 0 && x.code !== "HARD_FLAG_CAP");
   for (const r of rows) for (const code of new Set((r.trustReasons ?? []).filter(filterable).map((x) => x.code))) counts[code] = (counts[code] ?? 0) + 1;
 
-  const items: ReviewItem[] = rows
-    .filter((r) => !reason || (r.trustReasons ?? []).some((x) => x.code === reason))
-    .slice(0, limit)
-    .map((r) => ({
+  const shown = rows.filter((r) => !reason || (r.trustReasons ?? []).some((x) => x.code === reason)).slice(0, limit);
+  const dupRows = shown.length
+    ? await db
+        .select({ assetId: duplicates.assetId, id: duplicates.matchAssetId, hamming: duplicates.hamming, exact: duplicates.exact, isLater: duplicates.matchIsLater, publicId: assets.cldPublicId, capturedAt: assets.capturedAt, projectId: assets.projectId })
+        .from(duplicates)
+        .innerJoin(assets, eq(assets.id, duplicates.matchAssetId))
+        .where(inArray(duplicates.assetId, shown.map((r) => r.id)))
+        .orderBy(asc(duplicates.hamming), asc(duplicates.matchAssetId))
+    : [];
+  const closest = new Map<string, (typeof dupRows)[number]>();
+  for (const d of dupRows) if (!closest.has(d.assetId)) closest.set(d.assetId, d);
+
+  const items: ReviewItem[] = shown.map((r) => {
+    const d = closest.get(r.id);
+    return {
       id: r.id,
       caption: r.caption,
       source: r.source,
@@ -63,7 +77,20 @@ export async function listReviewQueue(db: DB, media: MediaProvider, { reason, li
       reasons: withSentences(r.trustReasons),
       thumbUrl: media.url(r.cldPublicId, THUMB, { signed: true }),
       previewUrl: media.url(r.cldPublicId, PREVIEW, { signed: true }),
-    }));
+      duplicate: d
+        ? {
+            id: d.id,
+            previewUrl: media.url(d.publicId, PREVIEW, { signed: true }),
+            project: d.projectId ? (names.get(d.projectId) ?? null) : null,
+            hamming: d.hamming,
+            exact: d.exact,
+            similarityPct: similarityPct(d.hamming),
+            isLater: d.isLater,
+            capturedAt: d.capturedAt?.toISOString() ?? null,
+          }
+        : null,
+    };
+  });
   return { items, total: rows.length, counts };
 }
 

@@ -49,6 +49,8 @@ export const EnvSchema = z.object({
   DEV_TOOLS: z.preprocess(blankToUndefined, z.enum(["0", "1"]).optional()),
   /** Required (header x-demo-admin-secret) for POST /api/demo/reset in production. */
   DEMO_ADMIN_SECRET: optionalString(),
+  /** Most photos measured (masks extracted) per project, pairs and spot trends together. */
+  MEASURE_MAX_PER_PROJECT: z.preprocess(blankToUndefined, z.coerce.number().int().min(0).max(1000).default(40)),
   /** UTC offset assumed for EXIF timestamps that carry none (most phones omit it). */
   EXIF_DEFAULT_UTC_OFFSET: z.preprocess(blankToUndefined, z.string().regex(/^[+-]\d{2}:\d{2}$/).default("+05:30")),
 });

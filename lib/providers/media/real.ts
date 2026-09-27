@@ -4,7 +4,7 @@
  */
 import { NotConfiguredError } from "../../errors";
 import { buildCloudinaryUrl, type Transform } from "../../media/transform";
-import type { MediaAsset, MediaProvider, MetadataTags, UploadInput, UrlOptions } from "./index";
+import { maskTransform, type MaskOptions, type MediaAsset, type MediaProvider, type MetadataTags, type UploadInput, type UrlOptions } from "./index";
 
 export interface CloudinaryCredentials {
   cloudName: string;
@@ -52,8 +52,8 @@ export class CloudinaryMediaProvider implements MediaProvider {
     return Buffer.from(await res.arrayBuffer());
   }
 
-  async extractMask(publicId: string, prompt: string): Promise<{ maskUrl: string; buffer: Buffer }> {
-    const maskUrl = this.url(publicId, [{ effect: "extract", prompt, mode: "mask" }, { format: "png" }], { signed: true });
+  async extractMask(publicId: string, prompt: string | string[], opts: MaskOptions = {}): Promise<{ maskUrl: string; buffer: Buffer }> {
+    const maskUrl = this.url(publicId, maskTransform(prompt, opts), { signed: true });
     const res = await fetch(maskUrl, { signal: AbortSignal.timeout(60_000) });
     if (!res.ok) throw new Error(`Cloudinary extract failed: HTTP ${res.status}`);
     return { maskUrl, buffer: Buffer.from(await res.arrayBuffer()) };

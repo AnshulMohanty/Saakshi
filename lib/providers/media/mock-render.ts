@@ -19,8 +19,8 @@ import type {
 } from "../../media/transform";
 
 export interface RenderContext {
-  /** Original bytes of another asset, for image layers. */
-  loadOverlay: (publicId: string) => Promise<Buffer | null>;
+  /** Original bytes of another asset (and its known face count), for image layers. */
+  loadOverlay: (publicId: string) => Promise<{ bytes: Buffer; facesCount: number } | null>;
   /** Request Accept header, used to resolve f_auto. */
   accept?: string | null;
   /** Faces the asset is known to contain. blur_faces/pixelate_faces are no-ops at 0, as on Cloudinary. */
@@ -175,8 +175,9 @@ async function imageLayer(o: ImageOverlay, ctx: RenderContext): Promise<Buffer |
     ctx.log?.(`overlay asset "${o.publicId}" not found; layer skipped`);
     return null;
   }
-  let layer = await toImg(sharp(src).rotate());
-  if (o.width || o.height) layer = await resize(layer, { crop: o.crop, width: o.width, height: o.height });
+  let layer = await toImg(sharp(src.bytes).rotate());
+  if (o.width || o.height) layer = await resize(layer, { crop: o.crop, gravity: o.gravity, width: o.width, height: o.height });
+  if (o.effect === "blur_faces" && src.facesCount > 0) layer = await toImg(fromImg(layer).blur(12.5));
   let s = fromImg(layer);
   if (o.opacity !== undefined) s = s.linear([1, 1, 1, o.opacity / 100], [0, 0, 0, 0]);
   return s.png().toBuffer();

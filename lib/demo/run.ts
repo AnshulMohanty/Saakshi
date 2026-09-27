@@ -11,10 +11,12 @@ import { CommonsClient, packageRepoUrl } from "../archive/commons";
 import { verifyAllChains } from "../audit";
 import { getConfig } from "../config";
 import { getDb } from "../db/client";
-import { assets, projects } from "../db/schema";
+import { assets, projects, spots } from "../db/schema";
 import { drainQueue, enqueueAsset, getPipelineDeps } from "../pipeline";
 import { runPipeline } from "../pipeline/runner";
 import { rescoreAll, rescoreProject, trustSummary, type TrustSummary } from "../pipeline/score";
+import { autoPairProject, refreshBaseline } from "../measure/measure";
+import { summarisePairing, type PairingSummary } from "../measure/report";
 import { getGeocoder } from "../providers/geocoder";
 import { getMediaProvider } from "../providers/media";
 import { HandlerRegistry } from "../providers/queue";
@@ -86,20 +88,29 @@ export interface DemoSummary {
   planted?: PlantedAsset[];
   statuses: Record<string, number>;
   trust: TrustSummary;
+  pairing: PairingSummary[];
   audit: { ok: boolean; chains: number; entries: number; broken: Array<{ assetId: string | null; firstBrokenAt: number }> };
 }
 
-async function summarise(deps: DemoDeps): Promise<Pick<DemoSummary, "statuses" | "audit" | "trust">> {
+async function summarise(deps: DemoDeps): Promise<Pick<DemoSummary, "statuses" | "audit" | "trust" | "pairing">> {
   // Photos scored concurrently can miss each other for a moment; one ordered pass settles them.
   const settled = await rescoreAll(deps.db, deps.media, "settle after demo run");
   if (settled.changed) deps.log?.(`Settled trust scores: ${settled.changed} of ${settled.rescored} changed.`);
+  // Baselines: each demo spot's earliest eligible photo (archive photos arrive in any order). Then pairs.
+  const demo = await deps.db.select({ id: projects.id, name: projects.name }).from(projects).where(eq(projects.source, "demo_archive"));
+  const pairing: PairingSummary[] = [];
+  for (const p of demo) {
+    for (const s of await deps.db.select({ id: spots.id }).from(spots).where(eq(spots.projectId, p.id))) await refreshBaseline(deps.db, s.id, { force: true });
+    const r = await autoPairProject({ db: deps.db, media: deps.media, measureMax: getConfig().env.MEASURE_MAX_PER_PROJECT }, p.id);
+    pairing.push(summarisePairing(p.name, r.result));
+  }
   const rows = await deps.db
     .select({ status: assets.status, n: count() })
     .from(assets)
     .where(inArray(assets.source, ["archive", "planted_test"]))
     .groupBy(assets.status);
   const audit = await verifyAllChains(deps.db);
-  return { statuses: Object.fromEntries(rows.map((r) => [r.status, r.n])), trust: await trustSummary(deps.db), audit: { ok: audit.ok, chains: audit.chains, entries: audit.entries, broken: audit.broken } };
+  return { statuses: Object.fromEntries(rows.map((r) => [r.status, r.n])), trust: await trustSummary(deps.db), pairing, audit: { ok: audit.ok, chains: audit.chains, entries: audit.entries, broken: audit.broken } };
 }
 
 export async function runDemoImport(opts: DemoRunOptions = {}): Promise<DemoSummary> {

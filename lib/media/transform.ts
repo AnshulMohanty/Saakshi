@@ -53,10 +53,16 @@ export const SimpleEffectStep = z.strictObject({
   effect: z.enum(["grayscale", "improve"]),
 });
 
-/** Cloudinary AI extraction (e_extract). mode "mask" returns a black/white mask. */
+const PromptText = z.string().regex(/^[\p{L}\p{N}][\p{L}\p{N} '-]{0,99}$/u);
+
+/**
+ * Cloudinary AI extraction (e_extract). One prompt or several (prompt_(a;b)); `multiple` extracts
+ * every instance, not only the most prominent; mode "mask" returns a black/white mask.
+ */
 export const ExtractStep = z.strictObject({
   effect: z.literal("extract"),
-  prompt: z.string().regex(/^[\p{L}\p{N}][\p{L}\p{N} '-]{0,99}$/u),
+  prompt: z.union([PromptText, z.array(PromptText).min(1).max(8)]),
+  multiple: z.boolean().optional(),
   mode: z.enum(["mask", "content"]).optional(),
 });
 
@@ -71,10 +77,16 @@ export const TextOverlay = z.strictObject({
 
 export const ImageOverlay = z.strictObject({
   publicId: PublicId,
+  /** Delivery type of the layer asset: evidence is "authenticated" (l_authenticated:…). */
+  type: z.literal("authenticated").optional(),
   crop: CropMode.optional(),
+  /** Crop gravity inside the layer (placement gravity belongs to the overlay step). */
+  gravity: Gravity.optional(),
   width: Px.optional(),
   height: Px.optional(),
   opacity: z.number().int().min(0).max(100).optional(),
+  /** Face blur applied to the layer itself. */
+  effect: z.literal("blur_faces").optional(),
 });
 
 export const OverlayStep = z.strictObject({
@@ -148,13 +160,15 @@ function compileStep(step: TransformStep): string {
       ].filter(Boolean).join(",");
       return `${layer}/${placement(step)}`;
     }
-    const layer = params([["l", o.publicId.replaceAll("/", ":")], ["c", o.crop], ["w", o.width], ["h", o.height], ["o", o.opacity]]);
+    const id = (o.type ? `${o.type}:` : "") + o.publicId.replaceAll("/", ":");
+    const layer = params([["l", id], ["c", o.crop], ["g", o.gravity], ["w", o.width], ["h", o.height], ["o", o.opacity], ["e", o.effect]]);
     return `${layer}/${placement(step)}`;
   }
   if ("effect" in step) {
     if (step.effect === "extract") {
       const s = step as ExtractStep;
-      return `e_extract:prompt_${encodeURIComponent(s.prompt)}${s.mode ? `;mode_${s.mode}` : ""}`;
+      const prompt = Array.isArray(s.prompt) ? `(${s.prompt.map(encodeURIComponent).join(";")})` : encodeURIComponent(s.prompt);
+      return `e_extract:prompt_${prompt}${s.multiple ? ";multiple_true" : ""}${s.mode ? `;mode_${s.mode}` : ""}`;
     }
     return "strength" in step && step.strength !== undefined ? `e_${step.effect}:${step.strength}` : `e_${step.effect}`;
   }
@@ -200,9 +214,10 @@ function parseComponent(c: string): unknown {
     if (p.size !== 1) return null;
     const e = p.get("e")!;
     if (e.startsWith("extract:")) {
-      const m = /^extract:prompt_([^;]+)(?:;mode_(\w+))?$/.exec(e);
+      const m = /^extract:prompt_(\([^)]+\)|[^;()]+)(;multiple_true)?(?:;mode_(\w+))?$/.exec(e);
       if (!m) return null;
-      return { effect: "extract", prompt: decodeURIComponent(m[1]), ...(m[2] ? { mode: m[2] } : {}) };
+      const prompt = m[1].startsWith("(") ? m[1].slice(1, -1).split(";").map(decodeURIComponent) : decodeURIComponent(m[1]);
+      return { effect: "extract", prompt, ...(m[2] ? { multiple: true } : {}), ...(m[3] ? { mode: m[3] } : {}) };
     }
     const [name, strength, ...rest] = e.split(":");
     if (rest.length) return null;
@@ -253,14 +268,18 @@ function parseOverlay(layer: string, apply: string): unknown {
       ...place,
     };
   }
-  if (!onlyKeys(l, ["l", "c", "w", "h", "o"])) return null;
+  if (!onlyKeys(l, ["l", "c", "g", "w", "h", "o", "e"])) return null;
+  const authenticated = lv.startsWith("authenticated:");
   return {
     overlay: {
-      publicId: lv.replaceAll(":", "/"),
+      publicId: (authenticated ? lv.slice("authenticated:".length) : lv).replaceAll(":", "/"),
+      ...(authenticated ? { type: "authenticated" } : {}),
       ...(l.has("c") ? { crop: l.get("c") } : {}),
+      ...(l.has("g") ? { gravity: l.get("g") } : {}),
       ...(l.has("w") ? { width: int(l.get("w")) } : {}),
       ...(l.has("h") ? { height: int(l.get("h")) } : {}),
       ...(l.has("o") ? { opacity: int(l.get("o")) } : {}),
+      ...(l.has("e") ? { effect: l.get("e") } : {}),
     },
     ...place,
   };

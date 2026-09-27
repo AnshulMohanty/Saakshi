@@ -23,6 +23,7 @@ export async function getPipelineDeps(): Promise<PipelineDeps> {
     geocoder: getGeocoder(),
     exifDefaultOffset: env.EXIF_DEFAULT_UTC_OFFSET,
     similarityThreshold: env.ASSIGN_SIMILARITY_THRESHOLD,
+    measureMax: env.MEASURE_MAX_PER_PROJECT,
   };
 }
 

@@ -12,8 +12,8 @@ export type MaskKind = "vegetation" | "litter";
 
 const VEGETATION_WORDS = /\b(green|grass|tree|trees|plant|plants|vegetation|sapling|saplings|leaf|leaves|canopy|shrub|shrubs|garden|foliage)\b/i;
 
-export function maskKindForPrompt(prompt: string): MaskKind {
-  return VEGETATION_WORDS.test(prompt) ? "vegetation" : "litter";
+export function maskKindForPrompt(prompt: string | string[]): MaskKind {
+  return VEGETATION_WORDS.test([prompt].flat().join(" ")) ? "vegetation" : "litter";
 }
 
 export interface MaskResult {

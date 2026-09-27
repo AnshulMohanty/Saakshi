@@ -121,6 +121,8 @@ describe("Trust Engine against the database", () => {
     expect(q.items.map((i) => i.id)).toContain(copy.id);
     expect(q.counts.REUSED).toBeGreaterThanOrEqual(1);
     expect((await listReviewQueue(ctx.db, ctx.media, { reason: "REUSED" })).items.every((i) => i.flags.includes("REUSED"))).toBe(true);
+    // The closest duplicate is shown side by side: here, the original it copies.
+    expect(q.items.find((i) => i.id === copy.id)?.duplicate).toMatchObject({ id: original.id, exact: true, isLater: false, project: "Noyyal cleanup" });
     expect(q.items.find((i) => i.id === copy.id)?.reasons.find((r) => r.code === "REUSED")?.sentence).toMatch(/^A \d+% match of a photo already in Noyyal cleanup from 2023-03-01\.$/);
 
     await expect(decideReview(ctx.db, ctx.media, { assetId: copy.id, decision: "approve", note: "  " })).rejects.toThrow(ReviewError);
