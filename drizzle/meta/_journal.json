@@ -57,6 +57,13 @@
       "when": 1790546963804,
       "tag": "0007_measurements",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790549832338,
+      "tag": "0008_report_fields",
+      "breakpoints": true
     }
   ]
 }

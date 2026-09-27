@@ -13,17 +13,18 @@ set. `/dev/status` shows the current selection.
 | queue | Inngest cloud (`INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY`), or the local Inngest Dev Server with `QUEUE=inngest-dev` | Inline runner, concurrency 4 |
 | geocoder | Nominatim, default (no key; `APP_CONTACT_EMAIL` recommended) | Nearest of ~30 Indian cities (`GEOCODER=mock`, and always in tests) |
 
-## Status of real implementations (Phase 3)
+## Status of real implementations (after Phase 6)
 
 - **Cloudinary media.** Implemented:
   - `url()`: signed URLs use the `authenticated` delivery type, and are verified against the official SDK.
-  - `fetchDerived()` and `extractMask()`.
+  - `fetchDerived()` and `extractMask()` (prompt lists, `multiple_true`, on a shared `frame` crop).
+  - `rawUrl()`: signed `raw/authenticated` delivery for report PDFs.
   - Direct-upload tickets, and upload-response and webhook signature verification (`lib/ingest/verify.ts`, with known-vector tests).
 
-  Still `NotConfiguredError` until Phase 8: server-side `upload`, `updateMetadata` and `setModeration`. So `demo:import` in real mode waits for Phase 8.
+  Still `NotConfiguredError` until Phase 8: server-side `upload`, `uploadRaw` (PDFs), `exists` (QR once per asset), `updateMetadata` (with `removeTags`) and `setModeration`. So `demo:import`, reports and evidence pages in real mode wait for Phase 8. To check with keys: overlays of authenticated images as `l_authenticated:<folder>:<id>`, used by the composite, the split template and the proof strip.
 - **Inngest.** Implemented, as `lib/pipeline/inngest.ts` served at `/api/inngest`. It has been verified against the local Dev Server.
 - **Nominatim and Postgres.** Implemented.
-- **Cloudinary analysis and OpenAI.** Stubs that throw `NotConfiguredError`.
+- **Cloudinary analysis and OpenAI.** Stubs that throw `NotConfiguredError`. The search parser prompt is ready (`lib/ai/prompts.ts`).
 
 ## Browser uploads
 

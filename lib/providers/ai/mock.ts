@@ -6,6 +6,7 @@
 import { findProseIssues } from "../../claims";
 import { EMBEDDING_DIMENSIONS } from "../../db/schema";
 import { parseDeliveryPath } from "../../media/transform";
+import { normaliseQuery } from "../../search/normalize";
 import { hash32, tokens } from "../mock-text";
 import type { AIProvider, ClaimRef } from "./index";
 import type { ParsedSearch, PhotoAnalysis } from "./schemas";
@@ -73,9 +74,10 @@ const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 type Band = ParsedSearch["filters"]["band"];
 
-/** Rule-based stand-in for LLM query parsing. */
+/** Rule-based stand-in for LLM query parsing: Hinglish and typos first, then filters, then free text. */
 export function parseSearchQuery(query: string): ParsedSearch {
-  let rest = ` ${query} `;
+  const { text, rewrites } = normaliseQuery(query);
+  let rest = ` ${text} `;
   const take = (re: RegExp) => {
     const m = re.exec(rest);
     if (m) rest = rest.replace(m[0], " ");
@@ -91,7 +93,7 @@ export function parseSearchQuery(query: string): ParsedSearch {
   else if (take(/\b(flagged|suspicious|untrusted)\b/i)) band = "FLAGGED";
 
   let source: ParsedSearch["filters"]["source"] = null;
-  if (take(/\bplanted[ _-]?tests?\b/i)) source = "planted_test";
+  if (take(/\b(planted[ _-]?tests?|test[ _-]?inputs?)\b/i)) source = "planted_test";
   else if (take(/\bwitness(ed)?\b/i)) source = "witness";
   else if (take(/\bupload(s|ed)?\b/i)) source = "upload";
   else if (take(/\barchiv(e|ed|al)\b/i)) source = "archive";
@@ -120,13 +122,19 @@ export function parseSearchQuery(query: string): ParsedSearch {
   const until = take(/\b(?:until|till|to)\s+(\d{4}-\d{2}-\d{2}|\d{4})\b/i);
   if (until) to = until[1].length === 4 ? `${until[1]}-12-31` : until[1];
 
-  const project = take(/\bproject[:\s]+([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/i);
+  const project = take(/\bproject[:\s]+([a-z0-9][a-z0-9-]{1,80})\b/i);
+
+  let activity: string | null = null;
+  if (take(/\b(plantation|tree[- ]planting|planting drives?)\b/i)) activity = "plantation";
+  else if (take(/\b(clean[- ]?ups?|cleaning drives?)\b/i)) activity = "cleanup";
+  else if (take(/\b(water points?|handpumps?|borewells?)\b/i)) activity = "water";
+  else if (take(/\bschools?\b/i)) activity = "school";
 
   const semantic = rest
     .replace(/\b(show( me)?|find|search|photos?|pictures?|images?|of|with)\b/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
-  return { semantic, filters: { projectId: project?.[1].toLowerCase() ?? null, band, source, from, to } };
+  return { semantic, filters: { project: project?.[1].toLowerCase() ?? null, band, source, activity, from, to }, rewrites };
 }
 
 /** Feature-hashed bag of words (+ bigrams), L2-normalised. */

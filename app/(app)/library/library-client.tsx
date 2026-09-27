@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { LibraryData } from "@/lib/library";
 import { AssetDrawer } from "./asset-drawer";
+import { SearchPanel } from "./search-panel";
 import { statusVariant } from "./status";
 
 // Leaflet touches `window`: client-only.
@@ -113,6 +114,8 @@ export function LibraryClient({ initial }: { initial: LibraryState }) {
           ))}
         </div>
       </div>
+
+      <SearchPanel onOpen={(id) => update({ asset: id })} />
 
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <FilterSelect label="Project" value={state.project} onChange={(v) => update({ project: v })} options={(data?.projects ?? []).map((p) => [p.id, p.name])} />

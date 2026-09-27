@@ -23,6 +23,8 @@ pnpm dev           # http://localhost:3000
 - `/projects/<slug>`: before/after cards (slider, the measured mask, values, method, confidence).
 - `/spots/<slug>`: a spot's public page with its trend and a check-in link. `/spots/<slug>/poster` is a printable A4 QR poster.
 - `/capture?project=<slug>`: Witness Capture (live camera and GPS, capture token, attestation).
+- `/e/<assetId>`: a photo's public evidence page (proof strip, ledger, every edit, audit chain). `/r/<reportId>`: a public Impact Report, where every number links to its photos, with the PDF and an Instagram campaign kit (generate one from a project page).
+- Search in `/library`: natural language, Hinglish and typos (“verified paudhe in 2021”), with “Understood as” chips.
 - `/dev/status`: which providers are mocked or real, and a **Run demo import** button that works while `pnpm dev` is running.
 
 PGlite allows one process at a time, so run the `demo:*` scripts with `pnpm dev` stopped, or use the button.
@@ -94,8 +96,8 @@ archive photos are VERIFIED with no hard flag, and each planted input is FLAGGED
 
 ```
 $ pnpm test
- Test Files  22 passed (22)
-      Tests  307 passed (307)
+ Test Files  27 passed (27)
+      Tests  338 passed (338)
 ```
 
 ## Before/after
@@ -104,6 +106,12 @@ Pairs follow fixed rules: same spot, ≤ 30 m apart (≤ 150 m for approximate a
 in time order, a gap of at least the project's `min_pair_gap_hours`, and neither photo flagged.
 They are never loosened to produce a pair. Both photos are masked on the same 800×600 frame, and
 measurements are cached forever. Details and demo results: [docs/measure.md](docs/measure.md).
+
+## Outputs
+
+Search, evidence pages, the claims ledger, the Impact Report PDF, the campaign kit and the APIs
+for Phase 7 (`/api/live` SSE, `/api/stats`, `/api/assets/[id]/layers`, `/api/demo/tamper`,
+`/api/demo/try`, the evidence-pack zip) are described in [docs/outputs.md](docs/outputs.md).
 
 ## Stack
 
@@ -117,8 +125,8 @@ locally / Postgres in production · Inngest · Zod · Vitest · sharp · exifr �
 3. Witness Capture + ingest pipeline ✓
 4. Trust Engine + review ✓
 5. Before/after + monitoring ✓
-6. Search + outputs (reports, evidence pages) ← next
-7. Design system + demo mode
+6. Search + outputs (reports, evidence pages) ✓
+7. Design system + demo mode ← next
 8. Real keys + deploy
 
 Contributor and agent guide: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Providers: [docs/providers.md](docs/providers.md).

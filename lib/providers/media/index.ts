@@ -21,6 +21,13 @@ export interface UploadInput {
   context?: Record<string, string>;
 }
 
+/** A non-image file (report PDFs), stored as raw + authenticated. Public ids keep the extension. */
+export interface RawUploadInput {
+  publicId: string;
+  bytes: Buffer;
+  contentType: string;
+}
+
 export interface MediaAsset {
   publicId: string;
   assetId: string;
@@ -62,6 +69,12 @@ export interface MetadataTags {
 export interface MediaProvider {
   readonly kind: "mock" | "real";
   upload(input: UploadInput): Promise<MediaAsset>;
+  /** Stores a raw file with delivery type authenticated (real: resource_type raw, type authenticated). */
+  uploadRaw(input: RawUploadInput): Promise<{ publicId: string; bytes: number }>;
+  /** Signed delivery URL of a raw authenticated file. */
+  rawUrl(publicId: string): string;
+  /** Whether an asset with this public id exists (real: Admin API resource lookup). */
+  exists(publicId: string): Promise<boolean>;
   url(publicId: string, transforms: Transform, opts?: UrlOptions): string;
   /** Contextual metadata (key/values, merged), tags to add and tags to remove (real: add_context, add_tag, remove_tag). */
   updateMetadata(publicId: string, fields: Record<string, string>, opts?: MetadataTags): Promise<void>;

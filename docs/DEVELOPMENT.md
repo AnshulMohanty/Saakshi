@@ -46,10 +46,15 @@ The app also migrates PGlite on first connection.
   reset) · `lib/library.ts` (library queries) · `lib/review.ts` (review queue, decisions) ·
   `lib/pipeline/score.ts` (Trust Engine against the DB: write-back, re-scoring) · `lib/measure/`
   (pure `cover.ts`, `pairing.ts`; `measure.ts` masks, comparisons, baselines; `views.ts` read
-  models) · `lib/media/composite.ts` (side-by-side Transform) · `lib/client/` (browser-only helpers).
+  models) · `lib/media/composite.ts` (side-by-side Transform), `proof.ts` (proof strip),
+  `describe.ts` (Transforms in words) · `lib/search/` (parse → validate → rank, Hinglish/typos,
+  synonyms) · `lib/evidence.ts` (/e page model, QR once) · `lib/report/` (SQL claims, sections,
+  react-pdf, generate, campaign, view) · `lib/live.ts` (SSE) · `lib/demo-apis.ts` (stats, layers,
+  tamper, sandbox) · `lib/evidence-pack.ts` (zip) · `lib/client/` (browser-only helpers).
 - Pure, tested modules: `lib/geo.ts`, `lib/phash.ts`, `lib/hashchain.ts`, `lib/claims.ts`,
   `lib/archive/{parse,cluster,build}.ts`, `lib/pipeline/{assign,metadata}.ts`, `lib/capture/token.ts`,
-  `lib/trust/*` (browser-safe: a test walks its imports), `lib/measure/{cover,pairing}.ts`. Tests live in `tests/*.test.ts`; fixtures in `tests/fixtures`
+  `lib/trust/*` (browser-safe: a test walks its imports), `lib/measure/{cover,pairing}.ts`,
+  `lib/search/normalize.ts`, `lib/media/{describe,proof,composite}.ts`, `lib/report/sections.ts`. Tests live in `tests/*.test.ts`; fixtures in `tests/fixtures`
   (`tests/fixtures/commons/` are trimmed real API responses). `tests/helpers.ts` builds an
   in-memory PGlite + mock-provider context.
 - `drizzle/` generated SQL migrations (commit them) · `scripts/` CLI scripts (run with tsx) · `docs/`.

@@ -79,7 +79,34 @@ export class MockMediaStore {
   cachePath(key: string, ext: string): string {
     return path.join(this.dir, "cache", `${key}.${ext}`);
   }
+
+  private rawPath(publicId: string): string {
+    if (!RAW_PUBLIC_ID_RE.test(publicId)) throw new Error(`Invalid raw public id "${publicId}"`);
+    return path.join(this.dir, "raw", ...publicId.split("/"));
+  }
+
+  /** Raw (non-image) files, e.g. report PDFs: <dir>/raw/<publicId> plus <publicId>.meta.json. */
+  async writeRaw(publicId: string, bytes: Buffer, contentType: string): Promise<void> {
+    const file = this.rawPath(publicId);
+    await mkdir(path.dirname(file), { recursive: true });
+    await writeFile(file, bytes);
+    await writeFile(`${file}.meta.json`, JSON.stringify({ contentType, bytes: bytes.length, uploadedAt: new Date().toISOString() }));
+  }
+
+  async readRaw(publicId: string): Promise<{ bytes: Buffer; contentType: string } | null> {
+    try {
+      const file = this.rawPath(publicId);
+      const meta = JSON.parse(await readFile(`${file}.meta.json`, "utf8")) as { contentType: string };
+      return { bytes: await readFile(file), contentType: meta.contentType };
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
+      throw err;
+    }
+  }
 }
+
+/** Raw public ids keep their extension, as on Cloudinary ("saakshi/reports/<id>.pdf"). */
+export const RAW_PUBLIC_ID_RE = /^[A-Za-z0-9_-]+(\/[A-Za-z0-9_-]+)*\.[a-z0-9]{1,5}$/;
 
 /** Context keys that describe what the photo shows (others are bookkeeping: source, tokens, hints). */
 const CONTENT_CONTEXT_KEYS = ["filename", "title", "description", "caption", "alt"];

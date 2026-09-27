@@ -32,10 +32,19 @@ export type PhotoAnalysis = z.infer<typeof PhotoAnalysis>;
 export const TrustBandFilter = z.enum(["VERIFIED", "NEEDS_REVIEW", "FLAGGED"]);
 export const SourceFilter = z.enum(["witness", "upload", "archive", "planted_test"]);
 
+/**
+ * Filters as the parser read them: plain strings, because a model can return anything.
+ * lib/search.ts validates each against the allowed values and reports what it rejected.
+ */
 export const SearchFilters = z.object({
-  projectId: z.string().nullable(),
-  band: TrustBandFilter.nullable(),
-  source: SourceFilter.nullable(),
+  /** Project slug (or id). */
+  project: z.string().nullable(),
+  /** VERIFIED | NEEDS_REVIEW | FLAGGED */
+  band: z.string().nullable(),
+  /** witness | upload | archive | planted_test ("test inputs") */
+  source: z.string().nullable(),
+  /** cleanup | plantation | school | water | other */
+  activity: z.string().nullable(),
   /** ISO dates (YYYY-MM-DD), inclusive. */
   from: z.string().nullable(),
   to: z.string().nullable(),
@@ -43,8 +52,10 @@ export const SearchFilters = z.object({
 export type SearchFilters = z.infer<typeof SearchFilters>;
 
 export const ParsedSearch = z.object({
-  /** Free-text part to embed for semantic ranking ("" when the query is only filters). */
+  /** Free-text part to rank by ("" when the query is only filters), in English. */
   semantic: z.string(),
   filters: SearchFilters,
+  /** Words the parser read differently: Hinglish ("paudhe" → "saplings") and typos. */
+  rewrites: z.array(z.object({ from: z.string(), to: z.string() })),
 });
 export type ParsedSearch = z.infer<typeof ParsedSearch>;

@@ -3,7 +3,8 @@ import { getMediaProvider } from "@/lib/providers/media";
 import { MockMediaProvider } from "@/lib/providers/media/mock";
 
 /**
- * Mock Cloudinary delivery: /api/media/mock/image/upload/s--sig--/<transformation>/v1/<publicId>.
+ * Mock Cloudinary delivery: /api/media/mock/image/upload/s--sig--/<transformation>/v1/<publicId>,
+ * and raw files (report PDFs): /api/media/mock/raw/authenticated/s--sig--/v1/<publicId>.
  * Only signed URLs are served; any edit to the path (transformation, version, public id or
  * signature) fails verification with 401.
  */
@@ -14,6 +15,11 @@ export async function GET(request: Request) {
   }
   // Use the raw, still-encoded path: signatures cover the exact bytes (%252C etc.).
   const pathname = new URL(request.url).pathname;
+  if (pathname.startsWith(`${MOCK_MEDIA_PREFIX}/raw/`)) {
+    const raw = await media.renderRaw(pathname.slice(MOCK_MEDIA_PREFIX.length + 1));
+    if (raw.status !== 200) return Response.json({ error: raw.error }, { status: raw.status });
+    return new Response(new Uint8Array(raw.bytes), { headers: { "content-type": raw.contentType, "cache-control": "private, max-age=3600", "x-content-type-options": "nosniff" } });
+  }
   const parsed = parseDeliveryPath(pathname.slice(MOCK_MEDIA_PREFIX.length + 1));
   if (!parsed) return Response.json({ error: "Not a delivery path" }, { status: 404 });
 

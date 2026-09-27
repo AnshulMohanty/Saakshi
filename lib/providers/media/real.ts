@@ -3,8 +3,8 @@
  * upload/metadata/moderation arrive with real keys in Phase 8.
  */
 import { NotConfiguredError } from "../../errors";
-import { buildCloudinaryUrl, type Transform } from "../../media/transform";
-import { maskTransform, type MaskOptions, type MediaAsset, type MediaProvider, type MetadataTags, type UploadInput, type UrlOptions } from "./index";
+import { buildCloudinaryUrl, cloudinarySignature, type Transform } from "../../media/transform";
+import { maskTransform, type MaskOptions, type MediaAsset, type MediaProvider, type MetadataTags, type RawUploadInput, type UploadInput, type UrlOptions } from "./index";
 
 export interface CloudinaryCredentials {
   cloudName: string;
@@ -38,6 +38,21 @@ export class CloudinaryMediaProvider implements MediaProvider {
     void fields;
     void opts;
     throw new NotConfiguredError("CloudinaryMediaProvider", "updateMetadata");
+  }
+
+  async uploadRaw(input: RawUploadInput): Promise<{ publicId: string; bytes: number }> {
+    void input;
+    throw new NotConfiguredError("CloudinaryMediaProvider", "uploadRaw");
+  }
+
+  rawUrl(publicId: string): string {
+    const sig = cloudinarySignature("", publicId, this.creds.apiSecret);
+    return `https://res.cloudinary.com/${this.creds.cloudName}/raw/authenticated/${sig}/v1/${publicId}`;
+  }
+
+  async exists(publicId: string): Promise<boolean> {
+    void publicId;
+    throw new NotConfiguredError("CloudinaryMediaProvider", "exists");
   }
 
   async setModeration(publicId: string, status: "approved" | "rejected"): Promise<void> {

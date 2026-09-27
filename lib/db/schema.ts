@@ -162,6 +162,18 @@ export interface ReportClaim {
   method: ClaimMethod;
   asset_ids: string[];
   confidence?: number;
+  /** Supporting facts shown next to the number (never used in prose). */
+  detail?: { topReasons?: Array<{ code: string; n: number }>; testInputs?: string[]; pairs?: number; basis?: string };
+}
+
+export interface CampaignKit {
+  caption: string;
+  /** Alt text per template, each stat with its method label. */
+  alts: Record<"stat" | "split" | "proof", string>;
+  /** Which claim the stat card shows, and which pair and photo the other two use. */
+  statClaimId: string | null;
+  pair: { beforeAssetId: string; afterAssetId: string } | null;
+  photoAssetId: string | null;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -371,7 +383,16 @@ export const reports = pgTable(
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
     kind: reportKind("kind").notNull(),
+    title: text("title"),
+    /** The period the claims cover (defaults to the project's dates). */
+    periodFrom: date("period_from"),
+    periodTo: date("period_to"),
     claims: jsonb("claims").$type<ReportClaim[]>().notNull().default([]),
+    /** Prose with {{claim:id}} placeholders (rendered on display, never stored with numbers). */
+    prose: text("prose"),
+    /** Statements without numbers, e.g. "Archive project: no recent check-ins". */
+    notes: jsonb("notes").$type<string[]>().notNull().default([]),
+    campaign: jsonb("campaign").$type<CampaignKit>(),
     pdfPublicId: text("pdf_public_id"),
     ...timestamps(),
   },
@@ -451,6 +472,7 @@ export const geocache = pgTable(
 
 export type Project = typeof projects.$inferSelect;
 export type Comparison = typeof comparisons.$inferSelect;
+export type Report = typeof reports.$inferSelect;
 export type Measurement = typeof measurements.$inferSelect;
 export type Spot = typeof spots.$inferSelect;
 export type Asset = typeof assets.$inferSelect;

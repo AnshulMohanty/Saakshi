@@ -132,6 +132,8 @@ export async function plantDemo(
     bytes: () => Promise<Buffer>;
     commons: boolean;
     context: Record<string, string>;
+    /** How the planted file was made from the Commons photo (the evidence page lists it). */
+    edit: { steps: Transform; note: string } | null;
   }> = [
     {
       testCase: "reused",
@@ -139,6 +141,10 @@ export async function plantDemo(
       project: C,
       commons: false, // a re-shared copy: EXIF gone
       context: { filename: "reused-cleanup-photo.jpg" },
+      edit: {
+        steps: [{ crop: "crop", gravity: "center", width: 1843, height: 1382 }, { width: 1600 }, { format: "jpg", quality: 72 }],
+        note: "Planted test input: a project-A photo re-cropped 2% on each side and re-encoded, then submitted to another project. (Crop size shown for a 1920×1440 source.)",
+      },
       bytes: async () => {
         const buf = await deps.thumbs.downloadThumb(picks.reused);
         const m = await sharp(buf).metadata();
@@ -159,6 +165,7 @@ export async function plantDemo(
       project: A,
       commons: false, // stock downloads carry no camera metadata
       context: { filename: "stock-watermarked-cleanup.jpg", watermark_text: "© STOCKIMAGES" },
+      edit: { steps: WATERMARK_TRANSFORM, note: "Planted test input: a tiled “© STOCKIMAGES” watermark over a Commons photo." },
       bytes: () => derived(picks.stock, WATERMARK_TRANSFORM),
     },
     {
@@ -167,6 +174,7 @@ export async function plantDemo(
       project: A,
       commons: true, // keeps its real GPS, far from project A
       context: { filename: "cleanup-photo.jpg" },
+      edit: null, // the untouched Commons photo; only the project it was submitted to is wrong
       bytes: () => deps.thumbs.downloadThumb(picks.locationMismatch),
     },
     {
@@ -175,6 +183,10 @@ export async function plantDemo(
       project: A,
       commons: true, // real GPS says project A; the burned-in stamp says another city
       context: { filename: "gps-camera-stamp.jpg", burned_text: stampText(picks.stampCity, picks.stampMismatch.date?.local ?? null) },
+      edit: {
+        steps: stampTransform(stampText(picks.stampCity, picks.stampMismatch.date?.local ?? null)),
+        note: `Planted test input: a GPS-camera stamp naming ${picks.stampCity.name} burned into a photo taken at project A.`,
+      },
       bytes: () => derived(picks.stampMismatch, stampTransform(stampText(picks.stampCity, picks.stampMismatch.date?.local ?? null))),
     },
   ];
@@ -228,6 +240,7 @@ export async function plantDemo(
         qualityScore: up.qualityScore,
         exifSource: t.commons ? "commons_api" : "none",
         attribution: attributionOf(t.from),
+        transforms: t.edit ? [{ at: new Date().toISOString(), actor: "demo:plant", steps: t.edit.steps, note: t.edit.note }] : [],
         pipeline: {
           ingest: { ...(t.commons ? { commons: commonsIngest(t.from) } : {}), mediaMetadata: up.mediaMetadata, hint: { projectId: t.project.id } },
           steps: {},

@@ -111,16 +111,16 @@ describe("MockAIProvider (guarded)", () => {
   it("parses search queries into semantic text + filters", () => {
     expect(parseSearchQuery("high trust litter photos in March 2025")).toEqual({
       semantic: "litter",
-      filters: { projectId: null, band: "VERIFIED", source: null, from: "2025-03-01", to: "2025-03-31" },
+      filters: { project: null, band: "VERIFIED", source: null, activity: null, from: "2025-03-01", to: "2025-03-31" },
+      rewrites: [],
     });
     expect(parseSearchQuery("witness saplings since 2024-06-01 before 2025")).toMatchObject({
       semantic: "saplings",
       filters: { source: "witness", from: "2024-06-01", to: "2024-12-31" },
     });
     expect(parseSearchQuery("flagged uploads in 2024").filters).toMatchObject({ band: "FLAGGED", source: "upload", from: "2024-01-01", to: "2024-12-31" });
-    expect(parseSearchQuery("project 3f2a1b4c-0000-4000-8000-000000000001 river bank").filters.projectId).toBe(
-      "3f2a1b4c-0000-4000-8000-000000000001",
-    );
+    expect(parseSearchQuery("project 3f2a1b4c-0000-4000-8000-000000000001 river bank").filters.project).toBe("3f2a1b4c-0000-4000-8000-000000000001");
+    expect(parseSearchQuery("project:demo-hero-cleanup litter")).toMatchObject({ semantic: "litter", filters: { project: "demo-hero-cleanup" } });
   });
 
   it("embeds deterministically into unit vectors where shared words mean closer vectors", async () => {

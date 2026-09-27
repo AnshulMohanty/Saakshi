@@ -1,32 +1,13 @@
 import { and, eq } from "drizzle-orm";
-import sharp from "sharp";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { verifyAllChains } from "@/lib/audit";
 import { assets, comparisons, measurements, projects, spots, type CaptureInfo } from "@/lib/db/schema";
 import { autoPairProject, CAVEAT, FRAME_KEY, manualPair, PairError, remeasure } from "@/lib/measure/measure";
 import { runPipeline } from "@/lib/pipeline/runner";
 import type { MediaProvider } from "@/lib/providers/media";
-import { createTestContext, type TestContext } from "./helpers";
+import { createTestContext, litterScene, type TestContext } from "./helpers";
 
 const SITE = { lat: 11.1048, lng: 77.3517 };
-
-/** Soil with white "litter" rectangles covering roughly `fraction` of the frame. */
-async function litterScene(fraction: number, seed: number) {
-  const W = 400;
-  const H = 300;
-  const n = Math.max(0, Math.round((fraction * W * H) / (40 * 30)));
-  const rects = await Promise.all(
-    Array.from({ length: n }, async (_, i) => ({
-      input: await sharp({ create: { width: 40, height: 30, channels: 3, background: { r: 250, g: 250, b: 250 } } }).png().toBuffer(),
-      left: ((i * 97 + seed * 13) % 9) * 40,
-      top: (Math.floor(i / 9) % 10) * 30,
-    })),
-  );
-  return sharp({ create: { width: W, height: H, channels: 3, background: { r: 100, g: 80, b: 60 } } })
-    .composite(rects)
-    .jpeg({ quality: 92 })
-    .toBuffer();
-}
 
 describe("measurement against the database (mock masks)", () => {
   let ctx: TestContext;

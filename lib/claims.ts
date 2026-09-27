@@ -23,6 +23,15 @@ export const ClaimSchema = z
     asset_ids: z.array(z.string()),
     /** 0–1; required when method is ai_estimated. */
     confidence: z.number().min(0).max(1).optional(),
+    /** Supporting facts shown next to the number (never used in prose). */
+    detail: z
+      .object({
+        topReasons: z.array(z.object({ code: z.string(), n: z.number() })).optional(),
+        testInputs: z.array(z.string()).optional(),
+        pairs: z.number().optional(),
+        basis: z.string().optional(),
+      })
+      .optional(),
   })
   .refine((c) => c.method !== "ai_estimated" || c.confidence !== undefined, {
     message: "ai_estimated claims must carry a confidence",
@@ -106,10 +115,11 @@ export interface RenderOptions {
   wrap?: (formatted: string, claim: Claim) => string;
 }
 
-/** "1,240 kg", "38%", "≈12 bags" (≈ marks ai_estimated values). */
+/** "1,240 kg", "38%", "≈12 bags" (≈ marks ai_estimated values), "+5.9 points" for *_change claims. */
 export function formatClaimValue(claim: Claim, locale = "en-IN"): string {
   const digits = Number.isInteger(claim.value) ? 0 : 2;
-  const n = new Intl.NumberFormat(locale, { maximumFractionDigits: digits }).format(claim.value);
+  const change = claim.id.endsWith("_change");
+  const n = new Intl.NumberFormat(locale, { maximumFractionDigits: digits, ...(change ? { signDisplay: "exceptZero" as const } : {}) }).format(claim.value);
   const unit = claim.unit.trim();
   const withUnit = unit === "" ? n : unit === "%" ? `${n}%` : `${n} ${unit}`;
   return claim.method === "ai_estimated" ? `≈${withUnit}` : withUnit;
@@ -124,4 +134,26 @@ export function renderClaims(text: string, claims: ReadonlyArray<Claim>, opts: R
     const formatted = formatClaimValue(claim, opts.locale);
     return opts.wrap ? opts.wrap(formatted, claim) : formatted;
   });
+}
+
+/** Splits prose into text and rendered-claim parts (for linking each number to its claim). */
+export function claimParts(text: string, claims: ReadonlyArray<Claim>, locale = "en-IN"): Array<string | { claim: Claim; formatted: string }> {
+  const byId = new Map(claims.map((c) => [c.id, c]));
+  const out: Array<string | { claim: Claim; formatted: string }> = [];
+  let last = 0;
+  for (const m of text.matchAll(PLACEHOLDER_RE)) {
+    const claim = byId.get(m[1]);
+    if (!claim) throw new Error(`Unknown claim "${m[1]}" in text`);
+    if (m.index > last) out.push(text.slice(last, m.index));
+    out.push({ claim, formatted: formatClaimValue(claim, locale) });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
+
+/** How a number was obtained, in words: counted from records, measured on pixels, or AI-estimated. */
+export function methodLabel(claim: Pick<Claim, "method" | "unit" | "confidence">): string {
+  if (claim.method === "ai_estimated") return `AI estimate${claim.confidence !== undefined ? `, confidence ${Math.round(claim.confidence * 100)}%` : ""}`;
+  return claim.unit === "points" || claim.unit === "%" ? "Measured on photo pixels" : "Counted from records";
 }

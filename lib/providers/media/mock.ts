@@ -3,7 +3,7 @@
  * EXIF (exifr), and serves derivatives through /api/media/mock/… by applying the same Transform
  * objects with sharp. Only signed URLs are served (see app/api/media/mock/[...path]/route.ts).
  */
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp, { type Metadata } from "sharp";
@@ -17,7 +17,7 @@ import {
   type Transform,
 } from "../../media/transform";
 import { phash } from "../../phash";
-import { maskTransform, type MaskOptions, type MediaAsset, type MediaProvider, type MetadataTags, type UploadInput, type UrlOptions } from "./index";
+import { maskTransform, type MaskOptions, type MediaAsset, type MediaProvider, type MetadataTags, type RawUploadInput, type UploadInput, type UrlOptions } from "./index";
 import { mockHaystack, MockMediaStore } from "./mock-store";
 import { renderTransform, type Rendered } from "./mock-render";
 
@@ -127,6 +127,28 @@ export class MockMediaProvider implements MediaProvider {
     return asset;
   }
 
+  async uploadRaw({ publicId, bytes, contentType }: RawUploadInput): Promise<{ publicId: string; bytes: number }> {
+    await this.store.writeRaw(publicId, bytes, contentType);
+    return { publicId, bytes: bytes.length };
+  }
+
+  /** Signed, authenticated raw delivery: /api/media/mock/raw/authenticated/s--sig--/v1/<publicId>. */
+  rawUrl(publicId: string): string {
+    const tail = `v1/${publicId}`;
+    const sig = createHmac("sha256", this.opts.signingKey).update(`raw/authenticated/${tail}`).digest("base64url").slice(0, 32);
+    return `${this.opts.baseUrl.replace(/\/$/, "")}/api/media/mock/raw/authenticated/s--${sig}--/${tail}`;
+  }
+
+  /** Serves a raw path "raw/authenticated/s--sig--/v1/<publicId>" (401 on any edit). */
+  async renderRaw(path: string): Promise<{ status: 200; bytes: Buffer; contentType: string } | { status: 401 | 404; error: string }> {
+    const m = /^raw\/authenticated\/(s--[A-Za-z0-9_-]{32}--)\/v1\/(.+)$/.exec(path);
+    if (!m) return { status: 404, error: "Not a raw delivery path" };
+    const expected = this.rawUrl(m[2]).split("/raw/authenticated/")[1].split("/")[0];
+    if (m[1].length !== expected.length || !timingSafeEqual(Buffer.from(m[1]), Buffer.from(expected))) return { status: 401, error: "Invalid URL signature" };
+    const file = await this.store.readRaw(m[2]).catch(() => null);
+    return file ? { status: 200, ...file } : { status: 404, error: "Unknown file" };
+  }
+
   url(publicId: string, transforms: Transform, { signed = false }: UrlOptions = {}): string {
     return buildMockUrl({
       baseUrl: this.opts.baseUrl,
@@ -149,6 +171,10 @@ export class MockMediaProvider implements MediaProvider {
     if (!original) throw new Error(`Unknown mock asset "${publicId}"`);
     const rendered = await renderTransform(original.bytes, original.sidecar.asset.format, transforms, this.renderContext(original.sidecar.asset.facesCount, null));
     return rendered.body;
+  }
+
+  async exists(publicId: string): Promise<boolean> {
+    return (await this.store.readSidecar(publicId)) !== null;
   }
 
   async setModeration(publicId: string, status: "approved" | "rejected"): Promise<void> {

@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
     // PGlite loads its .wasm/.data files relative to its own module, which bundling breaks.
     "@electric-sql/pglite",
     "@electric-sql/pglite-pgvector",
+    // Renders PDFs with fontkit/yoga (wasm) at runtime; keep it out of the bundle.
+    "@react-pdf/renderer",
     "@electric-sql/pglite-socket",
     // exifr lazily imports fs/zlib; bundled, those imports fail and it logs "Couldn't load fs".
     "exifr",

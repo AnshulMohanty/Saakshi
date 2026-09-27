@@ -4,9 +4,12 @@ import { connection } from "next/server";
 import { CompareCard } from "@/components/compare-card";
 import { BandBadge } from "@/components/trust";
 import { Badge } from "@/components/ui/badge";
+import { desc, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
+import { reports } from "@/lib/db/schema";
 import { projectView } from "@/lib/measure/views";
 import { getMediaProvider } from "@/lib/providers/media";
+import { GenerateReportButton } from "./generate-report";
 
 export async function generateMetadata({ params }: PageProps<"/projects/[id]">) {
   await connection();
@@ -19,6 +22,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
   const v = await projectView(await getDb(), getMediaProvider(), (await params).id);
   if (!v) notFound();
   const p = v.project;
+  const rs = await (await getDb()).select({ id: reports.id, periodFrom: reports.periodFrom, periodTo: reports.periodTo, createdAt: reports.createdAt }).from(reports).where(eq(reports.projectId, p.id)).orderBy(desc(reports.createdAt)).limit(10);
   const tint = v.kind === "green" ? "#22c55e" : "#f43f5e";
   return (
     <div className="flex flex-col gap-6">
@@ -52,6 +56,27 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
           ) : null}
         </div>
       </header>
+
+      <section className="flex flex-col gap-3" data-testid="reports">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-heading text-lg font-medium">Impact reports</h2>
+          <GenerateReportButton projectId={p.id} />
+        </div>
+        {rs.length ? (
+          <ul className="flex flex-col gap-1 text-sm">
+            {rs.map((r) => (
+              <li key={r.id}>
+                <Link href={`/r/${r.id}`} className="underline underline-offset-2">
+                  {r.periodFrom} to {r.periodTo}
+                </Link>{" "}
+                <span className="text-muted-foreground">· generated {r.createdAt.toISOString().slice(0, 10)}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted-foreground">No report yet. Every number in a report links to its evidence.</p>
+        )}
+      </section>
 
       <section className="flex flex-col gap-3">
         <h2 className="font-heading text-lg font-medium">Spots</h2>
