@@ -67,8 +67,13 @@ export function getAIProvider(): AIProvider {
       instance = withGuards(new OpenAIProvider(config.openai));
     } else {
       const media = getMediaProvider();
+      const mock = media instanceof MockMediaProvider ? media : null;
       instance = withGuards(
-        new MockAIProvider((publicId) => (media instanceof MockMediaProvider ? media.haystack(publicId) : Promise.resolve(publicId))),
+        new MockAIProvider(
+          (publicId) => (mock ? mock.haystack(publicId) : Promise.resolve(publicId)),
+          // Mock mode only: planted stamp text stored at upload. Real mode reads pixels.
+          (publicId) => (mock ? mock.contextValue(publicId, "burned_text") : Promise.resolve(null)),
+        ),
       );
     }
   }

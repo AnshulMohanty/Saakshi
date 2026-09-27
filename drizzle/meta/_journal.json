@@ -15,6 +15,34 @@
       "when": 1790533660418,
       "tag": "0001_init",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790538600308,
+      "tag": "0002_archive_capture_pipeline",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790543445259,
+      "tag": "0003_audit_chains_gap_hours",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790543456624,
+      "tag": "0004_drop_day_gaps",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790543969360,
+      "tag": "0005_upload_tickets",
+      "breakpoints": true
     }
   ]
 }

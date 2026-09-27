@@ -310,13 +310,15 @@ export interface CloudinaryUrlOptions {
   transforms: Transform;
   /** Present → signed URL. */
   apiSecret?: string;
+  /** "authenticated" assets (Witness uploads) are only deliverable through signed URLs. */
+  deliveryType?: "upload" | "authenticated";
 }
 
-export function buildCloudinaryUrl({ cloudName, publicId, transforms, apiSecret }: CloudinaryUrlOptions): string {
+export function buildCloudinaryUrl({ cloudName, publicId, transforms, apiSecret, deliveryType = "upload" }: CloudinaryUrlOptions): string {
   PublicId.parse(publicId);
   const t = compileTransform(transforms);
   const sig = apiSecret ? cloudinarySignature(t, publicId, apiSecret) : undefined;
-  return `https://res.cloudinary.com/${cloudName}/image/upload/${[sig, deliveryTail(t, publicId)].filter(Boolean).join("/")}`;
+  return `https://res.cloudinary.com/${cloudName}/image/${deliveryType}/${[sig, deliveryTail(t, publicId)].filter(Boolean).join("/")}`;
 }
 
 /** Route prefix served by app/api/media/mock/[...path]/route.ts. */

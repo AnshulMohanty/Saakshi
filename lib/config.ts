@@ -17,6 +17,8 @@ export const EnvSchema = z.object({
   PORT: z.preprocess(blankToUndefined, z.coerce.number().int().positive().optional()),
   APP_URL: z.preprocess(blankToUndefined, z.url().optional()),
   APP_CONTACT_EMAIL: z.preprocess(blankToUndefined, z.email().optional()),
+  /** Project URL, used in User-Agents when there is no contact email. */
+  APP_REPO_URL: z.preprocess(blankToUndefined, z.url().optional()),
   CAPTURE_TOKEN_SECRET: optionalString(),
 
   CLOUDINARY_CLOUD_NAME: optionalString(),
@@ -33,10 +35,20 @@ export const EnvSchema = z.object({
 
   INNGEST_EVENT_KEY: optionalString(),
   INNGEST_SIGNING_KEY: optionalString(),
+  /** inline (default) | inngest-dev (local Inngest Dev Server, no account). Keys → Inngest cloud. */
+  QUEUE: z.preprocess(blankToUndefined, z.enum(["inline", "inngest-dev"]).default("inline")),
 
   GEOCODER: z.preprocess(blankToUndefined, z.enum(["nominatim", "mock"]).optional()),
 
   MEDIA_MOCK_DIR: stringWithDefault("./.data/media"),
+  /** Commons API responses and downloaded files, so demo re-imports run offline. */
+  ARCHIVE_CACHE_DIR: stringWithDefault("./.data/archive-cache"),
+  /** Minimum cosine similarity for assigning an asset to a project by content alone. */
+  ASSIGN_SIMILARITY_THRESHOLD: z.preprocess(blankToUndefined, z.coerce.number().min(0).max(1).default(0.45)),
+  /** "1" enables /dev/* pages and APIs in production. */
+  DEV_TOOLS: z.preprocess(blankToUndefined, z.enum(["0", "1"]).optional()),
+  /** Required (header x-demo-admin-secret) for POST /api/demo/reset in production. */
+  DEMO_ADMIN_SECRET: optionalString(),
   /** UTC offset assumed for EXIF timestamps that carry none (most phones omit it). */
   EXIF_DEFAULT_UTC_OFFSET: z.preprocess(blankToUndefined, z.string().regex(/^[+-]\d{2}:\d{2}$/).default("+05:30")),
 });
@@ -89,7 +101,7 @@ export function selectProviders(env: Env): Record<ProviderName, ProviderStatus> 
     analysis: byVars(env, "analysis", CLOUDINARY_VARS, "Cloudinary Analyze API", "Deterministic (filename/tags/context)"),
     ai: byVars(env, "ai", OPENAI_VARS, `OpenAI (${env.OPENAI_MODEL_FAST} / ${env.OPENAI_MODEL_SMART ?? env.OPENAI_MODEL_FAST})`, "Deterministic mock + hash embeddings"),
     db: byVars(env, "db", DB_VARS, "Postgres (DATABASE_URL)", `PGlite + pgvector (${env.PGLITE_DIR})`),
-    queue: byVars(env, "queue", INNGEST_VARS, "Inngest", "Inline runner"),
+    queue: queueStatus(env),
     geocoder: {
       name: "geocoder",
       mode: forcedMockGeocoder ? "mock" : "real",
@@ -104,6 +116,18 @@ export function selectProviders(env: Env): Record<ProviderName, ProviderStatus> 
           ? undefined
           : "No key needed. Set APP_CONTACT_EMAIL so the Nominatim User-Agent identifies you (usage policy).",
     },
+  };
+}
+
+function queueStatus(env: Env): ProviderStatus {
+  const cloud = byVars(env, "queue", INNGEST_VARS, "Inngest cloud", "Inline runner (concurrency 4)");
+  if (cloud.mode === "real" || env.QUEUE !== "inngest-dev") return cloud;
+  return {
+    ...cloud,
+    mode: "real",
+    implementation: "Inngest Dev Server (QUEUE=inngest-dev, no account)",
+    missingVars: [],
+    note: "Run `npx inngest-cli@latest dev` and open http://localhost:8288.",
   };
 }
 
@@ -177,6 +201,11 @@ export function getConfig(): Config {
   return cached;
 }
 
+/** /dev/* pages and APIs: always in development; in production only with DEV_TOOLS=1. */
+export function devToolsEnabled(config: Config = getConfig()): boolean {
+  return !config.isProduction || config.env.DEV_TOOLS === "1";
+}
+
 /** Secret for signing capture tokens. Refuses the dev default in production. */
 export function getCaptureTokenSecret(config: Config = getConfig()): string {
   if (config.env.CAPTURE_TOKEN_SECRET) return config.env.CAPTURE_TOKEN_SECRET;
@@ -184,7 +213,12 @@ export function getCaptureTokenSecret(config: Config = getConfig()): string {
   return DEV_CAPTURE_SECRET;
 }
 
-/** Key for mock media URL signatures, derived from the capture secret (domain-separated). */
+/** A purpose-specific key derived from the capture secret (domain separation). */
+export function deriveKey(purpose: string, config: Config = getConfig()): string {
+  return createHmac("sha256", getCaptureTokenSecret(config)).update(`saakshi:${purpose}`).digest("hex");
+}
+
+/** Key for mock media URL signatures. */
 export function getMockMediaSigningKey(config: Config = getConfig()): string {
-  return createHmac("sha256", getCaptureTokenSecret(config)).update("saakshi:mock-media-url:v1").digest("hex");
+  return deriveKey("mock-media-url:v1", config);
 }

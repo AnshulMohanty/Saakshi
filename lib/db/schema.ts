@@ -44,6 +44,14 @@ export const assetSource = pgEnum("asset_source", ["witness", "upload", "archive
 export const assetStatus = pgEnum("asset_status", ["processing", "ready", "flagged", "approved", "rejected"]);
 export const measureMethod = pgEnum("measure_method", ["measured", "ai_estimated"]);
 export const reportKind = pgEnum("report_kind", ["impact", "campaign"]);
+/** Where an asset's EXIF-like metadata came from. Commons thumbnails carry none of their own. */
+export const exifSource = pgEnum("exif_source", ["file", "commons_api", "none"]);
+export const assignmentMethod = pgEnum("assignment_method", ["capture_hint", "geo_time", "similarity", "manual", "none"]);
+export const projectSource = pgEnum("project_source", ["demo_archive", "user"]);
+export const spotOrigin = pgEnum("spot_origin", ["auto_cluster", "manual"]);
+
+/** Deliberately planted test inputs (source = planted_test). */
+export type TestCase = "reused" | "stock" | "location_mismatch" | "stamp_mismatch";
 
 // ---------------------------------------------------------------------------------------------
 // JSON column shapes
@@ -77,6 +85,48 @@ export interface ModerationResult {
   checkedAt?: string;
 }
 
+export interface DeviceFix {
+  lat: number;
+  lng: number;
+  accuracyM: number | null;
+  /** When the browser obtained the fix (ISO). */
+  fixTimestamp?: string | null;
+}
+
+/** Witness Capture provenance, checked against the capture token on upload confirm. */
+export interface CaptureInfo {
+  tokenId: string | null;
+  /** Device clock at the shutter. */
+  clientCapturedAt: string | null;
+  /** Server clock when the upload ticket was issued (requested at the shutter): the time anchor. */
+  ticketIssuedAt: string | null;
+  /** Server clock when the upload was confirmed (slow uploads are fine, within 30 min). */
+  serverReceivedAt: string;
+  deviceFix: DeviceFix | null;
+  /** Browser location of someone uploading from their gallery: informational only. */
+  uploaderLocation: DeviceFix | null;
+  attested: boolean;
+  reasons: Array<{ code: string; message: string }>;
+}
+
+export type PipelineStepName = "parseMetadata" | "analyze" | "understand" | "embed" | "assign" | "score" | "finalize";
+
+export interface PipelineStepRecord {
+  status: "running" | "done" | "error";
+  attempts: number;
+  startedAt: string;
+  finishedAt?: string;
+  output?: unknown;
+  error?: string;
+}
+
+export interface PipelineState {
+  /** Raw inputs captured at ingest (provider media metadata, Commons metadata, …). */
+  ingest?: Record<string, unknown>;
+  steps: Partial<Record<PipelineStepName, PipelineStepRecord>>;
+  completedAt?: string;
+}
+
 export interface ReportClaim {
   id: string;
   label: string;
@@ -101,7 +151,12 @@ export const projects = pgTable("projects", {
   startDate: date("start_date"),
   endDate: date("end_date"),
   sdgs: integer("sdgs").array().notNull().default(sql`'{}'::integer[]`),
-  minPairGapDays: integer("min_pair_gap_days").notNull().default(14),
+  /** Minimum hours between a before and an after photo: cleanup/water 0.5, plantation 336, school 168, other 24. */
+  minPairGapHours: doublePrecision("min_pair_gap_hours").notNull().default(24),
+  /** Embedding of the project description, for similarity-based assignment. */
+  embedding: vector("embedding", { dimensions: EMBEDDING_DIMENSIONS }),
+  source: projectSource("source").notNull().default("user"),
+  slug: text("slug").unique(),
   ...timestamps(),
 });
 
@@ -117,6 +172,8 @@ export const spots = pgTable(
     lng: doublePrecision("lng").notNull(),
     radiusM: doublePrecision("radius_m").notNull().default(30),
     baselineAssetId: uuid("baseline_asset_id").references((): AnyPgColumn => assets.id, { onDelete: "set null" }),
+    slug: text("slug").unique(),
+    createdFrom: spotOrigin("created_from").notNull().default("manual"),
     ...timestamps(),
   },
   (t) => [index("spots_project_idx").on(t.projectId)],
@@ -164,6 +221,16 @@ export const assets = pgTable(
     trustReasons: jsonb("trust_reasons").$type<TrustReason[]>(),
     status: assetStatus("status").notNull().default("processing"),
     transforms: jsonb("transforms").$type<TransformEdit[]>().notNull().default([]),
+
+    /** Stable id from the source archive, e.g. "commons:12345". Import idempotency key. */
+    externalId: text("external_id").unique(),
+    exifSource: exifSource("exif_source").notNull().default("none"),
+    /** captured_at came from a timestamp without an offset; EXIF_DEFAULT_UTC_OFFSET was assumed. */
+    capturedAtTzAssumed: boolean("captured_at_tz_assumed").notNull().default(false),
+    capture: jsonb("capture").$type<CaptureInfo>(),
+    pipeline: jsonb("pipeline").$type<PipelineState>().notNull().default({ steps: {} }),
+    assignmentMethod: assignmentMethod("assignment_method").notNull().default("none"),
+    testCase: text("test_case").$type<TestCase>(),
     ...timestamps(),
   },
   (t) => [
@@ -171,6 +238,7 @@ export const assets = pgTable(
     index("assets_project_idx").on(t.projectId),
     index("assets_spot_idx").on(t.spotId),
     index("assets_status_idx").on(t.status),
+    index("assets_source_idx").on(t.source),
     index("assets_captured_at_idx").on(t.capturedAt),
     index("assets_trust_band_idx").on(t.trustBand),
     index("assets_phash_idx").on(t.phash),
@@ -210,7 +278,7 @@ export const comparisons = pgTable(
       .notNull()
       .references(() => assets.id, { onDelete: "cascade" }),
     distanceM: doublePrecision("distance_m"),
-    gapDays: doublePrecision("gap_days"),
+    gapHours: doublePrecision("gap_hours"),
     metric: text("metric").notNull(),
     beforeValue: doublePrecision("before_value"),
     afterValue: doublePrecision("after_value"),
@@ -251,7 +319,8 @@ export const auditLog = pgTable(
     id: uuid("id").primaryKey(),
     /** Append order; the chain is verified in this order. */
     seq: bigint("seq", { mode: "number" }).generatedAlwaysAsIdentity(),
-    assetId: uuid("asset_id").references(() => assets.id, { onDelete: "set null" }),
+    /** The chain this row belongs to: one per asset; null = the system chain. Deleting an asset deletes its chain. */
+    assetId: uuid("asset_id").references(() => assets.id, { onDelete: "cascade" }),
     actor: text("actor").notNull(),
     action: text("action").notNull(),
     detail: jsonb("detail").$type<Record<string, unknown>>().notNull().default({}),
@@ -263,8 +332,30 @@ export const auditLog = pgTable(
     uniqueIndex("audit_log_seq_key").on(t.seq),
     uniqueIndex("audit_log_hash_key").on(t.hash),
     index("audit_log_asset_idx").on(t.assetId),
+    index("audit_log_chain_idx").on(t.assetId, t.seq),
   ],
 );
+
+/**
+ * Upload tickets, stored server-side: confirm and the webhook read the capture context and the
+ * issue time from here, never from what the browser sends back.
+ */
+export const uploadTickets = pgTable("upload_tickets", {
+  id: id(),
+  publicId: text("public_id").notNull().unique(),
+  provider: text("provider").notNull(),
+  context: jsonb("context").$type<Record<string, string>>().notNull().default({}),
+  issuedAt: timestamp("issued_at", { withTimezone: true, precision: 3 }).notNull(),
+  confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+  ...timestamps(),
+});
+
+/** One-time data migrations run in TypeScript after the SQL migrations (see lib/db/data-migrations.ts). */
+export const dataMigrations = pgTable("data_migrations", {
+  id: text("id").primaryKey(),
+  appliedAt: timestamp("applied_at", { withTimezone: true }).notNull().defaultNow(),
+  detail: jsonb("detail").$type<Record<string, unknown>>().notNull().default({}),
+});
 
 export const captureTokens = pgTable(
   "capture_tokens",

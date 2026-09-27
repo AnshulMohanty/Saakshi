@@ -1,13 +1,8 @@
-import { notFound } from "next/navigation";
-import { connection } from "next/server";
-import { getConfig } from "@/lib/config";
 import { UploadTest } from "./upload-test";
 
 export const metadata = { title: "Upload round-trip" };
 
-export default async function UploadTestPage() {
-  await connection();
-  if (getConfig().isProduction) notFound();
+export default function UploadTestPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>

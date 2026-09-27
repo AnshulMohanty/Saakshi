@@ -1,16 +1,18 @@
 /**
- * QueueProvider: fire pipeline events. Real = Inngest; mock = inline runner that calls the
- * registered handlers directly (awaited, in registration order). Handlers must be idempotent,
- * keyed by asset id: real queues retry and may deliver more than once.
+ * QueueProvider: fire pipeline events.
+ * - inline (default): handlers run in-process, concurrency 4 (p-limit); `send` returns at once.
+ * - QUEUE=inngest-dev: real Inngest functions via the local Inngest Dev Server (no account).
+ * - INNGEST_EVENT_KEY + INNGEST_SIGNING_KEY: Inngest cloud.
+ * Handlers must be idempotent, keyed by asset id: real queues retry and may deliver twice.
  */
 import "server-only";
 import { getConfig } from "../../config";
 import { InlineQueue } from "./mock";
 import { InngestQueue } from "./real";
 
-/** Event name → payload. Pipeline phases add their events here. */
+/** Event name → payload. */
 export interface QueueEvents {
-  "asset/uploaded": { assetId: string };
+  "asset.uploaded": { assetId: string };
 }
 export type EventName = keyof QueueEvents;
 export type Handler<E extends EventName> = (data: QueueEvents[E]) => Promise<void>;
@@ -18,6 +20,8 @@ export type Handler<E extends EventName> = (data: QueueEvents[E]) => Promise<voi
 export interface QueueProvider {
   readonly kind: "mock" | "real";
   send<E extends EventName>(event: E, data: QueueEvents[E]): Promise<void>;
+  /** Resolves when all in-flight work has finished (inline only; no-op on Inngest). */
+  drain(): Promise<void>;
 }
 
 export class HandlerRegistry {
@@ -41,7 +45,11 @@ let instance: QueueProvider | undefined;
 
 export function getQueue(): QueueProvider {
   if (!instance) {
-    instance = getConfig().providers.queue.mode === "real" ? new InngestQueue() : new InlineQueue(handlers);
+    const { providers, env } = getConfig();
+    instance =
+      providers.queue.mode === "real"
+        ? new InngestQueue({ dev: !(env.INNGEST_EVENT_KEY && env.INNGEST_SIGNING_KEY) })
+        : new InlineQueue(handlers, { concurrency: 4 });
   }
   return instance;
 }

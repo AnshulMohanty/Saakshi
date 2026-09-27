@@ -39,9 +39,9 @@ export function dmsToDecimal(degrees: number, minutes = 0, seconds = 0, ref?: He
 }
 
 const DMS_RE =
-  /^\s*(-?\d+(?:\.\d+)?)\s*[°d:\s]\s*(?:(\d+(?:\.\d+)?)\s*['′m:\s]\s*)?(?:(\d+(?:\.\d+)?)\s*(?:["″s]|'')?\s*)?([NSEW])?\s*$/i;
+  /^\s*(-?\d+(?:\.\d+)?)\s*(?:°|deg\b|d\b|:|\s)?\s*(?:(\d+(?:\.\d+)?)\s*(?:['′m]|:|\s)\s*)?(?:(\d+(?:\.\d+)?)\s*(?:["″s]|'')?\s*)?([NSEW])?\s*$/i;
 
-/** Parses strings like `12°58'30.5"N`, `77 35 40 E` or `-12:58:30` into decimal degrees. */
+/** Parses `12°58'30.5"N`, `77 35 40 E`, `-12:58:30` or exiftool's `12 deg 58' 30.50" N`. */
 export function parseDms(input: string): number {
   const m = DMS_RE.exec(input);
   if (!m) throw new SyntaxError(`Unrecognised DMS coordinate: "${input}"`);

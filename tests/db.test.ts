@@ -1,8 +1,10 @@
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { appendAudit, verifyAuditLog } from "@/lib/audit";
+import { appendAudit, chainRows, verifyAllChains, verifyChain, verifySystem } from "@/lib/audit";
+import { runDataMigrations } from "@/lib/db/data-migrations";
+import { append, GENESIS_HASH } from "@/lib/hashchain";
 import { openPglite } from "@/lib/db/client";
-import { assets, auditLog, geocache, projects, spots } from "@/lib/db/schema";
+import { assets, auditLog, dataMigrations, geocache, projects, spots } from "@/lib/db/schema";
 import { searchAssets } from "@/lib/db/search";
 
 type Handle = Awaited<ReturnType<typeof openPglite>>;
@@ -28,7 +30,7 @@ describe("migrations", () => {
     expect(ext.rows).toHaveLength(1);
     const tables = await h.client.query<{ tablename: string }>(`select tablename from pg_tables where schemaname = 'public' order by 1`);
     expect(tables.rows.map((r) => r.tablename)).toEqual([
-      "assets", "audit_log", "capture_tokens", "comparisons", "duplicates", "geocache", "projects", "reports", "spots",
+      "assets", "audit_log", "capture_tokens", "comparisons", "data_migrations", "duplicates", "geocache", "projects", "reports", "spots", "upload_tickets",
     ]);
   });
 
@@ -47,7 +49,7 @@ describe("schema", () => {
 
   it("applies defaults and supports the spot ⇄ baseline asset cycle", async () => {
     const [p] = await h.db.select().from(projects).where(eq(projects.id, projectId));
-    expect(p.minPairGapDays).toBe(14);
+    expect(p.minPairGapHours).toBe(24);
     expect(p.sdgs).toEqual([11, 12]);
 
     const [spot] = await h.db.insert(spots).values({ projectId, name: "Gate 2", lat: 12.9763, lng: 77.5929 }).returning();
@@ -122,29 +124,93 @@ describe("searchAssets", () => {
   });
 });
 
-describe("audit log", () => {
-  it("appends a verifiable chain and detects tampering in the database", async () => {
-    const [p] = await h.db.insert(projects).values({ name: "Audit project" }).returning();
-    const [a] = await h.db.insert(assets).values({ projectId: p.id, source: "upload", cldPublicId: "saakshi/test/audit" }).returning();
+describe("audit log (one chain per asset + a system chain)", () => {
+  async function newAsset(name: string) {
+    const [a] = await h.db.insert(assets).values({ source: "upload", cldPublicId: `saakshi/test/${name}` }).returning();
+    return a.id;
+  }
 
-    const first = await appendAudit(h.db, { assetId: a.id, actor: "system", action: "asset.uploaded", detail: { bytes: 4711, tags: ["x"] } });
-    const second = await appendAudit(h.db, { assetId: a.id, actor: "system", action: "asset.analyzed", detail: { nested: { b: 2, a: 1 } } });
-    await appendAudit(h.db, { actor: "reviewer:asha", action: "asset.approved" });
-    expect(second.prevHash).toBe(first.hash);
-    expect(await verifyAuditLog(h.db)).toMatchObject({ ok: true, count: 3, brokenAt: null });
+  it("links each row to the previous row of the same asset, and keeps chains independent", async () => {
+    const a = await newAsset("audit-a");
+    const b = await newAsset("audit-b");
+    const a1 = await appendAudit(h.db, { assetId: a, actor: "system", action: "asset.uploaded", detail: { bytes: 4711 } });
+    const b1 = await appendAudit(h.db, { assetId: b, actor: "system", action: "asset.uploaded" });
+    const a2 = await appendAudit(h.db, { assetId: a, actor: "system", action: "asset.analyzed", detail: { nested: { b: 2, a: 1 } } });
+    const s1 = await appendAudit(h.db, { actor: "reviewer:asha", action: "system.note" });
+    expect(a2.prevHash).toBe(a1.hash); // not b1, which was appended in between
+    expect(b1.prevHash).toBe(GENESIS_HASH);
+    expect(s1.prevHash).toBe(GENESIS_HASH);
+    expect(await verifyChain(h.db, a)).toMatchObject({ intact: true, entries: 2, firstBrokenAt: null });
+    expect(await verifySystem(h.db)).toMatchObject({ intact: true, entries: 1 });
+  });
 
-    // Someone edits a row directly in SQL.
+  it("detects an edited or deleted middle row in one chain and leaves other chains intact", async () => {
+    const a = await newAsset("audit-c");
+    const b = await newAsset("audit-d");
+    const first = await appendAudit(h.db, { assetId: a, actor: "system", action: "step.1", detail: { bytes: 4711, tags: ["x"] } });
+    const second = await appendAudit(h.db, { assetId: a, actor: "system", action: "step.2" });
+    await appendAudit(h.db, { assetId: a, actor: "system", action: "step.3" });
+    await appendAudit(h.db, { assetId: b, actor: "system", action: "step.1" });
+
     await h.db.execute(sql`update audit_log set detail = '{"bytes": 1}'::jsonb where id = ${first.id}`);
-    const broken = await verifyAuditLog(h.db);
-    expect(broken).toMatchObject({ ok: false, brokenAt: 0 });
+    const broken = await verifyChain(h.db, a);
+    expect(broken).toMatchObject({ intact: false, firstBrokenAt: 0 });
     expect(broken.brokenRow?.id).toBe(first.id);
+    expect((await verifyChain(h.db, b)).intact).toBe(true);
+    const all = await verifyAllChains(h.db);
+    expect(all.ok).toBe(false);
+    expect(all.broken).toEqual([{ assetId: a, firstBrokenAt: 0 }]);
 
-    // Restoring the original content restores the chain.
     await h.db.update(auditLog).set({ detail: { bytes: 4711, tags: ["x"] } }).where(eq(auditLog.id, first.id));
-    expect((await verifyAuditLog(h.db)).ok).toBe(true);
+    expect((await verifyChain(h.db, a)).intact).toBe(true);
 
-    // Deleting a row breaks the link of the next one.
     await h.db.delete(auditLog).where(eq(auditLog.id, second.id));
-    expect(await verifyAuditLog(h.db)).toMatchObject({ ok: false, brokenAt: 1 });
+    expect(await verifyChain(h.db, a)).toMatchObject({ intact: false, firstBrokenAt: 1 });
+    expect((await verifyChain(h.db, b)).intact).toBe(true);
+  });
+
+  it("deleting an asset removes its whole chain and every other chain stays valid", async () => {
+    const gone = await newAsset("audit-gone");
+    const kept = await newAsset("audit-kept");
+    for (const n of [1, 2, 3]) await appendAudit(h.db, { assetId: gone, actor: "system", action: `step.${n}` });
+    await appendAudit(h.db, { assetId: kept, actor: "system", action: "step.1" });
+    await h.db.delete(assets).where(eq(assets.id, gone));
+    expect(await h.db.select().from(auditLog).where(eq(auditLog.assetId, gone))).toHaveLength(0);
+    expect((await verifyChain(h.db, kept)).intact).toBe(true);
+    // Earlier tests left one chain deliberately broken; everything else verifies.
+    expect((await verifyAllChains(h.db)).broken.every((x) => x.assetId !== kept)).toBe(true);
+  });
+});
+
+describe("data migration: global chain → per-asset chains", () => {
+  it("rebuilds old-style rows once, records it on the system chain, and never runs again", async () => {
+    const m = await openPglite();
+    try {
+      const [x] = await m.db.insert(assets).values({ source: "upload", cldPublicId: "saakshi/test/mig-x" }).returning();
+      const [y] = await m.db.insert(assets).values({ source: "upload", cldPublicId: "saakshi/test/mig-y" }).returning();
+      // Write rows the old way: one global chain across all assets.
+      let prev = GENESIS_HASH;
+      for (const [assetId, action] of [[x.id, "a"], [y.id, "b"], [x.id, "c"], [null, "d"]] as const) {
+        const at = new Date(Math.floor(Date.now()));
+        const p = { id: crypto.randomUUID(), assetId, actor: "old", action, detail: {}, at: at.toISOString() };
+        const hash = append(prev, p);
+        await m.db.insert(auditLog).values({ ...p, at, prevHash: prev, hash });
+        prev = hash;
+      }
+      expect((await verifyChain(m.db, x.id)).intact).toBe(false); // old links cross assets
+      await m.db.delete(dataMigrations).where(eq(dataMigrations.id, "0003-audit-per-asset-chains"));
+
+      expect(await runDataMigrations(m.db)).toEqual(["0003-audit-per-asset-chains"]);
+      const all = await verifyAllChains(m.db);
+      expect(all).toMatchObject({ ok: true, chains: 3 });
+      expect((await chainRows(m.db, null)).map((r) => r.action)).toEqual(["d", "audit.chains_rebuilt"]);
+
+      // Once only: tampering afterwards is not "repaired" by running migrations again.
+      await m.db.execute(sql`update audit_log set actor = 'mallory' where action = 'a'`);
+      expect(await runDataMigrations(m.db)).toEqual([]);
+      expect((await verifyChain(m.db, x.id)).intact).toBe(false);
+    } finally {
+      await m.close();
+    }
   });
 });

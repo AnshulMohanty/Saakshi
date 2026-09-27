@@ -28,12 +28,15 @@ export class CloudinaryMediaProvider implements MediaProvider {
       publicId,
       transforms,
       apiSecret: signed ? this.creds.apiSecret : undefined,
+      // Evidence is uploaded as "authenticated": signed URLs only. Unsigned URLs are for public assets.
+      deliveryType: signed ? "authenticated" : "upload",
     });
   }
 
-  async updateMetadata(publicId: string, fields: Record<string, string>): Promise<void> {
+  async updateMetadata(publicId: string, fields: Record<string, string>, opts?: { tags?: string[] }): Promise<void> {
     void publicId;
     void fields;
+    void opts;
     throw new NotConfiguredError("CloudinaryMediaProvider", "updateMetadata");
   }
 
@@ -41,6 +44,12 @@ export class CloudinaryMediaProvider implements MediaProvider {
     void publicId;
     void status;
     throw new NotConfiguredError("CloudinaryMediaProvider", "setModeration");
+  }
+
+  async fetchDerived(publicId: string, transforms: Transform): Promise<Buffer> {
+    const res = await fetch(this.url(publicId, transforms, { signed: true }), { signal: AbortSignal.timeout(60_000) });
+    if (!res.ok) throw new Error(`Cloudinary derived fetch failed: HTTP ${res.status}`);
+    return Buffer.from(await res.arrayBuffer());
   }
 
   async extractMask(publicId: string, prompt: string): Promise<{ maskUrl: string; buffer: Buffer }> {

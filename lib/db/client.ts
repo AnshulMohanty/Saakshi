@@ -7,6 +7,7 @@ import path from "node:path";
 import type { PGlite } from "@electric-sql/pglite";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { getConfig } from "../config";
+import { runDataMigrations } from "./data-migrations";
 import { acquireDataDirLock, releaseDataDirLock } from "./lock";
 import * as schema from "./schema";
 
@@ -35,7 +36,10 @@ export async function openPglite(dataDir?: string, { migrate = true } = {}): Pro
   if (dataDir) acquireDataDirLock(dataDir);
   const client = await PGlite.create(dataDir, { extensions: { vector } });
   const db = drizzle({ client, schema });
-  if (migrate) await runMigrations(db, { migrationsFolder: MIGRATIONS_FOLDER });
+  if (migrate) {
+    await runMigrations(db, { migrationsFolder: MIGRATIONS_FOLDER });
+    await runDataMigrations(db);
+  }
   return {
     db: db satisfies DB,
     client,
@@ -56,7 +60,10 @@ export async function openPostgres(url: string, { migrate = false } = {}): Promi
   // prepare: false keeps Supabase's transaction-mode pooler happy.
   const client = postgres(url, { prepare: false, max: 5 });
   const db = drizzle({ client, schema });
-  if (migrate) await runMigrations(db, { migrationsFolder: MIGRATIONS_FOLDER });
+  if (migrate) {
+    await runMigrations(db, { migrationsFolder: MIGRATIONS_FOLDER });
+    await runDataMigrations(db);
+  }
   return { db: db satisfies DB, kind: "postgres", close: () => client.end() };
 }
 

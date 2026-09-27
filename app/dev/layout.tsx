@@ -1,6 +1,12 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
+import { connection } from "next/server";
+import { devToolsEnabled } from "@/lib/config";
 
-export default function DevLayout({ children }: LayoutProps<"/dev">) {
+/** Dev tools: 404 in production unless DEV_TOOLS=1. */
+export default async function DevLayout({ children }: LayoutProps<"/dev">) {
+  await connection();
+  if (!devToolsEnabled()) notFound();
   return (
     <div className="mx-auto w-full max-w-5xl flex-1 px-6 py-8">
       <nav className="mb-6 flex gap-4 text-sm text-muted-foreground">

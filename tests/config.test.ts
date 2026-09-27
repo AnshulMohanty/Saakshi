@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EnvSchema, getCaptureTokenSecret, getMockMediaSigningKey, loadConfig, publicSecretLeaks, selectProviders } from "@/lib/config";
+import { devToolsEnabled, EnvSchema, getCaptureTokenSecret, getMockMediaSigningKey, loadConfig, publicSecretLeaks, selectProviders } from "@/lib/config";
 
 const env = (raw: Record<string, string | undefined>) => EnvSchema.parse(raw);
 
@@ -69,5 +69,24 @@ describe("loadConfig", () => {
   it("flags secret-looking NEXT_PUBLIC_ variables", () => {
     expect(publicSecretLeaks({ NEXT_PUBLIC_CLOUDINARY_API_SECRET: "x", NEXT_PUBLIC_APP_NAME: "y" })).toEqual(["NEXT_PUBLIC_CLOUDINARY_API_SECRET"]);
     expect(loadConfig({ NEXT_PUBLIC_OPENAI_API_KEY: "x" }).warnings.join()).toMatch(/NEXT_PUBLIC_OPENAI_API_KEY/);
+  });
+});
+
+describe("Phase 2/3 settings", () => {
+  it("selects the queue: inline by default, Inngest Dev Server with QUEUE=inngest-dev, cloud with keys", () => {
+    expect(selectProviders(env({})).queue).toMatchObject({ mode: "mock", implementation: expect.stringMatching(/Inline/) });
+    expect(selectProviders(env({ QUEUE: "inngest-dev" })).queue).toMatchObject({ mode: "real", implementation: expect.stringMatching(/Dev Server/) });
+    expect(selectProviders(env({ QUEUE: "inngest-dev", INNGEST_EVENT_KEY: "e", INNGEST_SIGNING_KEY: "s" })).queue.implementation).toMatch(/cloud/);
+  });
+
+  it("enables dev tools in production only with DEV_TOOLS=1", () => {
+    expect(devToolsEnabled(loadConfig({}))).toBe(true);
+    expect(devToolsEnabled(loadConfig({ NODE_ENV: "production" }))).toBe(false);
+    expect(devToolsEnabled(loadConfig({ NODE_ENV: "production", DEV_TOOLS: "1" }))).toBe(true);
+  });
+
+  it("defaults the similarity threshold to 0.45", () => {
+    expect(loadConfig({}).env.ASSIGN_SIMILARITY_THRESHOLD).toBe(0.45);
+    expect(loadConfig({ ASSIGN_SIMILARITY_THRESHOLD: "0.6" }).env.ASSIGN_SIMILARITY_THRESHOLD).toBe(0.6);
   });
 });

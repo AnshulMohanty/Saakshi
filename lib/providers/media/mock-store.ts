@@ -5,7 +5,7 @@
  *   <dir>/cache/<sha>.<ext>         rendered derivatives
  * The analysis and AI mocks read sidecars too, to stay deterministic per asset.
  */
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { PUBLIC_ID_RE } from "../../media/transform";
 import type { MediaAsset } from "./index";
@@ -64,17 +64,36 @@ export class MockMediaStore {
     await this.writeSidecar(publicId, patch(current));
   }
 
+  /** Deletes an asset's original and sidecar (derivative cache entries expire with the etag). */
+  async remove(publicId: string): Promise<void> {
+    const sidecar = await this.readSidecar(publicId).catch(() => null);
+    if (sidecar) await rm(this.assetPath(publicId, sidecar.asset.format), { force: true });
+    await rm(this.assetPath(publicId, "json"), { force: true });
+  }
+
+  async removeFolder(folder: string): Promise<void> {
+    if (!PUBLIC_ID_RE.test(folder)) throw new Error(`Invalid folder "${folder}"`);
+    await rm(path.join(this.dir, "assets", ...folder.split("/")), { recursive: true, force: true });
+  }
+
   cachePath(key: string, ext: string): string {
     return path.join(this.dir, "cache", `${key}.${ext}`);
   }
 }
 
+/** Context keys that describe what the photo shows (others are bookkeeping: source, tokens, hints). */
+const CONTENT_CONTEXT_KEYS = ["filename", "title", "description", "caption", "alt"];
+/** Our own tags, which say nothing about the content ("planted_test" would otherwise read as "plant"). */
+const SYSTEM_TAGS = /^(saakshi|archive|dev-upload|planted[_-](test|source)|reused|stock|location_mismatch|stamp_mismatch)$/;
+
 /**
- * Lower-cased text the deterministic mocks key on: public id, original filename, tags and
- * context values. Falls back to the public id alone for assets the store doesn't know.
+ * Lower-cased text the deterministic mocks key on: the photo's filename/title/description and its
+ * non-system tags. Falls back to the public id for assets the store doesn't know.
  */
 export async function mockHaystack(store: MockMediaStore, publicId: string): Promise<string> {
   const s = await store.readSidecar(publicId).catch(() => null);
-  const parts = [publicId, ...(s ? [...s.tags, ...Object.values(s.context), ...Object.values(s.metadata)] : [])];
+  const parts = s
+    ? [...s.tags.filter((t) => !SYSTEM_TAGS.test(t)), ...CONTENT_CONTEXT_KEYS.map((k) => s.context[k] ?? "")]
+    : [publicId];
   return parts.join(" ").toLowerCase().replace(/[_\-/.]+/g, " ");
 }

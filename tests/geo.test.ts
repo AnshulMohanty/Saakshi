@@ -58,6 +58,9 @@ describe("DMS", () => {
     expect(parseDms("77 35 40.56 E")).toBeCloseTo(77.5946, 4);
     expect(parseDms("33°52′4″S")).toBeCloseTo(-33.867778, 6);
     expect(parseDms("-12:30:00")).toBeCloseTo(-12.5, 6);
+    expect(parseDms(`12 deg 58' 18.00" N`)).toBeCloseTo(12.971667, 6); // exiftool / Cloudinary media_metadata
+    expect(parseDms(`77 deg 35' 40.56" E`)).toBeCloseTo(77.5946, 4);
+    expect(parseDms("12.9716")).toBeCloseTo(12.9716, 6);
     expect(() => parseDms("north-ish")).toThrow(SyntaxError);
   });
 });

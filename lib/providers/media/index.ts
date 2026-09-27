@@ -32,6 +32,8 @@ export interface MediaAsset {
   format: string;
   bytes: number;
   exif: ExifSummary | null;
+  /** Raw metadata as Cloudinary's media_metadata returns it (string values). */
+  mediaMetadata: Record<string, string>;
   facesCount: number;
   /** 0–1, or null when unavailable. */
   qualityScore: number | null;
@@ -45,10 +47,13 @@ export interface MediaProvider {
   readonly kind: "mock" | "real";
   upload(input: UploadInput): Promise<MediaAsset>;
   url(publicId: string, transforms: Transform, opts?: UrlOptions): string;
-  updateMetadata(publicId: string, fields: Record<string, string>): Promise<void>;
+  /** Contextual metadata (key/values) and, optionally, tags to add. */
+  updateMetadata(publicId: string, fields: Record<string, string>, opts?: { tags?: string[] }): Promise<void>;
   setModeration(publicId: string, status: "approved" | "rejected"): Promise<void>;
   /** Segmentation mask for `prompt` (real: e_extract:prompt_…;mode_mask). */
   extractMask(publicId: string, prompt: string): Promise<{ maskUrl: string; buffer: Buffer }>;
+  /** Bytes of a derived image (server-side; e.g. to re-upload a watermarked variant). */
+  fetchDerived(publicId: string, transforms: Transform): Promise<Buffer>;
 }
 
 let instance: MediaProvider | undefined;
@@ -61,7 +66,8 @@ export function getMediaProvider(): MediaProvider {
         ? new CloudinaryMediaProvider(config.cloudinary as Required<typeof config.cloudinary>)
         : new MockMediaProvider({
             dir: path.resolve(config.env.MEDIA_MOCK_DIR),
-            baseUrl: config.appUrl,
+            // Relative URLs: they work on any host (localhost, LAN IP, HTTPS tunnel to a phone).
+            baseUrl: "",
             signingKey: getMockMediaSigningKey(config),
             exifDefaultOffset: config.env.EXIF_DEFAULT_UTC_OFFSET,
           });

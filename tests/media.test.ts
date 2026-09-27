@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
-import { extractExif, parseExifDateTime } from "@/lib/media/exif";
+import { extractExif, parseExifDateTime, readExifTags, summarizeExif, toMediaMetadata } from "@/lib/media/exif";
 import { classifyPixel, computeMask, maskKindForPrompt } from "@/lib/media/mask";
 
 const fixture = (name: string) => readFileSync(path.join(__dirname, "fixtures", name));
@@ -14,6 +14,7 @@ describe("extractExif", () => {
     expect(exif!.lat).toBeCloseTo(12.971667, 5);
     expect(exif!.lng).toBeCloseTo(77.5946, 4);
     expect(exif!.takenAt).toBe("2025-03-14T04:00:00.000Z"); // 09:30 at +05:30
+    expect(exif!.takenAtTzAssumed).toBe(false); // OffsetTimeOriginal present
     expect(exif!.make).toBe("SaakshiFixture");
     expect(exif!.model).toBe("Synthetic-1");
   });
@@ -28,7 +29,7 @@ describe("extractExif", () => {
       .jpeg()
       .withExif({ IFD2: { DateTimeOriginal: "2025:03:14 09:30:00" } })
       .toBuffer();
-    expect((await extractExif(jpg, { defaultOffset: "+05:30" }))!.takenAt).toBe("2025-03-14T04:00:00.000Z");
+    expect(await extractExif(jpg, { defaultOffset: "+05:30" })).toMatchObject({ takenAt: "2025-03-14T04:00:00.000Z", takenAtTzAssumed: true });
     expect((await extractExif(jpg, { defaultOffset: "+00:00" }))!.takenAt).toBe("2025-03-14T09:30:00.000Z");
   });
 
@@ -38,6 +39,26 @@ describe("extractExif", () => {
       .withExif({ IFD0: { Make: "X" }, IFD3: { GPSLatitudeRef: "N", GPSLatitude: "0/1 0/1 0/1", GPSLongitudeRef: "E", GPSLongitude: "0/1 0/1 0/1" } })
       .toBuffer();
     expect(await extractExif(jpg)).toMatchObject({ lat: null, lng: null, make: "X" });
+  });
+});
+
+describe("media metadata (Cloudinary-style strings)", () => {
+  it("round-trips: summarize(toMediaMetadata(raw)) equals the direct summary", async () => {
+    const raw = await readExifTags(readFileSync(path.join(__dirname, "fixtures", "geotagged.jpg")));
+    const mm = toMediaMetadata(raw);
+    expect(mm).toMatchObject({ Make: "SaakshiFixture", DateTimeOriginal: "2025:03:14 09:30:00", GPSLatitude: `12 deg 58' 18.00" N` });
+    expect(summarizeExif(mm)).toEqual(summarizeExif(raw));
+  });
+
+  it("parses exiftool-style strings as Cloudinary returns them", () => {
+    expect(
+      summarizeExif({ GPSLatitude: `33 deg 52' 4.00" S`, GPSLongitude: `151 deg 12' 36.00" E`, DateTimeOriginal: "2024:12:31 23:30:00", Make: "Apple" }, { defaultOffset: "+10:00" }),
+    ).toEqual({ lat: expect.closeTo(-33.867778, 5), lng: expect.closeTo(151.21, 5), takenAt: "2024-12-31T13:30:00.000Z", takenAtTzAssumed: true, make: "Apple", model: null });
+    expect(summarizeExif({ GPSDateStamp: "2025:03:14", GPSTimeStamp: "04:00:00", DateTimeOriginal: "2025:03:14 09:30:00" })).toMatchObject({
+      takenAt: "2025-03-14T04:00:00.000Z",
+      takenAtTzAssumed: false,
+    });
+    expect(summarizeExif({})).toBeNull();
   });
 });
 

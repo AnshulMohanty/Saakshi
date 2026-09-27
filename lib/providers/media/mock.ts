@@ -7,7 +7,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp, { type Metadata } from "sharp";
-import { extractExif } from "../../media/exif";
+import { readExifTags, summarizeExif, toMediaMetadata } from "../../media/exif";
 import { computeMask, maskKindForPrompt } from "../../media/mask";
 import {
   buildMockUrl,
@@ -78,6 +78,11 @@ export class MockMediaProvider implements MediaProvider {
     const publicId = input.publicId ?? `${folder}/${randomPublicName()}`;
     if (!PUBLIC_ID_RE.test(publicId)) throw new Error(`Invalid public id "${publicId}"`);
 
+    // HEIC (iPhone default): sharp's prebuilt libvips can't decode HEVC. Real Cloudinary can.
+    const brand = bytes.subarray(8, 12).toString("latin1");
+    if (bytes.subarray(4, 8).toString("latin1") === "ftyp" && /^(heic|heix|hevc|mif1|msf1)$/.test(brand)) {
+      throw new Error("HEIC photos aren't supported in mock mode. Witness Capture always sends JPEG; convert gallery photos to JPEG (or set Cloudinary keys).");
+    }
     let meta: Metadata;
     try {
       meta = await sharp(bytes).metadata();
@@ -94,6 +99,7 @@ export class MockMediaProvider implements MediaProvider {
     const haystack = [publicId, ...(input.tags ?? []), ...Object.values(input.context ?? {})].join(" ").toLowerCase();
     const seed = createHash("sha256").update(haystack).digest().readUInt32BE(0);
 
+    const tags = await readExifTags(bytes);
     const asset: MediaAsset = {
       publicId,
       assetId: randomBytes(16).toString("hex"),
@@ -103,7 +109,8 @@ export class MockMediaProvider implements MediaProvider {
       height,
       format,
       bytes: bytes.length,
-      exif: await extractExif(bytes, { defaultOffset: this.opts.exifDefaultOffset }),
+      exif: summarizeExif(tags, { defaultOffset: this.opts.exifDefaultOffset }),
+      mediaMetadata: toMediaMetadata(tags),
       // No face detection in the mock: deterministic from filename/tags/context.
       facesCount: PEOPLE_WORDS.test(haystack) ? 1 + (seed % 6) : 0,
       qualityScore: await qualityHeuristic(bytes, width, height),
@@ -130,8 +137,15 @@ export class MockMediaProvider implements MediaProvider {
     });
   }
 
-  async updateMetadata(publicId: string, fields: Record<string, string>): Promise<void> {
-    await this.store.update(publicId, (s) => ({ ...s, metadata: { ...s.metadata, ...fields } }));
+  async updateMetadata(publicId: string, fields: Record<string, string>, { tags = [] }: { tags?: string[] } = {}): Promise<void> {
+    await this.store.update(publicId, (s) => ({ ...s, metadata: { ...s.metadata, ...fields }, tags: [...new Set([...s.tags, ...tags])] }));
+  }
+
+  async fetchDerived(publicId: string, transforms: Transform): Promise<Buffer> {
+    const original = await this.store.readOriginal(publicId);
+    if (!original) throw new Error(`Unknown mock asset "${publicId}"`);
+    const rendered = await renderTransform(original.bytes, original.sidecar.asset.format, transforms, this.renderContext(original.sidecar.asset.facesCount, null));
+    return rendered.body;
   }
 
   async setModeration(publicId: string, status: "approved" | "rejected"): Promise<void> {
@@ -153,6 +167,11 @@ export class MockMediaProvider implements MediaProvider {
     return mockHaystack(this.store, publicId);
   }
 
+  /** A context value stored at upload (e.g. the planted stamp text the mock AI "reads"). */
+  async contextValue(publicId: string, key: string): Promise<string | null> {
+    return (await this.store.readSidecar(publicId).catch(() => null))?.context[key] ?? null;
+  }
+
   /**
    * Serves a delivery path. Strict, like Cloudinary with Strict Transformations on: unsigned or
    * wrongly signed requests get 401, so originals and unblurred variants are never served.
@@ -171,17 +190,22 @@ export class MockMediaProvider implements MediaProvider {
     const cached = await this.readCache(key);
     if (cached) return { status: 200, rendered: cached };
 
-    const rendered = await renderTransform(original.bytes, original.sidecar.asset.format, steps, {
+    const rendered = await renderTransform(original.bytes, original.sidecar.asset.format, steps, this.renderContext(original.sidecar.asset.facesCount, accept));
+    await this.writeCache(key, rendered);
+    return { status: 200, rendered };
+  }
+
+  private renderContext(facesCount: number, accept: string | null) {
+    return {
       accept,
-      loadOverlay: async (id) => (await this.store.readOriginal(id))?.bytes ?? null,
-      log: (message) => {
+      facesCount,
+      loadOverlay: async (id: string) => (await this.store.readOriginal(id))?.bytes ?? null,
+      log: (message: string) => {
         if (this.logged.has(message)) return;
         this.logged.add(message);
         console.warn(`[mock-media] ${message}`);
       },
-    });
-    await this.writeCache(key, rendered);
-    return { status: 200, rendered };
+    };
   }
 
   private async readCache(key: string): Promise<Rendered | null> {

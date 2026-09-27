@@ -1,10 +1,10 @@
 /**
  * Dev-only upload round-trip: file → MediaProvider.upload → assets row (source=upload) →
  * audit entry → transformed, signed and deliberately tampered URLs for the page to check.
- * Returns 404 in production.
+ * Returns 404 in production unless DEV_TOOLS=1.
  */
 import { appendAudit } from "@/lib/audit";
-import { getConfig } from "@/lib/config";
+import { devToolsEnabled } from "@/lib/config";
 import { getDb } from "@/lib/db/client";
 import { assets } from "@/lib/db/schema";
 import type { Transform } from "@/lib/media/transform";
@@ -15,7 +15,7 @@ const MAX_BYTES = 20 * 1024 * 1024;
 const PREVIEW: Transform = [{ width: 400, crop: "scale" }, { effect: "blur", strength: 300 }];
 
 export async function POST(request: Request) {
-  if (getConfig().isProduction) return Response.json({ error: "Not found" }, { status: 404 });
+  if (!devToolsEnabled()) return Response.json({ error: "Not found" }, { status: 404 });
 
   const form = await request.formData().catch(() => null);
   const file = form?.get("file");

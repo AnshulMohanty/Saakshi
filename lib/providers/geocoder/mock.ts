@@ -2,7 +2,7 @@
 import { haversine } from "../../geo";
 import type { GeocoderProvider } from "./index";
 
-const CITIES: Array<[name: string, lat: number, lng: number]> = [
+export const INDIAN_CITIES: Array<[name: string, lat: number, lng: number]> = [
   ["New Delhi, Delhi, India", 28.6139, 77.209],
   ["Mumbai, Maharashtra, India", 19.076, 72.8777],
   ["Bengaluru, Karnataka, India", 12.9716, 77.5946],
@@ -39,9 +39,9 @@ export class MockGeocoder implements GeocoderProvider {
   readonly kind = "mock" as const;
 
   async reverse(lat: number, lng: number): Promise<string | null> {
-    let best = CITIES[0];
+    let best = INDIAN_CITIES[0];
     let bestD = Infinity;
-    for (const c of CITIES) {
+    for (const c of INDIAN_CITIES) {
       const d = haversine({ lat, lng }, { lat: c[1], lng: c[2] });
       if (d < bestD) [best, bestD] = [c, d];
     }

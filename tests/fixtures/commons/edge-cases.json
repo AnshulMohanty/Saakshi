@@ -1,0 +1,482 @@
+{
+ "batchcomplete": true,
+ "query": {
+  "pages": [
+   {
+    "pageid": 16548854,
+    "ns": 6,
+    "title": "File:Water pollution due to plastic.jpg",
+    "imagerepository": "local",
+    "imageinfo": [
+     {
+      "size": 235253,
+      "width": 576,
+      "height": 768,
+      "thumburl": "https://upload.wikimedia.org/wikipedia/commons/5/5f/Water_pollution_due_to_plastic.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+      "thumbwidth": 1920,
+      "thumbheight": 2560,
+      "thumbattribs": {
+       "src": "https://upload.wikimedia.org/wikipedia/commons/5/5f/Water_pollution_due_to_plastic.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+       "decoding": "async",
+       "loading": "lazy",
+       "width": 1920,
+       "height": 2560
+      },
+      "url": "https://upload.wikimedia.org/wikipedia/commons/5/5f/Water_pollution_due_to_plastic.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Water_pollution_due_to_plastic.jpg",
+      "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=16548854",
+      "sha1": "dce3d6affe528f5a19713a6a7643975422e46ea3",
+      "commonmetadata": [
+       {
+        "name": "Make",
+        "value": "NIKON"
+       },
+       {
+        "name": "Model",
+        "value": "COOLPIX S3000"
+       },
+       {
+        "name": "DateTime",
+        "value": "2011:09:17 13:07:56"
+       },
+       {
+        "name": "DateTimeOriginal",
+        "value": "2011:09:17 13:07:56"
+       }
+      ],
+      "extmetadata": {
+       "ImageDescription": {
+        "value": "This media file is uploaded with <b><a href=\"https://meta.wikimedia.org/wiki/WikiConference_India_2011/Wiki_Outreach\" class=\"extiw\" title=\"meta:WikiConference India 2011/Wiki Outreach\">India loves Wikipedia event</a></b>.",
+        "source": "commons-desc-page"
+       },
+       "DateTimeOriginal": {
+        "value": "2011-09-17",
+        "source": "commons-desc-page"
+       },
+       "Artist": {
+        "value": "<a href=\"//commons.wikimedia.org/wiki/User:Fotokannan\" title=\"User:Fotokannan\">Fotokannan</a>",
+        "source": "commons-desc-page"
+       },
+       "LicenseShortName": {
+        "value": "CC BY-SA 3.0",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "UsageTerms": {
+        "value": "Creative Commons Attribution-Share Alike 3.0",
+        "source": "commons-desc-page"
+       },
+       "AttributionRequired": {
+        "value": "true",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "LicenseUrl": {
+        "value": "https://creativecommons.org/licenses/by-sa/3.0",
+        "source": "commons-desc-page"
+       },
+       "Restrictions": {
+        "value": "",
+        "source": "commons-desc-page",
+        "hidden": ""
+       }
+      },
+      "mime": "image/jpeg"
+     }
+    ]
+   },
+   {
+    "pageid": 71595438,
+    "ns": 6,
+    "title": "File:The Vice President, Mohammad Hamid Ansari planting a tree at the laying foundation stone ceremony of Rajiv Gandhi Regional Museum of Natural History at Sawai Madhopur, Rajasthan on December 23, 2007.jpg",
+    "imagerepository": "local",
+    "imageinfo": [
+     {
+      "size": 281351,
+      "width": 2100,
+      "height": 1396,
+      "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bc/The_Vice_President%2C_Mohammad_Hamid_Ansari_planting_a_tree_at_the_laying_foundation_stone_ceremony_of_Rajiv_Gandhi_Regional_Museum_of_Natural_History_at_Sawai_Madhopur%2C_Rajasthan_on_December_23%2C_2007.jpg/1920px-thumbnail.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "thumbwidth": 1920,
+      "thumbheight": 1276,
+      "thumbattribs": {
+       "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bc/The_Vice_President%2C_Mohammad_Hamid_Ansari_planting_a_tree_at_the_laying_foundation_stone_ceremony_of_Rajiv_Gandhi_Regional_Museum_of_Natural_History_at_Sawai_Madhopur%2C_Rajasthan_on_December_23%2C_2007.jpg/1920px-thumbnail.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+       "decoding": "async",
+       "loading": "lazy",
+       "width": 1920,
+       "height": 1276,
+       "srcset": "https://upload.wikimedia.org/wikipedia/commons/b/bc/The_Vice_President%2C_Mohammad_Hamid_Ansari_planting_a_tree_at_the_laying_foundation_stone_ceremony_of_Rajiv_Gandhi_Regional_Museum_of_Natural_History_at_Sawai_Madhopur%2C_Rajasthan_on_December_23%2C_2007.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+      },
+      "url": "https://upload.wikimedia.org/wikipedia/commons/b/bc/The_Vice_President%2C_Mohammad_Hamid_Ansari_planting_a_tree_at_the_laying_foundation_stone_ceremony_of_Rajiv_Gandhi_Regional_Museum_of_Natural_History_at_Sawai_Madhopur%2C_Rajasthan_on_December_23%2C_2007.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:The_Vice_President,_Mohammad_Hamid_Ansari_planting_a_tree_at_the_laying_foundation_stone_ceremony_of_Rajiv_Gandhi_Regional_Museum_of_Natural_History_at_Sawai_Madhopur,_Rajasthan_on_December_23,_2007.jpg",
+      "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=71595438",
+      "sha1": "020cb5836fad6091d53844794a18271e5cdd7032",
+      "commonmetadata": [
+       {
+        "name": "Make",
+        "value": "NIKON CORPORATION"
+       },
+       {
+        "name": "Model",
+        "value": "NIKON D70s"
+       },
+       {
+        "name": "DateTime",
+        "value": "2007:12:23 18:21:12"
+       },
+       {
+        "name": "DateTimeOriginal",
+        "value": "2007:12:23 16:05:00"
+       }
+      ],
+      "extmetadata": {
+       "ImageDescription": {
+        "value": "The Vice President, Mohammad Hamid Ansari planting a tree at the laying foundation stone ceremony of Rajiv Gandhi Regional Museum of Natural History at Sawai Madhopur, Rajasthan on December 23, 2007.",
+        "source": "commons-desc-page"
+       },
+       "DateTimeOriginal": {
+        "value": "2007-12-23 16:05:00",
+        "source": "commons-desc-page"
+       },
+       "Artist": {
+        "value": "<bdi><a href=\"https://www.wikidata.org/wiki/Q56009838\" class=\"extiw\" title=\"d:Q56009838\"><span title=\"office assisting the vice president of India\">Vice President's Secretariat</span></a>\n</bdi>",
+        "source": "commons-desc-page"
+       },
+       "LicenseShortName": {
+        "value": "GODL-India",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "UsageTerms": {
+        "value": "Government Open Data License – India",
+        "source": "commons-desc-page"
+       },
+       "AttributionRequired": {
+        "value": "true",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "LicenseUrl": {
+        "value": "https://data.gov.in/sites/default/files/Gazette_Notification_OGDL.pdf",
+        "source": "commons-desc-page"
+       },
+       "Restrictions": {
+        "value": "",
+        "source": "commons-desc-page",
+        "hidden": ""
+       }
+      },
+      "mime": "image/jpeg"
+     }
+    ]
+   },
+   {
+    "pageid": 37091153,
+    "ns": 6,
+    "title": "File:Swach Bharat Abhiyan in Civil Court Premises of Rayagada.ogv",
+    "imagerepository": "local",
+    "imageinfo": [
+     {
+      "size": 73573707,
+      "width": 1280,
+      "height": 720,
+      "duration": 59.726333333333336,
+      "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/52/Swach_Bharat_Abhiyan_in_Civil_Court_Premises_of_Rayagada.ogv/1280px--Swach_Bharat_Abhiyan_in_Civil_Court_Premises_of_Rayagada.ogv.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo",
+      "thumbwidth": 1280,
+      "thumbheight": 720,
+      "thumbattribs": [],
+      "url": "https://upload.wikimedia.org/wikipedia/commons/5/52/Swach_Bharat_Abhiyan_in_Civil_Court_Premises_of_Rayagada.ogv?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Swach_Bharat_Abhiyan_in_Civil_Court_Premises_of_Rayagada.ogv",
+      "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=37091153",
+      "sha1": "18a6aef0f0a7a7914d79f251433302b1794f9b46",
+      "commonmetadata": [],
+      "extmetadata": {
+       "ImageDescription": {
+        "value": "Participation of Staff members, Judicial officers and Bar members of Civil Court, Rayagada",
+        "source": "commons-desc-page"
+       },
+       "DateTimeOriginal": {
+        "value": "2014-11-29",
+        "source": "commons-desc-page"
+       },
+       "Artist": {
+        "value": "<a href=\"//commons.wikimedia.org/wiki/User:Hpsatapathy\" title=\"User:Hpsatapathy\">Hpsatapathy</a>",
+        "source": "commons-desc-page"
+       },
+       "LicenseShortName": {
+        "value": "Public domain",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "UsageTerms": {
+        "value": "Public domain",
+        "source": "commons-desc-page"
+       },
+       "AttributionRequired": {
+        "value": "false",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "Restrictions": {
+        "value": "",
+        "source": "commons-desc-page",
+        "hidden": ""
+       }
+      },
+      "mime": "application/ogg"
+     }
+    ]
+   },
+   {
+    "pageid": 192428370,
+    "ns": 6,
+    "title": "File:Charla sobre los residuos en la Institucion Educativa de Ogobamba, distrito de Huasahuasi.png",
+    "index": 58,
+    "imagerepository": "local",
+    "imageinfo": [
+     {
+      "size": 1132745,
+      "width": 1134,
+      "height": 750,
+      "thumburl": "https://upload.wikimedia.org/wikipedia/commons/f/f7/Charla_sobre_los_residuos_en_la_Institucion_Educativa_de_Ogobamba%2C_distrito_de_Huasahuasi.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+      "thumbwidth": 1920,
+      "thumbheight": 1270,
+      "thumbattribs": {
+       "src": "https://upload.wikimedia.org/wikipedia/commons/f/f7/Charla_sobre_los_residuos_en_la_Institucion_Educativa_de_Ogobamba%2C_distrito_de_Huasahuasi.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+       "decoding": "async",
+       "loading": "lazy",
+       "width": 1920,
+       "height": 1270
+      },
+      "url": "https://upload.wikimedia.org/wikipedia/commons/f/f7/Charla_sobre_los_residuos_en_la_Institucion_Educativa_de_Ogobamba%2C_distrito_de_Huasahuasi.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Charla_sobre_los_residuos_en_la_Institucion_Educativa_de_Ogobamba,_distrito_de_Huasahuasi.png",
+      "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=192428370",
+      "sha1": "f862ad6b01422895fef49611f392fd9d35f7d8f7",
+      "commonmetadata": [],
+      "extmetadata": {
+       "GPSLatitude": {
+        "value": "11.254250",
+        "source": "commons-desc-page"
+       },
+       "GPSLongitude": {
+        "value": "75.702558",
+        "source": "commons-desc-page"
+       },
+       "ImageDescription": {
+        "value": "Charla sobre los residuos sólidos",
+        "source": "commons-desc-page"
+       },
+       "DateTimeOriginal": {
+        "value": "2026-05-11",
+        "source": "commons-desc-page"
+       },
+       "Artist": {
+        "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Dalbeatriz&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Dalbeatriz (page does not exist)\">Dalbeatriz</a>",
+        "source": "commons-desc-page"
+       },
+       "LicenseShortName": {
+        "value": "CC BY-SA 4.0",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "UsageTerms": {
+        "value": "Creative Commons Attribution-Share Alike 4.0",
+        "source": "commons-desc-page"
+       },
+       "AttributionRequired": {
+        "value": "true",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "LicenseUrl": {
+        "value": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source": "commons-desc-page"
+       },
+       "Restrictions": {
+        "value": "",
+        "source": "commons-desc-page",
+        "hidden": ""
+       }
+      },
+      "mime": "image/png"
+     }
+    ]
+   },
+   {
+    "pageid": 16040020,
+    "ns": 6,
+    "title": "File:Waste cocobeach india.jpg",
+    "imagerepository": "local",
+    "imageinfo": [
+     {
+      "size": 824360,
+      "width": 1600,
+      "height": 1200,
+      "thumburl": "https://upload.wikimedia.org/wikipedia/commons/9/92/Waste_cocobeach_india.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+      "thumbwidth": 1920,
+      "thumbheight": 1440,
+      "thumbattribs": {
+       "src": "https://upload.wikimedia.org/wikipedia/commons/9/92/Waste_cocobeach_india.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+       "decoding": "async",
+       "loading": "lazy",
+       "width": 1920,
+       "height": 1440
+      },
+      "url": "https://upload.wikimedia.org/wikipedia/commons/9/92/Waste_cocobeach_india.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Waste_cocobeach_india.jpg",
+      "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=16040020",
+      "sha1": "4347b644b5465c63316fa318675a3395b255d599",
+      "commonmetadata": [
+       {
+        "name": "Make",
+        "value": "Canon"
+       },
+       {
+        "name": "Model",
+        "value": "Canon PowerShot SX200 IS"
+       },
+       {
+        "name": "DateTime",
+        "value": "2010:07:28 12:10:12"
+       },
+       {
+        "name": "DateTimeOriginal",
+        "value": "2010:07:28 12:10:12"
+       }
+      ],
+      "extmetadata": {
+       "ImageDescription": {
+        "value": "Plastic Waste at Coco Beach, outfall of Mandovi river into Indian ocean. (India, Goa)",
+        "source": "commons-desc-page"
+       },
+       "DateTimeOriginal": {
+        "value": "2010-07-28",
+        "source": "commons-desc-page"
+       },
+       "Artist": {
+        "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Hajj0_ms&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Hajj0 ms (page does not exist)\">Hajj0 ms</a>",
+        "source": "commons-desc-page"
+       },
+       "LicenseShortName": {
+        "value": "CC BY-SA 3.0",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "UsageTerms": {
+        "value": "Creative Commons Attribution-Share Alike 3.0",
+        "source": "commons-desc-page"
+       },
+       "AttributionRequired": {
+        "value": "true",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "LicenseUrl": {
+        "value": "https://creativecommons.org/licenses/by-sa/3.0",
+        "source": "commons-desc-page"
+       },
+       "Restrictions": {
+        "value": "",
+        "source": "commons-desc-page",
+        "hidden": ""
+       }
+      },
+      "mime": "image/jpeg"
+     }
+    ]
+   },
+   {
+    "pageid": 18592728,
+    "ns": 6,
+    "title": "File:Mango tree flowers, Umaria district, MP, India.jpg",
+    "index": 120,
+    "imagerepository": "local",
+    "imageinfo": [
+     {
+      "size": 2176716,
+      "width": 3028,
+      "height": 2048,
+      "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c7/Mango_tree_flowers%2C_Umaria_district%2C_MP%2C_India.jpg/1920px-Mango_tree_flowers%2C_Umaria_district%2C_MP%2C_India.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "thumbwidth": 1920,
+      "thumbheight": 1299,
+      "thumbattribs": {
+       "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c7/Mango_tree_flowers%2C_Umaria_district%2C_MP%2C_India.jpg/1920px-Mango_tree_flowers%2C_Umaria_district%2C_MP%2C_India.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+       "decoding": "async",
+       "loading": "lazy",
+       "width": 1920,
+       "height": 1299,
+       "srcset": "https://upload.wikimedia.org/wikipedia/commons/c/c7/Mango_tree_flowers%2C_Umaria_district%2C_MP%2C_India.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+      },
+      "url": "https://upload.wikimedia.org/wikipedia/commons/c/c7/Mango_tree_flowers%2C_Umaria_district%2C_MP%2C_India.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Mango_tree_flowers,_Umaria_district,_MP,_India.jpg",
+      "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=18592728",
+      "sha1": "9786a417b3f206c657068699f79a51eef8e2cb24",
+      "commonmetadata": [
+       {
+        "name": "Make",
+        "value": "SONY"
+       },
+       {
+        "name": "Model",
+        "value": "DSC-R1"
+       },
+       {
+        "name": "DateTime",
+        "value": "2012:04:01 11:24:21"
+       },
+       {
+        "name": "DateTimeOriginal",
+        "value": "2012:02:28 09:36:30"
+       }
+      ],
+      "extmetadata": {
+       "GPSLatitude": {
+        "value": "23.646220",
+        "source": "commons-desc-page"
+       },
+       "GPSLongitude": {
+        "value": "81.175591",
+        "source": "commons-desc-page"
+       },
+       "ImageDescription": {
+        "value": "Mango tree flowers (<i>Mangifera indica</i>), Umaria district, Madhya Pradesh, India.",
+        "source": "commons-desc-page"
+       },
+       "DateTimeOriginal": {
+        "value": "2012",
+        "source": "commons-desc-page"
+       },
+       "Artist": {
+        "value": "<a href=\"//commons.wikimedia.org/wiki/User:Yann\" title=\"User:Yann\">Yann</a> (<a href=\"//commons.wikimedia.org/wiki/User_talk:Yann\" title=\"User talk:Yann\"><span class=\"signature-talk\">talk</span></a>)",
+        "source": "commons-desc-page"
+       },
+       "LicenseShortName": {
+        "value": "CC BY-SA 4.0",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "UsageTerms": {
+        "value": "Creative Commons Attribution-Share Alike 4.0",
+        "source": "commons-desc-page"
+       },
+       "AttributionRequired": {
+        "value": "true",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "LicenseUrl": {
+        "value": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source": "commons-desc-page"
+       },
+       "Restrictions": {
+        "value": "",
+        "source": "commons-desc-page",
+        "hidden": ""
+       }
+      },
+      "mime": "image/jpeg"
+     }
+    ]
+   }
+  ]
+ }
+}

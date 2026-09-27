@@ -1,7 +1,7 @@
 /**
  * Applies Transform steps with sharp, approximating what Cloudinary would deliver.
- * Deliberate simplifications: blur_faces/pixelate_faces affect the whole image (no face
- * detection), g_auto/g_face use sharp's attention strategy, e_extract uses colour-index masks.
+ * Deliberate simplifications: blur_faces/pixelate_faces affect the whole image when the asset
+ * has faces and do nothing when it has none (no face detection to localise them), g_auto/g_face use sharp's attention strategy, e_extract uses colour-index masks.
  * Unknown ({ raw }) steps are ignored and logged.
  */
 import sharp, { type ResizeOptions, type Sharp } from "sharp";
@@ -23,6 +23,8 @@ export interface RenderContext {
   loadOverlay: (publicId: string) => Promise<Buffer | null>;
   /** Request Accept header, used to resolve f_auto. */
   accept?: string | null;
+  /** Faces the asset is known to contain. blur_faces/pixelate_faces are no-ops at 0, as on Cloudinary. */
+  facesCount?: number;
   log?: (message: string) => void;
 }
 
@@ -207,10 +209,13 @@ async function applyStep(img: Img, step: TransformStep, ctx: RenderContext): Pro
     switch (step.effect) {
       case "blur":
         return toImg(fromImg(img).blur(Math.min(1000, Math.max(0.3, (strength ?? 100) / 20))));
-      case "blur_faces": // mock: no face detection, so blur everything, strongly
+      case "blur_faces": // mock: no face localisation, so blur everything when there are faces
+        if ((ctx.facesCount ?? 1) === 0) return img;
         return toImg(fromImg(img).blur(Math.max(10, (strength ?? 500) / 40)));
-      case "pixelate":
       case "pixelate_faces":
+        if ((ctx.facesCount ?? 1) === 0) return img;
+        return pixelate(img, strength ?? 20);
+      case "pixelate":
         return pixelate(img, strength ?? 20);
       case "sharpen":
         return toImg(fromImg(img).sharpen({ sigma: 0.5 + (strength ?? 100) / 100 }));

@@ -1,0 +1,375 @@
+{
+ "batchcomplete": true,
+ "continue": {
+  "gsroffset": 50,
+  "continue": "gsroffset||"
+ },
+ "query": {
+  "pages": [
+   {
+    "pageid": 131443399,
+    "ns": 6,
+    "title": "File:Coastal-cleanup-month-ocean-blue-projects.jpg",
+    "index": 12,
+    "imagerepository": "local",
+    "imageinfo": [
+     {
+      "size": 3044430,
+      "width": 3024,
+      "height": 4032,
+      "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bd/Coastal-cleanup-month-ocean-blue-projects.jpg/1920px-Coastal-cleanup-month-ocean-blue-projects.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "thumbwidth": 1920,
+      "thumbheight": 2560,
+      "thumbattribs": {
+       "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bd/Coastal-cleanup-month-ocean-blue-projects.jpg/1920px-Coastal-cleanup-month-ocean-blue-projects.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+       "decoding": "async",
+       "loading": "lazy",
+       "width": 1920,
+       "height": 2560
+      },
+      "url": "https://upload.wikimedia.org/wikipedia/commons/b/bd/Coastal-cleanup-month-ocean-blue-projects.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Coastal-cleanup-month-ocean-blue-projects.jpg",
+      "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=131443399",
+      "sha1": "409fef3551ab318d04b165c90bda3e64c4e3647a",
+      "commonmetadata": [
+       {
+        "name": "Make",
+        "value": "Apple"
+       },
+       {
+        "name": "Model",
+        "value": "iPhone 12 Pro Max"
+       },
+       {
+        "name": "DateTime",
+        "value": "2021:09:18 15:14:19"
+       },
+       {
+        "name": "DateTimeOriginal",
+        "value": "2021:09:18 15:14:19"
+       },
+       {
+        "name": "GPSLatitude",
+        "value": 34.00522222222222
+       },
+       {
+        "name": "GPSLongitude",
+        "value": -118.49159166666666
+       }
+      ],
+      "extmetadata": {
+       "ObjectName": {
+        "value": "Coastal-cleanup-month-ocean-blue-projects",
+        "source": "mediawiki-metadata"
+       },
+       "GPSLatitude": {
+        "value": "34.005222",
+        "source": "commons-desc-page"
+       },
+       "GPSLongitude": {
+        "value": "-118.491592",
+        "source": "commons-desc-page"
+       },
+       "ImageDescription": {
+        "value": "Volunteers at local beach cleanups with Ocean Blue Project. Host your next cleanup with Ocean Blue Project. We never use single use plastic bags at our cleanups.",
+        "source": "commons-desc-page"
+       },
+       "DateTimeOriginal": {
+        "value": "2021-09-18 15:14:19",
+        "source": "commons-desc-page"
+       },
+       "Credit": {
+        "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+        "source": "commons-desc-page"
+       },
+       "Artist": {
+        "value": "<a href=\"//commons.wikimedia.org/wiki/User:OceanBlueOregon\" title=\"User:OceanBlueOregon\">Ocean Blue Project, Inc.</a>",
+        "source": "commons-desc-page"
+       },
+       "LicenseShortName": {
+        "value": "CC BY-SA 4.0",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "UsageTerms": {
+        "value": "Creative Commons Attribution-Share Alike 4.0",
+        "source": "commons-desc-page"
+       },
+       "AttributionRequired": {
+        "value": "true",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "LicenseUrl": {
+        "value": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source": "commons-desc-page"
+       }
+      },
+      "mime": "image/jpeg"
+     }
+    ],
+    "coordinates": [
+     {
+      "lat": 34.005222,
+      "lon": -118.491592,
+      "primary": true,
+      "type": "camera",
+      "dim": "1000"
+     }
+    ]
+   },
+   {
+    "pageid": 129829198,
+    "ns": 6,
+    "title": "File:230126-G-DV874-1161 - USCGC Spencer (WMEC 905) participates in a joint organization beach clean-up.jpg",
+    "index": 5,
+    "imagerepository": "local",
+    "imageinfo": [
+     {
+      "size": 1246548,
+      "width": 6048,
+      "height": 4024,
+      "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/14/230126-G-DV874-1161_-_USCGC_Spencer_%28WMEC_905%29_participates_in_a_joint_organization_beach_clean-up.jpg/1920px-230126-G-DV874-1161_-_USCGC_Spencer_%28WMEC_905%29_participates_in_a_joint_organization_beach_clean-up.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "thumbwidth": 1920,
+      "thumbheight": 1277,
+      "thumbattribs": {
+       "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/14/230126-G-DV874-1161_-_USCGC_Spencer_%28WMEC_905%29_participates_in_a_joint_organization_beach_clean-up.jpg/1920px-230126-G-DV874-1161_-_USCGC_Spencer_%28WMEC_905%29_participates_in_a_joint_organization_beach_clean-up.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+       "decoding": "async",
+       "loading": "lazy",
+       "width": 1920,
+       "height": 1277,
+       "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/14/230126-G-DV874-1161_-_USCGC_Spencer_%28WMEC_905%29_participates_in_a_joint_organization_beach_clean-up.jpg/3840px-230126-G-DV874-1161_-_USCGC_Spencer_%28WMEC_905%29_participates_in_a_joint_organization_beach_clean-up.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+      },
+      "url": "https://upload.wikimedia.org/wikipedia/commons/1/14/230126-G-DV874-1161_-_USCGC_Spencer_%28WMEC_905%29_participates_in_a_joint_organization_beach_clean-up.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:230126-G-DV874-1161_-_USCGC_Spencer_(WMEC_905)_participates_in_a_joint_organization_beach_clean-up.jpg",
+      "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=129829198",
+      "sha1": "db23209d98d6552ec6426a08cbe9058cd923641f",
+      "commonmetadata": [
+       {
+        "name": "Make",
+        "value": "NIKON CORPORATION"
+       },
+       {
+        "name": "Model",
+        "value": "NIKON D780"
+       },
+       {
+        "name": "DateTimeOriginal",
+        "value": "2023:01:25 19:00:00"
+       }
+      ],
+      "extmetadata": {
+       "ObjectName": {
+        "value": "230126-G-DV874-1161 - USCGC Spencer (WMEC 905) participates in a joint organization beach clean-up",
+        "source": "mediawiki-metadata"
+       },
+       "ImageDescription": {
+        "value": "U.S. Coast Guard Seaman Gregory Seymoure assigned to USCGC Spencer (WMEC 905), Togolese Navy sailors, members from the Marine Security Guard Detachment and volunteers from the Golfe 1 municipality of Lomé, participates in a joint organization beach clean-up organized by the U.S. Embassy in Lomé, Togo, Jan. 26, 2023. Obangame Express 2023, conducted by U.S. Naval Forces Africa, is a maritime exercise designed to improve cooperation, and increase maritime safety and security among participating nations in the Gulf of Guinea and Southern Atlantic Ocean. U.S. Sixth Fleet, headquartered in Naples, Italy, conducts the full spectrum of joint and naval operations, often in concert with allied and interagency partners, in order to advance U.S. national interests and security and stability in Europe and Africa. (U.S. Coast Guard photo by Petty Officer Third Class Mikaela McGee)",
+        "source": "commons-desc-page"
+       },
+       "DateTimeOriginal": {
+        "value": "2023-01-25 19:00:00",
+        "source": "commons-desc-page"
+       },
+       "Credit": {
+        "value": "<a rel=\"nofollow\" class=\"external free\" href=\"https://www.dvidshub.net/image/7607615/uscgc-spencer-wmec-905-participates-joint-organization-beach-clean-up\">https://www.dvidshub.net/image/7607615/uscgc-spencer-wmec-905-participates-joint-organization-beach-clean-up</a>",
+        "source": "commons-desc-page"
+       },
+       "Artist": {
+        "value": "Petty Officer 3rd Class Mikaela McGee",
+        "source": "commons-desc-page"
+       },
+       "LicenseShortName": {
+        "value": "Public domain",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "UsageTerms": {
+        "value": "Public domain",
+        "source": "commons-desc-page"
+       },
+       "AttributionRequired": {
+        "value": "false",
+        "source": "commons-desc-page",
+        "hidden": ""
+       }
+      },
+      "mime": "image/jpeg"
+     }
+    ]
+   },
+   {
+    "pageid": 120435550,
+    "ns": 6,
+    "title": "File:Fleet Activities Okinawa conduct a beach cleanup at White Beach Naval Facility.jpg",
+    "index": 1,
+    "imagerepository": "local",
+    "imageinfo": [
+     {
+      "size": 1137133,
+      "width": 4597,
+      "height": 3284,
+      "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a2/Fleet_Activities_Okinawa_conduct_a_beach_cleanup_at_White_Beach_Naval_Facility.jpg/1920px-Fleet_Activities_Okinawa_conduct_a_beach_cleanup_at_White_Beach_Naval_Facility.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "thumbwidth": 1920,
+      "thumbheight": 1372,
+      "thumbattribs": {
+       "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a2/Fleet_Activities_Okinawa_conduct_a_beach_cleanup_at_White_Beach_Naval_Facility.jpg/1920px-Fleet_Activities_Okinawa_conduct_a_beach_cleanup_at_White_Beach_Naval_Facility.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+       "decoding": "async",
+       "loading": "lazy",
+       "width": 1920,
+       "height": 1372,
+       "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a2/Fleet_Activities_Okinawa_conduct_a_beach_cleanup_at_White_Beach_Naval_Facility.jpg/3840px-Fleet_Activities_Okinawa_conduct_a_beach_cleanup_at_White_Beach_Naval_Facility.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+      },
+      "url": "https://upload.wikimedia.org/wikipedia/commons/a/a2/Fleet_Activities_Okinawa_conduct_a_beach_cleanup_at_White_Beach_Naval_Facility.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Fleet_Activities_Okinawa_conduct_a_beach_cleanup_at_White_Beach_Naval_Facility.jpg",
+      "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=120435550",
+      "sha1": "a650325fb4f7b76f166378874d3d9fe494ebb032",
+      "commonmetadata": [
+       {
+        "name": "Make",
+        "value": "Canon"
+       },
+       {
+        "name": "Model",
+        "value": " Canon EOS 6D"
+       },
+       {
+        "name": "DateTimeOriginal",
+        "value": "2022:04:22 10:12:46"
+       }
+      ],
+      "extmetadata": {
+       "ObjectName": {
+        "value": "Fleet Activities Okinawa conduct a beach cleanup at White Beach Naval Facility",
+        "source": "mediawiki-metadata"
+       },
+       "ImageDescription": {
+        "value": "OKINAWA, Japan (April 22, 2022) Sailors assigned to Fleet Activities Okinawa conduct a beach cleanup at White Beach Naval Facility in Okinawa, Japan, April 22, 2022. The cleanup was held to celebrate Earth Day. CFAO maintains and operates facilities to support the U.S. Navy’s naval and aviation assets in the Indo-Pacific region. (U.S. Navy photo by Mass Communication Specialist 1st Class David R. Krigbaum) 220422-N-QY759-0042",
+        "source": "commons-desc-page"
+       },
+       "DateTimeOriginal": {
+        "value": "2022-04-22 10:12:46",
+        "source": "commons-desc-page"
+       },
+       "Credit": {
+        "value": "<a rel=\"nofollow\" class=\"external free\" href=\"https://www.flickr.com/photos/usnavy/52021932328/\">https://www.flickr.com/photos/usnavy/52021932328/</a>",
+        "source": "commons-desc-page"
+       },
+       "Artist": {
+        "value": "Official U.S. Navy Page",
+        "source": "commons-desc-page"
+       },
+       "LicenseShortName": {
+        "value": "CC BY 2.0",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "UsageTerms": {
+        "value": "Creative Commons Attribution 2.0",
+        "source": "commons-desc-page"
+       },
+       "AttributionRequired": {
+        "value": "true",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "LicenseUrl": {
+        "value": "https://creativecommons.org/licenses/by/2.0",
+        "source": "commons-desc-page"
+       }
+      },
+      "mime": "image/jpeg"
+     }
+    ]
+   },
+   {
+    "pageid": 119852814,
+    "ns": 6,
+    "title": "File:Cleanup at beach in Ghana.jpg",
+    "index": 47,
+    "imagerepository": "local",
+    "imageinfo": [
+     {
+      "size": 1431757,
+      "width": 5184,
+      "height": 3456,
+      "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0f/Cleanup_at_beach_in_Ghana.jpg/1920px-Cleanup_at_beach_in_Ghana.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "thumbwidth": 1920,
+      "thumbheight": 1280,
+      "thumbattribs": {
+       "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0f/Cleanup_at_beach_in_Ghana.jpg/1920px-Cleanup_at_beach_in_Ghana.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+       "decoding": "async",
+       "loading": "lazy",
+       "width": 1920,
+       "height": 1280,
+       "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0f/Cleanup_at_beach_in_Ghana.jpg/3840px-Cleanup_at_beach_in_Ghana.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+      },
+      "url": "https://upload.wikimedia.org/wikipedia/commons/0/0f/Cleanup_at_beach_in_Ghana.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Cleanup_at_beach_in_Ghana.jpg",
+      "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=119852814",
+      "sha1": "1d8e907ea7e4b9eda3ac27c63cdd5488a190f0c8",
+      "commonmetadata": [
+       {
+        "name": "Make",
+        "value": "Canon"
+       },
+       {
+        "name": "Model",
+        "value": "Canon EOS REBEL T4i"
+       },
+       {
+        "name": "DateTime",
+        "value": "2021:09:26 08:58:04"
+       },
+       {
+        "name": "DateTimeOriginal",
+        "value": "2021:09:25 10:30:32"
+       }
+      ],
+      "extmetadata": {
+       "ObjectName": {
+        "value": "Cleanup at beach in Ghana",
+        "source": "mediawiki-metadata"
+       },
+       "ImageDescription": {
+        "value": "Cleanup at beach in Ghana",
+        "source": "commons-desc-page"
+       },
+       "DateTimeOriginal": {
+        "value": "2022-06-28",
+        "source": "commons-desc-page"
+       },
+       "Credit": {
+        "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+        "source": "commons-desc-page"
+       },
+       "Artist": {
+        "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Gkbediako&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Gkbediako (page does not exist)\">Gkbediako</a>",
+        "source": "commons-desc-page"
+       },
+       "LicenseShortName": {
+        "value": "CC BY-SA 4.0",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "UsageTerms": {
+        "value": "Creative Commons Attribution-Share Alike 4.0",
+        "source": "commons-desc-page"
+       },
+       "AttributionRequired": {
+        "value": "true",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "LicenseUrl": {
+        "value": "https://creativecommons.org/licenses/by-sa/4.0",
+        "source": "commons-desc-page"
+       }
+      },
+      "mime": "image/jpeg"
+     }
+    ]
+   }
+  ]
+ }
+}

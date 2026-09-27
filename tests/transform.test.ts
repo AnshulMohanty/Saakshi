@@ -168,6 +168,15 @@ describe("buildCloudinaryUrl", () => {
   });
 });
 
+describe("authenticated delivery", () => {
+  it("matches the SDK for signed authenticated URLs", () => {
+    const ours = buildCloudinaryUrl({ cloudName: "demo", publicId: "saakshi/evidence/abc", transforms: [{ width: 1024, crop: "limit" }], apiSecret: "abcd", deliveryType: "authenticated" });
+    const sdk = cloudinary.v2.url("saakshi/evidence/abc", { cloud_name: "demo", api_key: "1", api_secret: "abcd", secure: true, urlAnalytics: false, type: "authenticated", raw_transformation: "c_limit,w_1024", sign_url: true, version: 1 });
+    expect(ours).toBe(sdk.replace(/\?_a=.*$/, ""));
+    expect(ours).toContain("/image/authenticated/s--");
+  });
+});
+
 describe("mock URLs", () => {
   const key = "test-key";
   const base = "http://localhost:3000/";

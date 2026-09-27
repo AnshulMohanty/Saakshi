@@ -25,7 +25,7 @@ afterAll(async () => {
   await rm(dir, { recursive: true, force: true });
 });
 
-const get = (url: string, accept = "image/jpeg") => GET(new Request(url, { headers: { accept } }));
+const get = (url: string, accept = "image/jpeg") => GET(new Request(new URL(url, "http://localhost:3000"), { headers: { accept } }));
 
 describe("MockMediaProvider.upload", () => {
   it("stores the file and returns real pHash, EXIF and dimensions", async () => {
@@ -59,6 +59,19 @@ describe("MockMediaProvider.upload", () => {
     await expect(media.upload({ folder: "saakshi/test" })).rejects.toThrow(/file or a url/);
     await expect(media.upload({ file: Buffer.from("nope"), folder: "saakshi/test" })).rejects.toThrow(/Unsupported/);
     await expect(media.upload({ file: await fixture("scene-a.png"), folder: "x", publicId: "../../etc" })).rejects.toThrow(/Invalid public id/);
+  });
+
+  it("keys the mocks on content only, not on bookkeeping tags or context", async () => {
+    const { publicId } = await media.upload({
+      file: await fixture("scene-a.png"),
+      folder: "saakshi/planted",
+      tags: ["saakshi", "planted_test", "stamp_mismatch", "lake"],
+      context: { filename: "gps-camera-stamp.jpg", test_case: "stamp_mismatch", source: "planted_test", project_hint: "river-clean-up-x" },
+    });
+    const hay = await media.haystack(publicId);
+    expect(hay).toContain("lake");
+    expect(hay).toContain("gps camera stamp");
+    expect(hay).not.toMatch(/planted|river|stamp mismatch/);
   });
 
   it("persists metadata and moderation", async () => {

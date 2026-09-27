@@ -14,7 +14,6 @@ import { formatPlace } from "@/lib/providers/geocoder/real";
 import { CloudinaryMediaProvider } from "@/lib/providers/media/real";
 import { HandlerRegistry } from "@/lib/providers/queue";
 import { InlineQueue } from "@/lib/providers/queue/mock";
-import { InngestQueue } from "@/lib/providers/queue/real";
 
 const HAYSTACKS: Record<string, string> = {
   "saakshi/p/before": "saakshi p before cubbon gate litter before cleanup volunteers",
@@ -37,6 +36,12 @@ describe("MockAnalysisProvider", () => {
     expect(await analysis.tag("saakshi/p/school", taxonomy)).toEqual(["saplings"]);
     expect(await analysis.tag("saakshi/p/after", taxonomy)).toEqual([]);
     expect(await analysis.tag("saakshi/p/before", taxonomy)).toEqual(await analysis.tag("saakshi/p/before", taxonomy));
+  });
+
+  it("treats negated words in a description as exclusions", async () => {
+    const t = [{ name: "clean_space", description: "A tidy park with no visible litter or garbage" }];
+    expect(await analysis.tag("saakshi/p/before", t)).toEqual([]); // mentions litter → excluded
+    expect(await analysis.tag("saakshi/p/after", t)).toEqual(["clean_space"]); // after the clean-up, no litter words
   });
 
   it("answers moderation questions and detects watermarks", async () => {
@@ -73,6 +78,7 @@ describe("MockAIProvider (guarded)", () => {
     expect(publicIdFromUrl(buildCloudinaryUrl({ cloudName: "demo", publicId: "saakshi/x/y", transforms: [{ width: 5 }], apiSecret: "s" }))).toBe(
       "saakshi/x/y",
     );
+    expect(publicIdFromUrl("/api/media/mock/image/upload/s--x--/w_5/v1/saakshi/rel")).toBe("saakshi/rel");
     expect(publicIdFromUrl("not a url")).toBe("not a url");
   });
 
@@ -180,13 +186,48 @@ describe("queue", () => {
   it("inline runner calls registered handlers in order, and unsubscribes", async () => {
     const registry = new HandlerRegistry();
     const calls: string[] = [];
-    registry.on("asset/uploaded", async ({ assetId }) => void calls.push(`a:${assetId}`));
-    const off = registry.on("asset/uploaded", async ({ assetId }) => void calls.push(`b:${assetId}`));
+    registry.on("asset.uploaded", async ({ assetId }) => void calls.push(`a:${assetId}`));
+    const off = registry.on("asset.uploaded", async ({ assetId }) => void calls.push(`b:${assetId}`));
     const q = new InlineQueue(registry);
-    await q.send("asset/uploaded", { assetId: "1" });
+    await q.send("asset.uploaded", { assetId: "1" });
+    await q.drain();
     off();
-    await q.send("asset/uploaded", { assetId: "2" });
+    await q.send("asset.uploaded", { assetId: "2" });
+    await q.drain();
     expect(calls).toEqual(["a:1", "b:1", "a:2"]);
+  });
+
+  it("returns from send immediately, caps concurrency at 4, and drain waits for everything", async () => {
+    const registry = new HandlerRegistry();
+    let running = 0;
+    let peak = 0;
+    const done: string[] = [];
+    registry.on("asset.uploaded", async ({ assetId }) => {
+      running++;
+      peak = Math.max(peak, running);
+      await new Promise((r) => setTimeout(r, 15));
+      running--;
+      done.push(assetId);
+    });
+    const q = new InlineQueue(registry, { concurrency: 4 });
+    for (let i = 0; i < 10; i++) await q.send("asset.uploaded", { assetId: String(i) });
+    expect(done).toHaveLength(0); // nothing awaited yet
+    await q.drain();
+    expect(done).toHaveLength(10);
+    expect(peak).toBe(4);
+  });
+
+  it("keeps going when a handler throws (errors are reported, not raised)", async () => {
+    const registry = new HandlerRegistry();
+    const errors: string[] = [];
+    registry.on("asset.uploaded", async ({ assetId }) => {
+      if (assetId === "bad") throw new Error("boom");
+    });
+    const q = new InlineQueue(registry, { onError: (_e, err) => errors.push((err as Error).message) });
+    await q.send("asset.uploaded", { assetId: "bad" });
+    await q.send("asset.uploaded", { assetId: "ok" });
+    await expect(q.drain()).resolves.toBeUndefined();
+    expect(errors).toEqual(["boom"]);
   });
 });
 
@@ -196,13 +237,12 @@ describe("real providers", () => {
     await expect(cld.upload({ folder: "x", file: Buffer.alloc(1) })).rejects.toThrow(NotConfiguredError);
     await expect(new CloudinaryAnalysisProvider().tag("x", [])).rejects.toThrow(/Unset its env vars/);
     await expect(new OpenAIProvider({ modelFast: "m", modelSmart: "m", embedModel: "e" }).embed("x")).rejects.toThrow(NotConfiguredError);
-    await expect(new InngestQueue().send("asset/uploaded", { assetId: "1" })).rejects.toThrow(NotConfiguredError);
   });
 
   it("Cloudinary URLs are built by lib/media/transform", () => {
     const cld = new CloudinaryMediaProvider({ cloudName: "demo", apiKey: "k", apiSecret: "s" });
     const t = [{ width: 400 }, { effect: "blur_faces" as const }];
-    expect(cld.url("saakshi/a", t, { signed: true })).toBe(buildCloudinaryUrl({ cloudName: "demo", publicId: "saakshi/a", transforms: t, apiSecret: "s" }));
+    expect(cld.url("saakshi/a", t, { signed: true })).toBe(buildCloudinaryUrl({ cloudName: "demo", publicId: "saakshi/a", transforms: t, apiSecret: "s", deliveryType: "authenticated" }));
     expect(cld.url("saakshi/a", t)).toBe("https://res.cloudinary.com/demo/image/upload/w_400/e_blur_faces/v1/saakshi/a");
   });
 });

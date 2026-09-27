@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Phone testing: `pnpm tunnel` serves the dev server on a Cloudflare quick-tunnel hostname,
+  // which Next's dev server would otherwise refuse as cross-origin.
+  allowedDevOrigins: ["*.trycloudflare.com"],
   serverExternalPackages: [
     // PGlite loads its .wasm/.data files relative to its own module, which bundling breaks.
     "@electric-sql/pglite",

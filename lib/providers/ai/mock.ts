@@ -59,7 +59,7 @@ const SIGNALS = ["litter", "plastic", "bottle", "bag", "glove", "broom", "saplin
 /** Public id from a mock or Cloudinary delivery URL; falls back to the raw string. */
 export function publicIdFromUrl(imageUrl: string): string {
   try {
-    const { pathname } = new URL(imageUrl);
+    const { pathname } = new URL(imageUrl, "http://relative.invalid"); // mock URLs are relative
     const i = pathname.indexOf("/image/upload/");
     const parsed = i >= 0 ? parseDeliveryPath(pathname.slice(i + 1)) : null;
     if (parsed) return parsed.publicId;
@@ -153,8 +153,14 @@ export function hashEmbedding(text: string, dims = EMBEDDING_DIMENSIONS): number
 export class MockAIProvider implements AIProvider {
   readonly kind = "mock" as const;
 
-  /** @param describe returns the text to key on for a public id (filename, tags, context). */
-  constructor(private readonly describe: (publicId: string) => Promise<string>) {}
+  /**
+   * @param describe returns the text to key on for a public id (filename, tags, context).
+   * @param readText mock-only stand-in for OCR: text known to be burned into the image.
+   */
+  constructor(
+    private readonly describe: (publicId: string) => Promise<string>,
+    private readonly readText: (publicId: string) => Promise<string | null> = async () => null,
+  ) {}
 
   async describePhoto(imageUrl: string): Promise<PhotoAnalysis> {
     const publicId = publicIdFromUrl(imageUrl);
@@ -187,7 +193,7 @@ export class MockAIProvider implements AIProvider {
       visualSignals: SIGNALS.filter((s) => words.has(tokens(s)[0] ?? s)),
       sdgs: SDGS[activity],
       childrenVisible: /\b(child|children|kids?|students?|pupils?|school|girls?|boys?)\b/.test(text),
-      textInImage: null,
+      textInImage: await this.readText(publicId),
       confidence: 0.55 + (seed % 35) / 100,
       method: "ai_estimated",
       model: "mock-vision-1",

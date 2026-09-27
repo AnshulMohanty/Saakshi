@@ -1,0 +1,303 @@
+{
+ "batchcomplete": true,
+ "continue": {
+  "gcmcontinue": "file|5343452d322e4a5047|33282315",
+  "continue": "gcmcontinue||"
+ },
+ "query": {
+  "pages": [
+   {
+    "pageid": 7470566,
+    "ns": 6,
+    "title": "File:Charkop Tree Plantation.JPG",
+    "imagerepository": "local",
+    "imageinfo": [
+     {
+      "size": 544590,
+      "width": 800,
+      "height": 600,
+      "thumburl": "https://upload.wikimedia.org/wikipedia/commons/d/d7/Charkop_Tree_Plantation.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+      "thumbwidth": 1920,
+      "thumbheight": 1440,
+      "thumbattribs": {
+       "src": "https://upload.wikimedia.org/wikipedia/commons/d/d7/Charkop_Tree_Plantation.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+       "decoding": "async",
+       "loading": "lazy",
+       "width": 1920,
+       "height": 1440
+      },
+      "url": "https://upload.wikimedia.org/wikipedia/commons/d/d7/Charkop_Tree_Plantation.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Charkop_Tree_Plantation.JPG",
+      "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=7470566",
+      "sha1": "01bdc5a0bf1b57c64b9a4033c8aeccfd4b3f9e3b",
+      "commonmetadata": [],
+      "extmetadata": {
+       "ImageDescription": {
+        "value": "Recent tree plantation drive held by concern residents.",
+        "source": "commons-desc-page"
+       },
+       "DateTimeOriginal": {
+        "value": "2009-08-04",
+        "source": "commons-desc-page"
+       },
+       "Artist": {
+        "value": "DLS",
+        "source": "commons-desc-page"
+       },
+       "LicenseShortName": {
+        "value": "Public domain",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "UsageTerms": {
+        "value": "Public domain",
+        "source": "commons-desc-page"
+       },
+       "AttributionRequired": {
+        "value": "false",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "Restrictions": {
+        "value": "",
+        "source": "commons-desc-page",
+        "hidden": ""
+       }
+      },
+      "mime": "image/jpeg"
+     }
+    ]
+   },
+   {
+    "pageid": 23465465,
+    "ns": 6,
+    "title": "File:India - Kids - Planting trees for her future (4040009491).jpg",
+    "imagerepository": "local",
+    "imageinfo": [
+     {
+      "size": 4978184,
+      "width": 3264,
+      "height": 2448,
+      "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/04/India_-_Kids_-_Planting_trees_for_her_future_%284040009491%29.jpg/1920px-India_-_Kids_-_Planting_trees_for_her_future_%284040009491%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "thumbwidth": 1920,
+      "thumbheight": 1440,
+      "thumbattribs": {
+       "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/04/India_-_Kids_-_Planting_trees_for_her_future_%284040009491%29.jpg/1920px-India_-_Kids_-_Planting_trees_for_her_future_%284040009491%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+       "decoding": "async",
+       "loading": "lazy",
+       "width": 1920,
+       "height": 1440,
+       "srcset": "https://upload.wikimedia.org/wikipedia/commons/0/04/India_-_Kids_-_Planting_trees_for_her_future_%284040009491%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+      },
+      "url": "https://upload.wikimedia.org/wikipedia/commons/0/04/India_-_Kids_-_Planting_trees_for_her_future_%284040009491%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:India_-_Kids_-_Planting_trees_for_her_future_(4040009491).jpg",
+      "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=23465465",
+      "sha1": "a5e87d3524b79578c14851e09def386bc9fa6a82",
+      "commonmetadata": [
+       {
+        "name": "Make",
+        "value": "Canon"
+       },
+       {
+        "name": "Model",
+        "value": "Canon PowerShot S5 IS"
+       },
+       {
+        "name": "DateTime",
+        "value": "2009:10:16 16:38:09"
+       },
+       {
+        "name": "DateTimeOriginal",
+        "value": "2009:07:24 11:06:51"
+       }
+      ],
+      "extmetadata": {
+       "ImageDescription": {
+        "value": "As part of a ceremony, women plant new saplings, their young daughter eager to help.",
+        "source": "commons-desc-page"
+       },
+       "DateTimeOriginal": {
+        "value": "2009-07-24 11:06",
+        "source": "commons-desc-page"
+       },
+       "Artist": {
+        "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/people/56796376@N00\">McKay Savage</a> from London, UK",
+        "source": "commons-desc-page"
+       },
+       "LicenseShortName": {
+        "value": "CC BY 2.0",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "UsageTerms": {
+        "value": "Creative Commons Attribution 2.0",
+        "source": "commons-desc-page"
+       },
+       "AttributionRequired": {
+        "value": "true",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "LicenseUrl": {
+        "value": "https://creativecommons.org/licenses/by/2.0",
+        "source": "commons-desc-page"
+       },
+       "Restrictions": {
+        "value": "",
+        "source": "commons-desc-page",
+        "hidden": ""
+       }
+      },
+      "mime": "image/jpeg"
+     }
+    ]
+   },
+   {
+    "pageid": 33114921,
+    "ns": 6,
+    "title": "File:Guinness World Records for \"Most Trees Planted\" broken in Oct 2010 and 2012.jpg",
+    "imagerepository": "local",
+    "imageinfo": [
+     {
+      "size": 8616442,
+      "width": 3888,
+      "height": 2592,
+      "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6c/Guinness_World_Records_for_%22Most_Trees_Planted%22_broken_in_Oct_2010_and_2012.jpg/1920px-Guinness_World_Records_for_%22Most_Trees_Planted%22_broken_in_Oct_2010_and_2012.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "thumbwidth": 1920,
+      "thumbheight": 1280,
+      "thumbattribs": {
+       "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6c/Guinness_World_Records_for_%22Most_Trees_Planted%22_broken_in_Oct_2010_and_2012.jpg/1920px-Guinness_World_Records_for_%22Most_Trees_Planted%22_broken_in_Oct_2010_and_2012.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+       "decoding": "async",
+       "loading": "lazy",
+       "width": 1920,
+       "height": 1280,
+       "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6c/Guinness_World_Records_for_%22Most_Trees_Planted%22_broken_in_Oct_2010_and_2012.jpg/3840px-Guinness_World_Records_for_%22Most_Trees_Planted%22_broken_in_Oct_2010_and_2012.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+      },
+      "url": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Guinness_World_Records_for_%22Most_Trees_Planted%22_broken_in_Oct_2010_and_2012.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Guinness_World_Records_for_%22Most_Trees_Planted%22_broken_in_Oct_2010_and_2012.jpg",
+      "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=33114921",
+      "sha1": "42670c6a94299e6e40ad0c9c9c6cd77f3902e59e",
+      "commonmetadata": [
+       {
+        "name": "Make",
+        "value": "Canon"
+       },
+       {
+        "name": "Model",
+        "value": "Canon EOS 40D"
+       },
+       {
+        "name": "DateTime",
+        "value": "2010:11:21 15:54:40"
+       },
+       {
+        "name": "DateTimeOriginal",
+        "value": "2010:10:10 10:29:11"
+       }
+      ],
+      "extmetadata": {
+       "ImageDescription": {
+        "value": "Guinness World Records for \"Most Trees Planted\" broken in October 2010 and 2012",
+        "source": "commons-desc-page"
+       },
+       "DateTimeOriginal": {
+        "value": "2010-10-10 10:29:11",
+        "source": "commons-desc-page"
+       },
+       "Artist": {
+        "value": "Drukpa Publications Pvt. Ltd.",
+        "source": "commons-desc-page"
+       },
+       "LicenseShortName": {
+        "value": "CC BY-SA 3.0",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "UsageTerms": {
+        "value": "Creative Commons Attribution-Share Alike 3.0",
+        "source": "commons-desc-page"
+       },
+       "AttributionRequired": {
+        "value": "true",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "LicenseUrl": {
+        "value": "https://creativecommons.org/licenses/by-sa/3.0",
+        "source": "commons-desc-page"
+       },
+       "Restrictions": {
+        "value": "",
+        "source": "commons-desc-page",
+        "hidden": ""
+       }
+      },
+      "mime": "image/jpeg"
+     }
+    ]
+   },
+   {
+    "pageid": 47028536,
+    "ns": 6,
+    "title": "File:Jawaharlal Nehru planting a tree, Aarey Milk Colony, Bombay, 4 March 1951.jpg",
+    "imagerepository": "local",
+    "imageinfo": [
+     {
+      "size": 58850,
+      "width": 460,
+      "height": 640,
+      "thumburl": "https://upload.wikimedia.org/wikipedia/commons/c/c2/Jawaharlal_Nehru_planting_a_tree%2C_Aarey_Milk_Colony%2C_Bombay%2C_4_March_1951.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+      "thumbwidth": 1920,
+      "thumbheight": 2671,
+      "thumbattribs": {
+       "src": "https://upload.wikimedia.org/wikipedia/commons/c/c2/Jawaharlal_Nehru_planting_a_tree%2C_Aarey_Milk_Colony%2C_Bombay%2C_4_March_1951.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+       "decoding": "async",
+       "loading": "lazy",
+       "width": 1920,
+       "height": 2671
+      },
+      "url": "https://upload.wikimedia.org/wikipedia/commons/c/c2/Jawaharlal_Nehru_planting_a_tree%2C_Aarey_Milk_Colony%2C_Bombay%2C_4_March_1951.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Jawaharlal_Nehru_planting_a_tree,_Aarey_Milk_Colony,_Bombay,_4_March_1951.jpg",
+      "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=47028536",
+      "sha1": "9fe36f7f0e3590b40ed496dc0c6bbe350e5e1c9c",
+      "commonmetadata": [],
+      "extmetadata": {
+       "ImageDescription": {
+        "value": "Jawaharlal Nehru planting a tree, Aarey Milk Colony, Bombay, 4 March 1951",
+        "source": "commons-desc-page"
+       },
+       "DateTimeOriginal": {
+        "value": "before 1956<div style=\"display: none;\">date QS:P,+1956-00-00T00:00:00Z/7,P1326,+1956-00-00T00:00:00Z/9</div>",
+        "source": "commons-desc-page"
+       },
+       "Artist": {
+        "value": "Unknown author<span style=\"display: none;\">Unknown author</span>",
+        "source": "commons-desc-page"
+       },
+       "LicenseShortName": {
+        "value": "Public domain",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "UsageTerms": {
+        "value": "Public domain",
+        "source": "commons-desc-page"
+       },
+       "AttributionRequired": {
+        "value": "false",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "Restrictions": {
+        "value": "",
+        "source": "commons-desc-page",
+        "hidden": ""
+       }
+      },
+      "mime": "image/jpeg"
+     }
+    ]
+   }
+  ]
+ }
+}

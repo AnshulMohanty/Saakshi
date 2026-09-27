@@ -3,9 +3,10 @@ import { connection } from "next/server";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { verifyAuditLog } from "@/lib/audit";
+import { verifyAllChains } from "@/lib/audit";
 import { getConfig } from "@/lib/config";
 import { getDbHandle, rowsOf } from "@/lib/db/client";
+import { DemoResetButton } from "./demo-reset-button";
 
 export const metadata = { title: "Provider status" };
 
@@ -13,7 +14,7 @@ async function databaseHealth() {
   try {
     const { db, kind } = await getDbHandle();
     const [row] = rowsOf<{ n: number }>(await db.execute(sql`select count(*)::int as n from drizzle.__drizzle_migrations`));
-    const audit = await verifyAuditLog(db);
+    const audit = await verifyAllChains(db);
     return { ok: true as const, kind, migrations: row?.n ?? 0, audit };
   } catch (err) {
     return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
@@ -64,6 +65,16 @@ export default async function StatusPage() {
         </TableBody>
       </Table>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Demo data</CardTitle>
+          <CardDescription>Three projects auto-built from Wikimedia Commons, plus four planted test inputs.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <DemoResetButton />
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
@@ -77,9 +88,11 @@ export default async function StatusPage() {
                 <li>
                   Audit chain:{" "}
                   {health.audit.ok ? (
-                    <Badge variant="secondary">intact · {health.audit.count} rows</Badge>
+                    <Badge variant="secondary">
+                      {health.audit.chains} chains intact · {health.audit.entries} rows
+                    </Badge>
                   ) : (
-                    <Badge variant="destructive">broken at row {health.audit.brokenAt}</Badge>
+                    <Badge variant="destructive">{health.audit.broken.length} broken chain(s)</Badge>
                   )}
                 </li>
               </ul>
