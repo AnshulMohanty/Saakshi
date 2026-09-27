@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { BandBadge } from "@/components/trust";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,6 +37,8 @@ interface Shot {
   reasons?: UploadReason[];
   lowAccuracy?: boolean;
   error?: string;
+  band?: "VERIFIED" | "NEEDS_REVIEW" | "FLAGGED" | null;
+  score?: number | null;
 }
 
 async function fetchToken(project: string | null, spot: string | null): Promise<TokenInfo> {
@@ -181,7 +184,7 @@ export function CaptureClient({ project, spot }: { project: string | null; spot:
       try {
         const st = await fetchAssetStatus(assetId);
         if (st.failed) return patchShot(key, { phase: "failed", error: st.steps.find((s) => s.status === "error")?.error ?? "Pipeline step failed" });
-        if (st.status !== "processing") return patchShot(key, { phase: "ready" });
+        if (st.status !== "processing") return patchShot(key, { phase: "ready", band: st.trustBand, score: st.trustScore });
       } catch {
         // transient: keep polling
       }
@@ -327,7 +330,7 @@ export function CaptureClient({ project, spot }: { project: string | null; spot:
                 <img src={s.preview} alt="" className="aspect-square w-full object-cover" />
                 <div className="flex flex-col gap-1 p-2 text-xs">
                   <div className="flex flex-wrap gap-1">
-                    <Badge variant={s.phase === "failed" ? "destructive" : "secondary"}>{s.phase === "ready" ? "ready · scoring in Phase 4" : s.phase}</Badge>
+                    {s.phase === "ready" ? <BandBadge band={s.band ?? null} score={s.score} /> : <Badge variant={s.phase === "failed" ? "destructive" : "secondary"}>{s.phase}</Badge>}
                     {s.source === "witness" && s.attested !== undefined ? <Badge variant={s.attested ? "default" : "outline"}>{s.attested ? "attested" : "not attested"}</Badge> : null}
                     {s.source === "upload" ? <Badge variant="outline">upload</Badge> : null}
                   </div>

@@ -14,6 +14,11 @@ export async function runCli(name: string, action: () => Promise<DemoSummary>) {
     if (s.planted) for (const p of s.planted) console.log(`Planted ${p.testCase.padEnd(18)} ${p.created ? "new" : "exists"}  → ${p.project}`);
     console.log("\nProjects:");
     for (const line of await projectTable()) console.log(`  ${line}`);
+    const t = s.trust;
+    console.log(`\nTrust (archive photos): ${Object.entries(t.bands).map(([k, v]) => `${k} ${v}`).join(", ")}`);
+    console.log(`  Top reasons: ${t.topReasons.map((r) => `${r.code} ${r.n}`).join(", ") || "none"}`);
+    console.log(`  Archive photos with a hard flag: ${t.hardFlagged.length ? t.hardFlagged.map((h) => `${h.externalId} ${h.codes.join("+")}`).join("; ") : "none"}`);
+    for (const p of t.planted) console.log(`  Planted ${p.testCase.padEnd(18)} ${String(p.band).padEnd(12)} score ${p.score}  ${p.hardFlags.join(", ") || "no hard flag"}`);
     console.log(`\nAssets by status: ${Object.entries(s.statuses).map(([k, v]) => `${k} ${v}`).join(", ") || "none"}`);
     console.log(
       `Audit: ${s.audit.ok ? "all chains intact" : `${s.audit.broken.length} BROKEN chain(s): ${JSON.stringify(s.audit.broken)}`} (${s.audit.chains} chains, ${s.audit.entries} rows)`,

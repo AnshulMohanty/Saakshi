@@ -175,7 +175,13 @@ describe("evidence pipeline", () => {
     expect(Object.keys(done.pipeline.steps).sort()).toEqual([...STEP_ORDER].sort()); // jsonb reorders keys
     expect(done.pipeline.completedAt).toBeTruthy();
     expect(Object.values(done.pipeline.steps).every((s) => s?.status === "done")).toBe(true);
-    expect((await ctx.media.store.readSidecar(done.cldPublicId))?.metadata).toMatchObject({ project_id: projectId, source: "upload" });
+    expect(done).toMatchObject({ trustBand: "VERIFIED" });
+    expect(done.trustScore).toBeGreaterThanOrEqual(75);
+    expect(done.trustReasons?.map((r) => r.code)).toEqual(expect.arrayContaining(["LOCATION_EXIF", "TIME_IN_WINDOW", "UNIQUE", "AUTH_CLEAR"]));
+    const sidecar = await ctx.media.store.readSidecar(done.cldPublicId);
+    expect(sidecar?.metadata).toMatchObject({ project_id: projectId, source: "upload", trust_band: "VERIFIED", trust_score: String(done.trustScore) });
+    expect(sidecar?.tags).toContain("trust_verified");
+    expect(sidecar?.tags).not.toContain("trust_flagged");
 
     expect((await auditCount()) - before).toBe(STEP_ORDER.length);
     expect((await verifyAllChains(ctx.db)).ok).toBe(true);
@@ -219,7 +225,9 @@ describe("evidence pipeline", () => {
     expect(retry[0]).toMatchObject({ step: "parseMetadata", skipped: true });
     expect(retry[1]).toMatchObject({ step: "analyze", skipped: false });
     [row] = await ctx.db.select().from(assets).where(eq(assets.id, a.id));
-    expect(row.status).toBe("ready");
+    // The identical fixture is already in this project (earlier tests): a person should look.
+    expect(row).toMatchObject({ status: "flagged", trustBand: "NEEDS_REVIEW" });
+    expect(row.trustReasons?.find((r) => r.kind === "review")?.code).toBe("POSSIBLE_DUPLICATE");
     expect(row.pipeline.steps.analyze).toMatchObject({ status: "done", attempts: 2 });
     expect((await verifyAllChains(ctx.db)).ok).toBe(true);
   });

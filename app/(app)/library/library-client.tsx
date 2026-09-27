@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { BandBadge } from "@/components/trust";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { LibraryData } from "@/lib/library";
@@ -145,6 +146,7 @@ export function LibraryClient({ initial }: { initial: LibraryState }) {
                 <div className="flex flex-col gap-1 p-2 text-xs">
                   <div className="flex flex-wrap gap-1">
                     <Badge variant={statusVariant(a.status, a.failed)}>{a.failed ? "error" : a.status}</Badge>
+                    {a.trustBand ? <BandBadge band={a.trustBand} /> : null}
                     <Badge variant="outline">{a.source.replace("_", " ")}</Badge>
                     {a.testCase ? <Badge variant="destructive">{a.testCase.replace("_", " ")}</Badge> : null}
                     {a.attested ? <Badge>attested</Badge> : null}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { BandBadge, HistoryIntact, ReasonList } from "@/components/trust";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -59,6 +60,27 @@ export function AssetDrawer({ id, refreshKey, onClose }: { id: string | null; re
                 </Badge>
               ))}
             </div>
+
+            <Section title="Trust">
+              <div className="flex flex-wrap items-center gap-2" data-testid="drawer-trust">
+                <BandBadge band={d.trust.band} score={d.trust.score} />
+                <HistoryIntact assetId={d.id} refreshKey={refreshKey} />
+              </div>
+              {d.trust.reasons.length ? <ReasonList reasons={d.trust.reasons} /> : <p className="text-muted-foreground">Not scored yet.</p>}
+              {d.review ? (
+                <p className="text-muted-foreground">
+                  {d.review.decision === "approve" ? "Approved" : "Rejected"} by {d.review.actor} on {time(d.review.at)}: “{d.review.note}”
+                </p>
+              ) : null}
+              {d.duplicates.length ? (
+                <Rows
+                  rows={d.duplicates.map((m) => [
+                    m.exact ? "Identical file" : `Near-duplicate (${m.hamming} bits)`,
+                    `${m.projectName ?? "Unassigned"}${m.sameProject ? " (this project)" : ""} · ${m.matchIsLater ? "copy submitted later" : "earlier photo"}`,
+                  ])}
+                />
+              ) : null}
+            </Section>
 
             <Section title="AI understanding">
               {d.ai ? (

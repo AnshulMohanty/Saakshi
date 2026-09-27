@@ -22,6 +22,8 @@ export interface AssetStatus {
   steps: Array<{ name: string; status: string; error?: string }>;
   failed: boolean;
   scored: boolean;
+  trustScore: number | null;
+  trustBand: "VERIFIED" | "NEEDS_REVIEW" | "FLAGGED" | null;
   attested: boolean;
   reasons: UploadReason[];
   projectId: string | null;

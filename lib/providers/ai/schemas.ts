@@ -28,7 +28,8 @@ export const PhotoAnalysis = PhotoAnalysisOutput.extend({
 });
 export type PhotoAnalysis = z.infer<typeof PhotoAnalysis>;
 
-export const TrustBandFilter = z.enum(["high", "medium", "low"]);
+/** Trust Engine bands (lib/trust). */
+export const TrustBandFilter = z.enum(["VERIFIED", "NEEDS_REVIEW", "FLAGGED"]);
 export const SourceFilter = z.enum(["witness", "upload", "archive", "planted_test"]);
 
 export const SearchFilters = z.object({

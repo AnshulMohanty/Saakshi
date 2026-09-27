@@ -1,17 +1,5 @@
-import { timingSafeEqual } from "node:crypto";
-import { getConfig } from "@/lib/config";
+import { adminAllowed as authorised, hasAdminSecret } from "@/lib/admin";
 import { currentDemoJob, startDemoReset } from "@/lib/demo/job";
-
-function hasAdminSecret(request: Request): boolean {
-  const secret = getConfig().env.DEMO_ADMIN_SECRET;
-  const given = request.headers.get("x-demo-admin-secret") ?? "";
-  return !!secret && given.length === secret.length && timingSafeEqual(Buffer.from(given), Buffer.from(secret));
-}
-
-/** Development: open. Production: DEMO_ADMIN_SECRET required. */
-function authorised(request: Request): boolean {
-  return !getConfig().isProduction || hasAdminSecret(request);
-}
 
 /**
  * POST {includeWitness?}: wipe demo data, re-import (cache-first) and re-plant, in the background.

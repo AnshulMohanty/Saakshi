@@ -83,10 +83,12 @@ export function parseSearchQuery(query: string): ParsedSearch {
   };
 
   let band: Band = null;
+  const LEVEL: Record<string, Band> = { high: "VERIFIED", medium: "NEEDS_REVIEW", low: "FLAGGED" };
   const b = take(/\b(high|medium|low)[- ]?trust\b/i);
-  if (b) band = b[1].toLowerCase() as Band;
-  else if (take(/\b(trusted|verified)\b/i)) band = "high";
-  else if (take(/\b(flagged|suspicious|untrusted)\b/i)) band = "low";
+  if (b) band = LEVEL[b[1].toLowerCase()];
+  else if (take(/\b(trusted|verified)\b/i)) band = "VERIFIED";
+  else if (take(/\b(needs?[- ]review|under review|unreviewed)\b/i)) band = "NEEDS_REVIEW";
+  else if (take(/\b(flagged|suspicious|untrusted)\b/i)) band = "FLAGGED";
 
   let source: ParsedSearch["filters"]["source"] = null;
   if (take(/\bplanted[ _-]?tests?\b/i)) source = "planted_test";

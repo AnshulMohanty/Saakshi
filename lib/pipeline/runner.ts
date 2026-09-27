@@ -56,13 +56,14 @@ export async function executeStep(deps: PipelineDeps, assetId: string, name: Pip
   const attempts = (previous?.attempts ?? 0) + 1;
   await writeStepRecord(deps.db, assetId, name, { status: "running", attempts, startedAt });
   try {
-    const { output, patch } = await STEPS[name](deps, asset);
+    const { output, patch, apply } = await STEPS[name](deps, asset);
     const rec: PipelineStepRecord = { status: "done", attempts, startedAt, finishedAt: new Date().toISOString(), output };
     await deps.db.transaction(async (tx) => {
       const pipelinePatch =
         name === "finalize"
           ? sql`jsonb_set(jsonb_set(${assets.pipeline}, ${stepPath(name)}::text[], ${JSON.stringify(rec)}::jsonb, true), '{completedAt}', ${JSON.stringify(rec.finishedAt)}::jsonb, true)`
           : sql`jsonb_set(${assets.pipeline}, ${stepPath(name)}::text[], ${JSON.stringify(rec)}::jsonb, true)`;
+      if (apply) await apply(tx as unknown as DB);
       await tx.update(assets).set({ ...patch, pipeline: pipelinePatch }).where(eq(assets.id, assetId));
       await appendAudit(tx as unknown as DB, { assetId, actor: PIPELINE_ACTOR, action: `pipeline.${name}`, detail: auditDetail(output) });
     });

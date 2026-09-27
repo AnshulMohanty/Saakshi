@@ -159,6 +159,9 @@ export async function importDemo(deps: DemoDeps, candidates: Candidate[], cfg: D
 
   const report: ImportReport = { plan, projects: [], imported: 0, skipped: 0, requeued: 0 };
   const total = plan.projects.reduce((n, p) => n + p.files.length, 0);
+  // Retire empty leftovers from earlier plans first: an old project over the same site would
+  // otherwise win geo/time assignment for the new photos.
+  await retireStaleProjects(deps, plan.projects.map((p) => demoProjectId(p.slug)), log);
   let i = 0;
   for (const p of plan.projects) {
     const project = await upsertProject(deps, p);

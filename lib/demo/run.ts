@@ -14,6 +14,7 @@ import { getDb } from "../db/client";
 import { assets, projects } from "../db/schema";
 import { drainQueue, enqueueAsset, getPipelineDeps } from "../pipeline";
 import { runPipeline } from "../pipeline/runner";
+import { rescoreAll, rescoreProject, trustSummary, type TrustSummary } from "../pipeline/score";
 import { getGeocoder } from "../providers/geocoder";
 import { getMediaProvider } from "../providers/media";
 import { HandlerRegistry } from "../providers/queue";
@@ -55,7 +56,19 @@ async function setup(opts: DemoRunOptions): Promise<DemoDeps & { drain: () => Pr
     offline: opts.offline,
     log: opts.log,
   });
-  const base = { db, media: getMediaProvider(), geocoder: getGeocoder(), thumbs, log: opts.log };
+  const media = getMediaProvider();
+  const base: Omit<DemoDeps, "enqueue"> = {
+    db,
+    media,
+    geocoder: getGeocoder(),
+    thumbs,
+    log: opts.log,
+    // A demo site that moved or changed dates re-scores the photos already in it.
+    onSiteChanged: async (projectId) => {
+      const r = await rescoreProject(db, media, projectId, "demo site changed");
+      if (r.changed) opts.log?.(`Re-scored ${r.rescored} photo(s) in a changed demo project (${r.changed} changed).`);
+    },
+  };
   if (!opts.inline) return { ...base, enqueue: enqueueAsset, drain: drainQueue };
 
   const deps = await getPipelineDeps();
@@ -72,17 +85,21 @@ export interface DemoSummary {
   import?: ImportReport;
   planted?: PlantedAsset[];
   statuses: Record<string, number>;
+  trust: TrustSummary;
   audit: { ok: boolean; chains: number; entries: number; broken: Array<{ assetId: string | null; firstBrokenAt: number }> };
 }
 
-async function summarise(deps: DemoDeps): Promise<Pick<DemoSummary, "statuses" | "audit">> {
+async function summarise(deps: DemoDeps): Promise<Pick<DemoSummary, "statuses" | "audit" | "trust">> {
+  // Photos scored concurrently can miss each other for a moment; one ordered pass settles them.
+  const settled = await rescoreAll(deps.db, deps.media, "settle after demo run");
+  if (settled.changed) deps.log?.(`Settled trust scores: ${settled.changed} of ${settled.rescored} changed.`);
   const rows = await deps.db
     .select({ status: assets.status, n: count() })
     .from(assets)
     .where(inArray(assets.source, ["archive", "planted_test"]))
     .groupBy(assets.status);
   const audit = await verifyAllChains(deps.db);
-  return { statuses: Object.fromEntries(rows.map((r) => [r.status, r.n])), audit: { ok: audit.ok, chains: audit.chains, entries: audit.entries, broken: audit.broken } };
+  return { statuses: Object.fromEntries(rows.map((r) => [r.status, r.n])), trust: await trustSummary(deps.db), audit: { ok: audit.ok, chains: audit.chains, entries: audit.entries, broken: audit.broken } };
 }
 
 export async function runDemoImport(opts: DemoRunOptions = {}): Promise<DemoSummary> {

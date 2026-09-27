@@ -15,7 +15,7 @@ import { createStageProject, STAGE_SPOT_SLUG } from "@/lib/demo/stage";
 import { runPipeline } from "@/lib/pipeline/runner";
 import { HandlerRegistry } from "@/lib/providers/queue";
 import { InlineQueue } from "@/lib/providers/queue/mock";
-import { createTestContext, type TestContext } from "./helpers";
+import { createTestContext, synthScene, type TestContext } from "./helpers";
 
 const IMAGES = ["scene-a.png", "scene-b.png", "litter-grass.png", "geotagged.jpg"].map((f) => readFileSync(path.join(__dirname, "fixtures", f)));
 
@@ -67,7 +67,8 @@ describe("demo import → plant → reset (mock providers, in-memory DB)", () =>
       db: ctx.db,
       media: ctx.media,
       geocoder: ctx.deps.geocoder,
-      thumbs: { downloadThumb: async (f) => IMAGES[f.pageId % IMAGES.length] },
+      // A distinct scene per Commons file, so near-duplicates are only the ones we plant.
+      thumbs: { downloadThumb: async (f) => synthScene(f.pageId, 320, 240) },
       enqueue: (assetId) => queue.send("asset.uploaded", { assetId }),
     };
   }, 60_000);
@@ -88,7 +89,7 @@ describe("demo import → plant → reset (mock providers, in-memory DB)", () =>
     return w.id;
   }
 
-  it("imports three auto-built projects with stable ids; every asset reaches ready with project, spot, place, caption and tags", async () => {
+  it("imports three auto-built projects with stable ids; every asset is scored with project, spot, place, caption and tags", async () => {
     const report = await importDemo(deps, candidates, cfg);
     await queue.drain();
     expect(report.projects.map((p) => [p.key, p.id, p.slug, p.type])).toEqual([
@@ -107,7 +108,11 @@ describe("demo import → plant → reset (mock providers, in-memory DB)", () =>
     const rows = await ctx.db.select().from(assets).where(eq(assets.source, "archive"));
     expect(rows).toHaveLength(report.imported);
     for (const a of rows) {
-      expect(a.status, a.externalId!).toBe("ready");
+      // Archive photos inside their site and dates, no copies: never a hard flag.
+      const hard = a.trustReasons?.filter((r) => r.kind === "hard").map((r) => r.code);
+      expect(hard, a.externalId!).toEqual([]);
+      expect(a.status, a.externalId!).toBe(a.trustBand === "VERIFIED" ? "ready" : "flagged");
+      expect(a.trustReasons?.reduce((s, r) => s + r.points, 0)).toBe(a.trustScore);
       expect(a).toMatchObject({ exifSource: "commons_api", capturedAtTzAssumed: true, assignmentMethod: "geo_time" });
       expect(a.projectId).toBeTruthy();
       expect(a.spotId).toBeTruthy();
@@ -142,6 +147,22 @@ describe("demo import → plant → reset (mock providers, in-memory DB)", () =>
     expect(by.location_mismatch).toMatchObject({ projectId: ids.A, exifSource: "commons_api" });
     expect(by.stamp_mismatch.ai?.textInImage).toMatch(/GPS Map Camera[\s\S]*Lat/);
     for (const r of rows) expect(r.attribution?.source_url).toContain("commons.wikimedia.org");
+
+    // Trust Engine: each planted input is FLAGGED for its own reason, capped at 40.
+    const expected = { reused: "REUSED", stock: "STOCK_SUSPECTED", location_mismatch: "LOCATION_MISMATCH", stamp_mismatch: "STAMP_MISMATCH" } as const;
+    for (const [testCase, code] of Object.entries(expected)) {
+      const r = by[testCase];
+      expect(r, testCase).toMatchObject({ trustBand: "FLAGGED", status: "flagged" });
+      expect(r.trustScore!, testCase).toBeLessThanOrEqual(40);
+      expect(r.trustReasons?.filter((x) => x.kind === "hard").map((x) => x.code), testCase).toEqual([code]);
+    }
+    // REUSED lands on the later copy only; the original in A just learns it was copied.
+    const original = rows.length && (await ctx.db.select().from(assets).where(eq(assets.externalId, picks.reused.externalId)))[0];
+    expect(original && original.trustReasons?.map((x) => x.code)).toContain("COPY_LATER_SUBMITTED");
+    expect(original && original.trustBand).not.toBe("FLAGGED");
+    const sidecar = await ctx.media.store.readSidecar(by.stock.cldPublicId);
+    expect(sidecar?.metadata).toMatchObject({ trust_band: "FLAGGED" });
+    expect(sidecar?.tags).toContain("trust_flagged");
 
     const again = await plantDemo(deps, plan, candidates);
     expect(again.every((p) => !p.created)).toBe(true);

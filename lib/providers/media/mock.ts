@@ -18,7 +18,7 @@ import {
   type Transform,
 } from "../../media/transform";
 import { phash } from "../../phash";
-import type { MediaAsset, MediaProvider, UploadInput, UrlOptions } from "./index";
+import type { MediaAsset, MediaProvider, MetadataTags, UploadInput, UrlOptions } from "./index";
 import { mockHaystack, MockMediaStore } from "./mock-store";
 import { renderTransform, type Rendered } from "./mock-render";
 
@@ -137,8 +137,12 @@ export class MockMediaProvider implements MediaProvider {
     });
   }
 
-  async updateMetadata(publicId: string, fields: Record<string, string>, { tags = [] }: { tags?: string[] } = {}): Promise<void> {
-    await this.store.update(publicId, (s) => ({ ...s, metadata: { ...s.metadata, ...fields }, tags: [...new Set([...s.tags, ...tags])] }));
+  async updateMetadata(publicId: string, fields: Record<string, string>, { tags = [], removeTags = [] }: MetadataTags = {}): Promise<void> {
+    await this.store.update(publicId, (s) => ({
+      ...s,
+      metadata: { ...s.metadata, ...fields },
+      tags: [...new Set([...s.tags.filter((t) => !removeTags.includes(t)), ...tags])],
+    }));
   }
 
   async fetchDerived(publicId: string, transforms: Transform): Promise<Buffer> {

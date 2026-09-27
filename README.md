@@ -19,6 +19,7 @@ pnpm dev           # http://localhost:3000
 ```
 
 - `/library`: every photo on a map or grid, with filters. Click one for provenance, AI output, pipeline steps and audit trail.
+- `/review`: photos the Trust Engine did not verify, with its reasons. Approve or reject with a note (keys J/K/A/R).
 - `/capture?project=<slug>`: Witness Capture (live camera and GPS, capture token, attestation).
 - `/dev/status`: which providers are mocked or real, and a **Run demo import** button that works while `pnpm dev` is running.
 
@@ -80,6 +81,20 @@ npx inngest-cli@latest dev -u http://localhost:3000/api/inngest
 QUEUE=inngest-dev pnpm dev
 ```
 
+## Trust Engine
+
+Rule-based and deterministic (`lib/trust`, pure and browser-safe). Every point is a reason with a
+fixed sentence. Hard flags (reused, stock, location mismatch, stamp mismatch) cap the score at 40.
+Bands: VERIFIED ≥ 75 with no flags, NEEDS_REVIEW 45–74 or any review flag, FLAGGED otherwise.
+Rules, choices and demo results: [docs/trust.md](docs/trust.md). After `pnpm demo:reset`, all 55
+archive photos are VERIFIED with no hard flag, and each planted input is FLAGGED for its own reason.
+
+```
+$ pnpm test
+ Test Files  19 passed (19)
+      Tests  276 passed (276)
+```
+
 ## Stack
 
 Next.js 16 (App Router) · TypeScript · Tailwind v4 + shadcn/ui · Drizzle ORM · PGlite + pgvector
@@ -90,8 +105,8 @@ locally / Postgres in production · Inngest · Zod · Vitest · sharp · exifr �
 1. Foundation + mock mode ✓
 2. Open-data importer (Wikimedia Commons) ✓
 3. Witness Capture + ingest pipeline ✓
-4. Trust Engine + review ← next
-5. Before/after + monitoring
+4. Trust Engine + review ✓
+5. Before/after + monitoring ← next
 6. Search + outputs (reports, evidence pages)
 7. Design system + demo mode
 8. Real keys + deploy

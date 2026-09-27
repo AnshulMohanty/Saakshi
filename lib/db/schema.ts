@@ -24,6 +24,9 @@ import {
 import type { ClaimMethod } from "../claims";
 import type { TransformStep } from "../media/transform";
 import type { PhotoAnalysis } from "../providers/ai/schemas";
+import type { TrustBand, TrustReason } from "../trust/types";
+
+export type { TrustReason };
 
 export const EMBEDDING_DIMENSIONS = 1536;
 
@@ -72,11 +75,15 @@ export interface TransformEdit {
   note?: string;
 }
 
-export interface TrustReason {
-  code: string;
-  /** Signed contribution to the score. */
-  weight: number;
-  message: string;
+/** A reviewer's decision. It never changes the score or band; it sets status and moderation. */
+export interface ReviewDecision {
+  decision: "approve" | "reject";
+  note: string;
+  actor: string;
+  at: string;
+  /** Band and score at the time of review, for the record. */
+  band: TrustBand | null;
+  score: number | null;
 }
 
 export interface ModerationResult {
@@ -217,8 +224,10 @@ export const assets = pgTable(
     attribution: jsonb("attribution").$type<Attribution>(),
 
     trustScore: integer("trust_score"),
-    trustBand: text("trust_band"),
+    trustBand: text("trust_band").$type<TrustBand>(),
     trustReasons: jsonb("trust_reasons").$type<TrustReason[]>(),
+    scoredAt: timestamp("scored_at", { withTimezone: true }),
+    review: jsonb("review").$type<ReviewDecision>(),
     status: assetStatus("status").notNull().default("processing"),
     transforms: jsonb("transforms").$type<TransformEdit[]>().notNull().default([]),
 
@@ -257,7 +266,13 @@ export const duplicates = pgTable(
       .notNull()
       .references(() => assets.id, { onDelete: "cascade" }),
     hamming: integer("hamming").notNull(),
+    /** Identical file (same etag). */
+    exact: boolean("exact").notNull().default(false),
     sameProject: boolean("same_project").notNull(),
+    sameSpot: boolean("same_spot").notNull().default(false),
+    gapHours: doublePrecision("gap_hours"),
+    /** The matched photo came later (so this row's asset is the original). */
+    matchIsLater: boolean("match_is_later").notNull().default(false),
     ...timestamps(),
   },
   (t) => [uniqueIndex("duplicates_pair_key").on(t.assetId, t.matchAssetId), index("duplicates_match_idx").on(t.matchAssetId)],

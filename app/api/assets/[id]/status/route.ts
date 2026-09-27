@@ -19,6 +19,7 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/assets/[id]
       spotId: assets.spotId,
       caption: assets.caption,
       trustScore: assets.trustScore,
+      trustBand: assets.trustBand,
     })
     .from(assets)
     .where(eq(assets.id, id))
@@ -31,8 +32,9 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/assets/[id]
     source: a.source,
     steps,
     failed: steps.some((s) => s.status === "error"),
-    // Phase 4 fills trustScore; until then "ready" is the end of the line.
     scored: a.trustScore !== null,
+    trustScore: a.trustScore,
+    trustBand: a.trustBand,
     attested: a.capture?.attested ?? false,
     reasons: a.capture?.reasons ?? [],
     projectId: a.projectId,

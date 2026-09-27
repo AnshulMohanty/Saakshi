@@ -1,6 +1,6 @@
 /**
  * Planted test inputs (source = planted_test, test_case set, original Commons attribution kept).
- * Each is built from real Commons photos so Phase 4's Trust Engine has something to catch:
+ * Each is built from real Commons photos so the Trust Engine has something to catch:
  *   1. reused:            a project-A photo, lightly re-cropped + re-encoded, uploaded into C
  *   2. stock:             an A-style photo with a tiled "© STOCKIMAGES" watermark, into A
  *   3. location_mismatch: a geotagged photo from > 500 km away, into A
@@ -144,8 +144,10 @@ export async function plantDemo(
         const m = await sharp(buf).metadata();
         const w = m.width ?? 1920;
         const h = m.height ?? 1280;
+        // 2% off each side: visibly a different file, still within pHash match range (≤ 8 bits;
+        // 4% drifted up to 14 bits on smooth scenes). See docs/trust.md.
         return sharp(buf)
-          .extract({ left: Math.round(w * 0.04), top: Math.round(h * 0.04), width: Math.round(w * 0.92), height: Math.round(h * 0.92) })
+          .extract({ left: Math.round(w * 0.02), top: Math.round(h * 0.02), width: Math.round(w * 0.96), height: Math.round(h * 0.96) })
           .resize({ width: 1600 })
           .jpeg({ quality: 72 })
           .toBuffer();

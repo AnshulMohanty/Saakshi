@@ -4,7 +4,7 @@
  */
 import { NotConfiguredError } from "../../errors";
 import { buildCloudinaryUrl, type Transform } from "../../media/transform";
-import type { MediaAsset, MediaProvider, UploadInput, UrlOptions } from "./index";
+import type { MediaAsset, MediaProvider, MetadataTags, UploadInput, UrlOptions } from "./index";
 
 export interface CloudinaryCredentials {
   cloudName: string;
@@ -33,7 +33,7 @@ export class CloudinaryMediaProvider implements MediaProvider {
     });
   }
 
-  async updateMetadata(publicId: string, fields: Record<string, string>, opts?: { tags?: string[] }): Promise<void> {
+  async updateMetadata(publicId: string, fields: Record<string, string>, opts?: MetadataTags): Promise<void> {
     void publicId;
     void fields;
     void opts;

@@ -43,12 +43,17 @@ export interface UrlOptions {
   signed?: boolean;
 }
 
+export interface MetadataTags {
+  tags?: string[];
+  removeTags?: string[];
+}
+
 export interface MediaProvider {
   readonly kind: "mock" | "real";
   upload(input: UploadInput): Promise<MediaAsset>;
   url(publicId: string, transforms: Transform, opts?: UrlOptions): string;
-  /** Contextual metadata (key/values) and, optionally, tags to add. */
-  updateMetadata(publicId: string, fields: Record<string, string>, opts?: { tags?: string[] }): Promise<void>;
+  /** Contextual metadata (key/values, merged), tags to add and tags to remove (real: add_context, add_tag, remove_tag). */
+  updateMetadata(publicId: string, fields: Record<string, string>, opts?: MetadataTags): Promise<void>;
   setModeration(publicId: string, status: "approved" | "rejected"): Promise<void>;
   /** Segmentation mask for `prompt` (real: e_extract:prompt_…;mode_mask). */
   extractMask(publicId: string, prompt: string): Promise<{ maskUrl: string; buffer: Buffer }>;

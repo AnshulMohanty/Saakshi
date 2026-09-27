@@ -81,13 +81,4 @@ export async function phash(input: Buffer): Promise<string> {
   return phashFromPixels(await hashPixels(input));
 }
 
-const HEX64 = /^[0-9a-f]{16}$/i;
-const POPCOUNT = [0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4];
-
-/** Number of differing bits between two 64-bit hex hashes (0–64). */
-export function hamming(a: string, b: string): number {
-  if (!HEX64.test(a) || !HEX64.test(b)) throw new TypeError(`Expected two 16-char hex hashes, got "${a}", "${b}"`);
-  let d = 0;
-  for (let i = 0; i < 16; i++) d += POPCOUNT[parseInt(a[i], 16) ^ parseInt(b[i], 16)];
-  return d;
-}
+export { hamming } from "./hamming";

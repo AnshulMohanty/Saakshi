@@ -1,7 +1,9 @@
 /**
  * Evidence pipeline steps. Each takes the current asset and returns an output (stored in
- * assets.pipeline.steps[name].output, JSON) and a column patch. Steps never write directly;
- * the runner applies the patch, records the step and appends the audit row in one transaction.
+ * assets.pipeline.steps[name].output, JSON), a column patch and optional side-table writes
+ * (apply). The runner applies them, records the step and appends the audit row in one
+ * transaction. External calls (Cloudinary write-back) and re-scoring other assets happen in the
+ * step body and are idempotent.
  */
 import { eq, isNull } from "drizzle-orm";
 import { MODERATION_QUESTIONS } from "../ai/questions";
@@ -13,6 +15,7 @@ import type { AnalysisProvider } from "../providers/analysis";
 import type { GeocoderProvider } from "../providers/geocoder";
 import type { MediaProvider } from "../providers/media";
 import { assign, type AssignmentMethod } from "./assign";
+import { computeTrust, rescoreMatches, statusFor, trustAuditDetail, trustPatch, writeBack, writeDuplicates } from "./score";
 import { parseAssetMetadata, type MetadataInput } from "./metadata";
 
 export interface PipelineDeps {
@@ -28,6 +31,8 @@ export interface PipelineDeps {
 export interface StepResult {
   output: Record<string, unknown>;
   patch: Partial<NewAsset>;
+  /** Writes to other tables, run inside the step transaction (must be idempotent). */
+  apply?: (tx: DB) => Promise<void>;
 }
 
 export type Step = (deps: PipelineDeps, asset: Asset) => Promise<StepResult>;
@@ -136,21 +141,29 @@ const assignStep: Step = async (deps, asset) => {
 };
 
 /**
- * PHASE 4 HOOK: scoreAndWriteBack(assetId): Trust Engine score + reasons (lib/trust), then
- * write-back to Cloudinary. Until then it records that scoring is pending.
+ * Trust Engine (lib/trust): score, band and reasons; duplicates written both ways (in the step
+ * transaction); Cloudinary write-back of trust_score, trust_band and one band tag. Then the
+ * matched photos are re-scored: a new photo can make an older one the original of a reuse.
  */
 export async function scoreAndWriteBack(deps: PipelineDeps, asset: Asset): Promise<StepResult> {
-  void deps;
-  void asset;
-  return { output: { pending: "Trust Engine arrives in Phase 4" }, patch: {} };
+  const { result, matches } = await computeTrust(deps.db, asset);
+  const metadata = await writeBack(deps.media, asset, result);
+  const rescored = await rescoreMatches(deps.db, deps.media, asset.id, matches.map((m) => m.assetId), `new near-duplicate ${asset.id}`);
+  return {
+    output: {
+      ...trustAuditDetail(result),
+      matches: matches.map((m) => ({ assetId: m.assetId, hamming: m.hamming, exact: m.exact, sameProject: m.sameProject })),
+      rescored: rescored.filter((r) => r.changed).map((r) => ({ assetId: r.assetId, band: r.after.band })),
+      metadata,
+    },
+    patch: trustPatch(result, asset.status),
+    apply: (tx) => writeDuplicates(tx, asset.id, matches),
+  };
 }
 
-const finalize: Step = async (deps, asset) => {
-  const fields: Record<string, string> = { source: asset.source };
-  if (asset.projectId) fields.project_id = asset.projectId;
-  if (asset.capturedAt) fields.captured_at = asset.capturedAt.toISOString();
-  await deps.media.updateMetadata(asset.cldPublicId, fields, { tags: ["saakshi", ...asset.cldTags] });
-  return { output: { metadata: fields }, patch: { status: "ready" } };
+const finalize: Step = async (_deps, asset) => {
+  const status = statusFor(asset.trustBand, asset.status);
+  return { output: { status, band: asset.trustBand, score: asset.trustScore }, patch: { status } };
 };
 
 export const STEPS: Record<PipelineStepName, Step> = {

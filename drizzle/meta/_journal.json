@@ -43,6 +43,13 @@
       "when": 1790543969360,
       "tag": "0005_upload_tickets",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790545275609,
+      "tag": "0006_trust_engine",
+      "breakpoints": true
     }
   ]
 }

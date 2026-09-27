@@ -79,10 +79,10 @@ describe("searchAssets", () => {
     const [p] = await h.db.insert(projects).values({ name: "Search project", type: "plantation" }).returning();
     projectId = p.id;
     await h.db.insert(assets).values([
-      { projectId, source: "witness", cldPublicId: "s/near", trustBand: "high", capturedAt: new Date("2025-03-01T10:00:00Z"), embedding: basis([0]) },
-      { projectId, source: "upload", cldPublicId: "s/mid", trustBand: "medium", capturedAt: new Date("2025-03-10T10:00:00Z"), embedding: basis([0, 1]) },
-      { projectId, source: "archive", cldPublicId: "s/far", trustBand: "high", capturedAt: new Date("2025-04-01T10:00:00Z"), embedding: basis([7]) },
-      { projectId, source: "upload", cldPublicId: "s/none", trustBand: "low", capturedAt: new Date("2025-05-01T10:00:00Z") },
+      { projectId, source: "witness", cldPublicId: "s/near", trustBand: "VERIFIED", capturedAt: new Date("2025-03-01T10:00:00Z"), embedding: basis([0]) },
+      { projectId, source: "upload", cldPublicId: "s/mid", trustBand: "NEEDS_REVIEW", capturedAt: new Date("2025-03-10T10:00:00Z"), embedding: basis([0, 1]) },
+      { projectId, source: "archive", cldPublicId: "s/far", trustBand: "VERIFIED", capturedAt: new Date("2025-04-01T10:00:00Z"), embedding: basis([7]) },
+      { projectId, source: "upload", cldPublicId: "s/none", trustBand: "FLAGGED", capturedAt: new Date("2025-05-01T10:00:00Z") },
     ]);
   });
 
@@ -98,7 +98,7 @@ describe("searchAssets", () => {
   });
 
   it("combines filters with semantic ranking", async () => {
-    expect(ids(await searchAssets(h.db, { embedding: basis([0]), filters: { projectId, band: "high" } }))).toEqual(["s/near", "s/far"]);
+    expect(ids(await searchAssets(h.db, { embedding: basis([0]), filters: { projectId, band: "VERIFIED" } }))).toEqual(["s/near", "s/far"]);
     expect(ids(await searchAssets(h.db, { embedding: basis([0]), filters: { projectId, source: "upload" } }))).toEqual(["s/mid"]);
     expect(
       ids(await searchAssets(h.db, { embedding: basis([7]), filters: { projectId, from: "2025-03-10", to: "2025-04-01" } })),

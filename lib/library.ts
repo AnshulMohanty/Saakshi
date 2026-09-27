@@ -4,7 +4,7 @@
  */
 import { and, asc, count, desc, eq, isNotNull, type SQL } from "drizzle-orm";
 import type { DB } from "./db/client";
-import { assets, auditLog, projects, spots, type Asset } from "./db/schema";
+import { assets, auditLog, duplicates, projects, spots, type Asset } from "./db/schema";
 import type { Transform } from "./media/transform";
 import { STEP_ORDER } from "./pipeline/steps";
 import { MODERATION_QUESTIONS } from "./ai/questions";
@@ -95,6 +95,13 @@ export async function assetDetail(db: DB, media: MediaProvider, id: string) {
     .where(eq(auditLog.assetId, a.id))
     .orderBy(asc(auditLog.seq));
   const questions = Object.fromEntries(MODERATION_QUESTIONS.map((q) => [q.id, q.text]));
+  const dups = await db
+    .select({ assetId: duplicates.matchAssetId, hamming: duplicates.hamming, exact: duplicates.exact, sameProject: duplicates.sameProject, matchIsLater: duplicates.matchIsLater, projectName: projects.name })
+    .from(duplicates)
+    .innerJoin(assets, eq(assets.id, duplicates.matchAssetId))
+    .leftJoin(projects, eq(projects.id, assets.projectId))
+    .where(eq(duplicates.assetId, a.id))
+    .orderBy(asc(duplicates.hamming));
 
   return {
     id: a.id,
@@ -107,6 +114,9 @@ export async function assetDetail(db: DB, media: MediaProvider, id: string) {
     tags: a.cldTags,
     moderation: Object.entries(a.moderation?.answers ?? {}).map(([id, answer]) => ({ id, question: questions[id] ?? id, answer })),
     watermark: a.watermark,
+    trust: { score: a.trustScore, band: a.trustBand, reasons: a.trustReasons ?? [], scoredAt: a.scoredAt?.toISOString() ?? null },
+    review: a.review,
+    duplicates: dups,
     exif: {
       source: a.exifSource,
       capturedAt: a.capturedAt?.toISOString() ?? null,
