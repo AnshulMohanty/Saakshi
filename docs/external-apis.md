@@ -196,6 +196,12 @@ Batch and Flex cost 50% of Standard; the $0.10/$0.60 figure a search snippet giv
 The Wikimedia UA uses `APP_CONTACT_EMAIL`, else `APP_REPO_URL` or the package.json repository.
 Neither is set in this repo yet (MANUAL_STEPS step 0).
 
+## Natural Earth (build time only)
+
+| Item | Status |
+|------|--------|
+| `pnpm land:dots` downloads `ne_50m_land.geojson` once from the tagged repo (`nvkelso/natural-earth-vector` **v5.1.2**, raw.githubusercontent.com) through `lib/providers/http.ts`, caches it in `.data/geo/` and writes `data/land-dots.json` (7,660 dots). The app never calls it at runtime. | VERIFIED: public domain (naturalearthdata.com/about/terms-of-use), file shape is a GeoJSON FeatureCollection of Polygon/MultiPolygon land features |
+
 ## Rendering and tooling
 
 | Item | Status |

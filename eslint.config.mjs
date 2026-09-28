@@ -12,6 +12,14 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Design exports and their generated outputs (third-party bundles, screenshots).
+    "design/unpacked/**",
+    "design/extracted/**",
+    "design/reference/**",
+    "design/actual/**",
+    "design/parity/**",
+    "video/**",
+    "brag-output/**",
   ]),
 ]);
 

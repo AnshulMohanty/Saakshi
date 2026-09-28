@@ -28,6 +28,7 @@ export interface CaptureStep {
   label?: string;
 }
 
+/** Single-state manifest (before Phase 8); see CaptureManifestV2. */
 export interface CaptureManifest {
   page: string;
   source: string;
@@ -142,41 +143,141 @@ globalThis.__cap = {
 };`,
 };
 
-export async function capturePage(browser: Browser, o: { name: string; url: string; outDir: string; video?: boolean; log?: (m: string) => void }): Promise<CaptureManifest> {
+export interface Viewport {
+  width: number;
+  height: number;
+  mobile: boolean;
+}
+
+/**
+ * One captured state of a page. `mode`:
+ *   scroll    half-viewport + pinned-section steps (the default);
+ *   single    one frame after `prepare`;
+ *   timeline  Playwright's fake clock: `trigger` runs at t = 0, then a frame at each `at` second
+ *             (deterministic: timers, rAF and performance.now all follow the fake clock).
+ */
+export interface Variant {
+  id: string;
+  label?: string;
+  viewports?: readonly Viewport[];
+  reducedMotion?: "reduce" | "no-preference";
+  colorScheme?: "light" | "dark";
+  /** Runs before the page's own scripts (e.g. faking navigator.deviceMemory). */
+  initScript?: string;
+  /** Replaces the page URL (e.g. our routes with ?state= or ?motion=). */
+  url?: string;
+  /** Evaluated after the page settles (e.g. __dcSetProps, clicking a tab). */
+  prepare?: string;
+  mode?: "scroll" | "single" | "timeline";
+  timeline?: { ready: string; trigger: string; at: number[] };
+  /** Screenshot this element instead of the viewport. */
+  element?: string;
+}
+
+export interface VariantManifest {
+  id: string;
+  label: string | null;
+  viewports: Array<{ width: number; height: number; scrollHeight: number; steps: CaptureStep[] }>;
+}
+
+export interface CaptureManifestV2 {
+  page: string;
+  source: string;
+  capturedAt: string;
+  variants: VariantManifest[];
+  video: string | null;
+  notes: string[];
+}
+
+const DEFAULT_VARIANT: Variant = { id: "default" };
+
+async function captureVariant(browser: Browser, o: { name: string; url: string; dir: string; log?: (m: string) => void }, v: Variant): Promise<VariantManifest> {
+  type Scroller = { element: boolean; height: number; scrollHeight: number; x: number; y: number };
+  const out: VariantManifest = { id: v.id, label: v.label ?? null, viewports: [] };
+  for (const vp of v.viewports ?? VIEWPORTS) {
+    const context = await browser.newContext({
+      viewport: { width: vp.width, height: vp.height },
+      deviceScaleFactor: 1,
+      isMobile: vp.mobile,
+      hasTouch: vp.mobile,
+      reducedMotion: v.reducedMotion ?? "no-preference",
+      colorScheme: v.colorScheme ?? "light",
+    });
+    await context.addInitScript(PAGE_HELPERS);
+    if (v.initScript) await context.addInitScript({ content: v.initScript });
+    const page = await context.newPage();
+    await mkdir(path.join(o.dir, v.id, String(vp.width)), { recursive: true });
+    const shots: CaptureStep[] = [];
+    const shoot = async (index: number, y: number, kind: CaptureStep["kind"], label?: string) => {
+      const file = `${v.id}/${vp.width}/${String(index).padStart(3, "0")}.png`;
+      const target = v.element ? page.locator(v.element).first() : null;
+      if (target && (await target.count())) await target.screenshot({ path: path.join(o.dir, file) });
+      else await page.screenshot({ path: path.join(o.dir, file) });
+      shots.push({ index, y, file, kind, ...(label ? { label } : {}) });
+    };
+    let scrollHeight = vp.height;
+    if (v.mode === "timeline" && v.timeline) {
+      await page.clock.install({ time: new Date("2026-09-28T10:00:00+05:30") });
+      await page.goto(v.url ?? o.url, { waitUntil: "load", timeout: 120_000 });
+      // Advance the fake clock until the page is ready (its own polling timers need ticks).
+      for (let i = 0; i < 200 && !(await page.evaluate(v.timeline.ready).catch(() => false)); i++) await page.clock.runFor(100);
+      if (v.prepare) await page.evaluate(v.prepare);
+      await page.clock.runFor(500);
+      await page.evaluate(v.timeline.trigger);
+      let t = 0;
+      for (const [i, at] of v.timeline.at.entries()) {
+        await page.clock.runFor(Math.max(0, Math.round((at - t) * 1000)));
+        t = at;
+        await shoot(i, 0, "step", `t=${at}s`);
+      }
+    } else {
+      await page.goto(v.url ?? o.url, { waitUntil: "load", timeout: 120_000 });
+      const webgl = (await page.evaluate("document.querySelectorAll('canvas').length > 0")) as boolean;
+      await settle(page, { webgl });
+      if (v.prepare) {
+        await page.evaluate(v.prepare);
+        await frames(page);
+        await page.waitForTimeout(700);
+      }
+      if (v.mode === "single") await shoot(0, 0, "step");
+      else {
+        let sc = (await page.evaluate("__cap.find()")) as Scroller;
+        await page.evaluate(`__cap.to(${sc.scrollHeight})`);
+        await page.waitForTimeout(600);
+        await page.evaluate("__cap.to(0)");
+        await frames(page);
+        sc = (await page.evaluate("__cap.find()")) as Scroller;
+        scrollHeight = sc.scrollHeight;
+        const pinned = (await page.evaluate("__cap.pinned()")) as Array<{ top: number; height: number; label: string }>;
+        for (const [index, s] of planSteps(sc.scrollHeight, sc.height, pinned).entries()) {
+          await page.evaluate(`__cap.to(${s.y})`);
+          await frames(page);
+          await page.waitForTimeout(350);
+          await shoot(index, s.y, s.kind, s.label);
+        }
+      }
+    }
+    out.viewports.push({ width: vp.width, height: vp.height, scrollHeight, steps: shots });
+    o.log?.(`  ${o.name} [${v.id}] @${vp.width}: ${shots.length} frame(s)`);
+    await context.close();
+  }
+  return out;
+}
+
+export async function capturePage(browser: Browser, o: { name: string; url: string; outDir: string; video?: boolean; variants?: Variant[]; log?: (m: string) => void }): Promise<CaptureManifestV2> {
   const dir = path.join(o.outDir, o.name);
   await rm(dir, { recursive: true, force: true });
-  const manifest: CaptureManifest = { page: o.name, source: o.url, capturedAt: new Date().toISOString(), viewports: [], video: null, notes: [] };
-  type Scroller = { element: boolean; height: number; scrollHeight: number; x: number; y: number };
-
-  for (const vp of VIEWPORTS) {
-    const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, deviceScaleFactor: 1, isMobile: vp.mobile, hasTouch: vp.mobile });
-    await context.addInitScript(PAGE_HELPERS);
-    const page = await context.newPage();
-    await page.goto(o.url, { waitUntil: "load", timeout: 120_000 });
-    const webgl = await page.evaluate("document.querySelectorAll('canvas').length > 0") as boolean;
-    await settle(page, { webgl });
-    // Visit the bottom once so lazy sections load and pin-spacers get their final size.
-    let sc = (await page.evaluate("__cap.find()")) as Scroller;
-    await page.evaluate(`__cap.to(${sc.scrollHeight})`);
-    await page.waitForTimeout(600);
-    await page.evaluate("__cap.to(0)");
-    await frames(page);
-    sc = (await page.evaluate("__cap.find()")) as Scroller;
-    const pinned = (await page.evaluate("__cap.pinned()")) as Array<{ top: number; height: number; label: string }>;
-    const steps = planSteps(sc.scrollHeight, sc.height, pinned);
-    await mkdir(path.join(dir, String(vp.width)), { recursive: true });
-    const shots: CaptureStep[] = [];
-    for (const [index, s] of steps.entries()) {
-      await page.evaluate(`__cap.to(${s.y})`);
-      await frames(page);
-      await page.waitForTimeout(350);
-      const file = `${vp.width}/${String(index).padStart(3, "0")}.png`;
-      await page.screenshot({ path: path.join(dir, file) });
-      shots.push({ index, y: s.y, file, kind: s.kind, ...(s.label ? { label: s.label } : {}) });
+  await mkdir(dir, { recursive: true });
+  const manifest: CaptureManifestV2 = { page: o.name, source: o.url, capturedAt: new Date().toISOString(), variants: [], video: null, notes: [] };
+  // One variant at a time, one browser context at a time (low-memory machine).
+  for (const v of o.variants?.length ? o.variants : [DEFAULT_VARIANT]) {
+    try {
+      manifest.variants.push(await captureVariant(browser, { name: o.name, url: o.url, dir, log: o.log }, v));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message.split("\n")[0] : String(err);
+      manifest.notes.push(`Variant ${v.id} failed: ${msg}`);
+      o.log?.(`  ${o.name} [${v.id}] FAILED: ${msg}`);
     }
-    manifest.viewports.push({ width: vp.width, height: vp.height, scrollHeight: sc.scrollHeight, steps: shots });
-    o.log?.(`  ${o.name} @${vp.width}: ${shots.length} step(s), ${sc.element ? "inner scroller" : "page"} height ${sc.scrollHeight}px${webgl ? ", canvas" : ""}`);
-    await context.close();
   }
 
   if (o.video !== false) {
@@ -187,7 +288,7 @@ export async function capturePage(browser: Browser, o: { name: string; url: stri
       const page = await context.newPage();
       await page.goto(o.url, { waitUntil: "load", timeout: 120_000 });
       await settle(page, { webgl: true });
-      const sc = (await page.evaluate("__cap.find()")) as Scroller;
+      const sc = (await page.evaluate("__cap.find()")) as { x: number; y: number };
       // The wheel scrolls whatever is under the pointer: put it over the scroller.
       await page.mouse.move(sc.x, sc.y);
       const started = Date.now();

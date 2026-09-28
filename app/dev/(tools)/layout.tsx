@@ -1,0 +1,22 @@
+import Link from "next/link";
+
+/** Dev tools chrome (the gate is app/dev/layout.tsx). */
+export default function DevToolsLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mx-auto w-full max-w-5xl flex-1 px-6 py-8">
+      <nav className="mb-6 flex gap-4 text-sm text-muted-foreground">
+        <Link href="/" className="font-heading font-semibold text-foreground">
+          Saakshi
+        </Link>
+        <span>dev</span>
+        <Link href="/dev/status" className="hover:text-foreground">
+          Provider status
+        </Link>
+        <Link href="/dev/upload-test" className="hover:text-foreground">
+          Upload round-trip
+        </Link>
+      </nav>
+      {children}
+    </div>
+  );
+}

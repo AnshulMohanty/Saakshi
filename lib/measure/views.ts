@@ -4,7 +4,7 @@
  */
 import { and, asc, desc, eq, inArray, or } from "drizzle-orm";
 import type { DB } from "../db/client";
-import { assets, comparisons, measurements, projects, spots, type Comparison, type MetricId } from "../db/schema";
+import { assets, comparisons, measurements, projects, spots, type CapturePrecision, type Comparison, type MetricId } from "../db/schema";
 import { THUMB } from "../library";
 import { captureDate } from "../media/composite";
 import type { MediaProvider } from "../providers/media";
@@ -130,6 +130,8 @@ export interface TrendPoint {
   value: number;
   assetId: string;
   source: string;
+  /** How precisely the capture time is known (the tooltip says "date only" when coarse). */
+  precision: CapturePrecision | null;
 }
 
 export async function spotView(db: DB, media: MediaProvider, slug: string, policy: DisplayPolicy = { production: false, minConfidence: 0.5 }) {
@@ -149,7 +151,7 @@ export async function spotView(db: DB, media: MediaProvider, slug: string, polic
   const trend: TrendPoint[] = ms
     .map((m) => {
       const a = photos.find((p) => p.id === m.assetId)!;
-      return { t: a.capturedAt!.getTime(), label: captureDate(a.capturedAt, a.capturedAtPrecision), value: m.value, assetId: a.id, source: a.source };
+      return { t: a.capturedAt!.getTime(), label: captureDate(a.capturedAt, a.capturedAtPrecision), value: m.value, assetId: a.id, source: a.source, precision: a.capturedAtPrecision ?? null };
     })
     .sort((x, y) => x.t - y.t || x.assetId.localeCompare(y.assetId));
   const trendPolicy = numberPolicy(combineModes(ms.map((m) => m.providerMode)), policy);

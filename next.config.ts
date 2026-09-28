@@ -4,6 +4,8 @@ const nextConfig: NextConfig = {
   // Phone testing: `pnpm tunnel` serves the dev server on a Cloudflare quick-tunnel hostname,
   // which Next's dev server would otherwise refuse as cross-origin.
   allowedDevOrigins: ["*.trycloudflare.com"],
+  // No dev-mode badge over the page: it would land in every parity screenshot.
+  devIndicators: false,
   serverExternalPackages: [
     // PGlite loads its .wasm/.data files relative to its own module, which bundling breaks.
     "@electric-sql/pglite",

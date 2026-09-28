@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Badge } from "@/components/ui/badge";
+import { offsetMinutes } from "@/lib/charts/time-axis";
+import { getConfig } from "@/lib/config";
 import { getDb } from "@/lib/db/client";
 import { spotView } from "@/lib/measure/views";
 import { displayPolicy } from "@/lib/display-policy";
@@ -48,7 +50,7 @@ export default async function SpotPage({ params }: PageProps<"/spots/[slug]">) {
           </h2>
           {v.trendMock ? <MockTag /> : null}
           {v.trend.length ? (
-            <SpotTrend trend={v.trend} metric={v.metric} />
+            <SpotTrend trend={v.trend} metric={v.metric} offsetMinutes={offsetMinutes(getConfig().env.EXIF_DEFAULT_UTC_OFFSET)} />
           ) : (
             <p className="text-sm text-muted-foreground">{v.trendHidden ?? "Nothing measured here yet."}</p>
           )}

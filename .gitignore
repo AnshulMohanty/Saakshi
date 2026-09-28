@@ -37,3 +37,6 @@ next-env.d.ts
 /design/reference/
 /design/actual/
 /design/parity/
+/design/unpacked/
+/design/extracted/
+/design/inventory.json

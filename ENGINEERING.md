@@ -386,7 +386,17 @@ shown that the product doesn't measure.
 | App-shell design exports scroll an inner element | Captured as a single step | Scroller detection; step cap 80 → 160 | `52af530` |
 | tsx's `__name` helper broke `page.evaluate` | Capture crashed | In-page init script | `52af530` |
 | Git Bash rewrites a `/route` argument into `C:/Program Files/Git/route` | `parity:capture` captured a 404 page | The script undoes the MSYS rewrite | `52af530` |
-| One full `pnpm test` run (14:31) reported 1 failure of 403; the name was lost with the session | Possible flaky test | **Not fixed: not reproduced.** Four later full runs, 403/403 each. Watch for it | — |
+| One full `pnpm test` run (14:31) reported 1 failure of 403; the name was lost with the session | Intermittent red suite | **Fixed in Phase 8** (issue F-flake below): Vitest workers are sized by memory | `a996df3` |
+
+### F-flake. The intermittent test failure (found Phase 7, fixed Phase 8)
+
+- **Symptom.** One full run in Phase 7 reported 1 failure of 403, and four reruns passed.
+- **Hunt.** Ten more full runs with verbose and JUnit reporters: 9 clean. The tenth failure was an unfinished new test of mine, not the flake. The JUnit durations explained it:
+  - The slowest tests were each file's **first PGlite open**: the geocoder cache test at 15–27 s, the usage-log test at 13–26 s, against a 30 s timeout.
+  - The same open takes **1.3 s** alone (measured: create + migrate 1.26 s).
+  - One Vitest worker holds about **734 MB** (PGlite + pgvector WASM, sharp, app modules). Vitest's default here is 11 workers (12 CPUs − 1) on a 7.9 GB machine, so the machine swapped. The Phase 7 failure came right after the dev server and screenshot runs, when even less memory was free.
+- **Fix.** `vitest.config.ts` sizes workers by memory: one per 2.5 GB, so 3 here. No retries were added.
+- **Evidence.** With 3 workers the suite ran in **29–30 s instead of 50 s**, the slowest test took **5.3 s instead of 27 s** (the geocoder test 2.8 s), and 412/412 passed.
 
 ## 7. Trust Engine and measurement
 
@@ -527,3 +537,16 @@ Newest last. After every phase or fix: what changed, why, the evidence, any new 
   - `pnpm cld:setup --dry-run` prints 4 field creations and 1 preset creation;
   - `pnpm verify:env --prod`: 10 errors, 2 warnings without keys, as expected;
   - `pnpm design:capture`: 16 exports.
+
+- **2026-09-28, Phase 8 Part A (fixes from Phase 7).**
+  - `pnpm doctor` → **`pnpm services:check`**. pnpm's built-in `doctor` shadowed the script; `pnpm run doctor` stays as an alias, and the docs are updated (`33022a2`).
+  - **Flaky test fixed** by sizing Vitest workers by memory (issue F-flake; `a996df3`).
+  - **Spot trend chart:** an adaptive time axis (`lib/charts/time-axis.ts`, pure, 9 tests, `97d9099`).
+    - Runs split at gaps over a quarter of the range and over a day, and a labelled break ("2.6 years later") separates them.
+    - Each run gets ticks in its own unit (minutes to years) in the site's time zone (IST).
+    - Hover shows the full date and time, or "(date only)" for coarse captures.
+    - Tiruppur spot 1 (six minutes) now reads 18:16 / 18:18 / 18:20 instead of "Sep 2017" at every tick.
+  - **Showcase selection** (`lib/showcase.ts`, 4 tests). One-project chapters use `DEMO_HERO`. The measurement chapter takes the best measured pair across projects: primary metric, |delta| ≥ 5, highest confidence then |delta|, and never a mock pair in production. It is labelled with its own project.
+    - With today's mock data that is Pimpri-Chinchwad's green-cover pair (−44.5 points, confidence 0.4). The hero's +3.6 is under 5.
+  - **Playwright browsers:** Chromium 153, Firefox 155 and WebKit 26.6 launch; ffmpeg-1011 is installed.
+  - Tests: 416 passing.

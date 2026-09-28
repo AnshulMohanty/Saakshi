@@ -1,0 +1,1620 @@
+{
+  "note": "Computed/inline style values across the built pages, reconciled with Developer_Handoff tokens (SK.tokens). The handoff wins for tokens; the rendered prototype wins for layout.",
+  "handoffTokens": {
+    "light": {
+      "background": "oklch(0.962 0.007 250)",
+      "foreground": "oklch(0.185 0.024 268)",
+      "card": "oklch(1 0 0)",
+      "card-foreground": "oklch(0.185 0.024 268)",
+      "popover": "oklch(1 0 0)",
+      "popover-foreground": "oklch(0.185 0.024 268)",
+      "primary": "oklch(0.395 0.148 293)",
+      "primary-foreground": "oklch(0.985 0.004 290)",
+      "secondary": "oklch(0.935 0.009 250)",
+      "secondary-foreground": "oklch(0.185 0.024 268)",
+      "muted": "oklch(0.935 0.009 250)",
+      "muted-foreground": "oklch(0.445 0.027 262)",
+      "accent": "oklch(0.93 0.03 293)",
+      "accent-foreground": "oklch(0.3 0.13 293)",
+      "destructive": "oklch(0.53 0.17 28)",
+      "border": "oklch(0.885 0.013 252)",
+      "input": "oklch(0.885 0.013 252)",
+      "ring": "oklch(0.395 0.148 293)",
+      "verified": "oklch(0.5 0.11 155)",
+      "review": "oklch(0.5 0.105 72)",
+      "flagged": "oklch(0.53 0.17 28)",
+      "measured": "oklch(0.5 0.15 258)",
+      "estimated": "oklch(0.49 0.03 258)",
+      "glow": "oklch(0.395 0.148 293)"
+    },
+    "dark": {
+      "background": "oklch(0.175 0.018 285)",
+      "foreground": "oklch(0.945 0.012 290)",
+      "card": "oklch(0.215 0.024 287)",
+      "card-foreground": "oklch(0.945 0.012 290)",
+      "popover": "oklch(0.235 0.026 287)",
+      "popover-foreground": "oklch(0.945 0.012 290)",
+      "primary": "oklch(0.68 0.165 293)",
+      "primary-foreground": "oklch(0.17 0.03 290)",
+      "secondary": "oklch(0.27 0.028 288)",
+      "secondary-foreground": "oklch(0.945 0.012 290)",
+      "muted": "oklch(0.255 0.026 288)",
+      "muted-foreground": "oklch(0.735 0.03 290)",
+      "accent": "oklch(0.3 0.06 293)",
+      "accent-foreground": "oklch(0.9 0.05 293)",
+      "destructive": "oklch(0.7 0.17 28)",
+      "border": "oklch(0.31 0.03 290)",
+      "input": "oklch(0.31 0.03 290)",
+      "ring": "oklch(0.68 0.165 293)",
+      "verified": "oklch(0.77 0.14 155)",
+      "review": "oklch(0.79 0.13 80)",
+      "flagged": "oklch(0.7 0.17 28)",
+      "measured": "oklch(0.72 0.13 258)",
+      "estimated": "oklch(0.75 0.03 258)",
+      "glow": "oklch(0.68 0.165 293)"
+    },
+    "night": {
+      "background": "oklch(0.155 0.035 292)",
+      "foreground": "oklch(0.94 0.018 295)",
+      "card": "oklch(0.195 0.045 292)",
+      "card-foreground": "oklch(0.94 0.018 295)",
+      "primary": "oklch(0.66 0.19 293)",
+      "primary-foreground": "oklch(0.155 0.035 292)",
+      "muted": "oklch(0.24 0.05 292)",
+      "muted-foreground": "oklch(0.73 0.04 295)",
+      "border": "oklch(0.29 0.05 292)",
+      "ring": "oklch(0.66 0.19 293)",
+      "verified": "oklch(0.77 0.14 155)",
+      "review": "oklch(0.79 0.13 80)",
+      "flagged": "oklch(0.7 0.17 28)",
+      "measured": "oklch(0.72 0.13 258)",
+      "estimated": "oklch(0.75 0.03 258)",
+      "glow": "oklch(0.66 0.19 293)"
+    }
+  },
+  "colors": [
+    {
+      "value": "#465062",
+      "uses": 121,
+      "nearest": "light.muted-foreground",
+      "nearestOklch": "oklch(0.445 0.027 262)",
+      "nearestHex": "#4C5463",
+      "deltaE": 1.6,
+      "hueShift": 1,
+      "inCode": [
+        "saakshi-landing/template.html:1213",
+        "saakshi-landing/template.html:1215",
+        "saakshi-landing/template.html:1217",
+        "how-it-works/template.html:531",
+        "how-it-works/template.html:544",
+        "evidence-page/template.html:515",
+        "report-page/template.html:459",
+        "capture/template.html:496",
+        "capture/template.html:512"
+      ],
+      "decision": "→ var(--muted-foreground) (handoff token wins, ΔE 1.60 < 2.3)"
+    },
+    {
+      "value": "#FFF",
+      "uses": 90,
+      "nearest": "light.card",
+      "nearestOklch": "oklch(1 0 0)",
+      "nearestHex": "#FFFFFF",
+      "deltaE": 0,
+      "hueShift": 0,
+      "inCode": [
+        "saakshi-landing/res/8b72f710-4684-4f09-b36e-7edb6f47fe91.js:106",
+        "saakshi-landing/res/8b72f710-4684-4f09-b36e-7edb6f47fe91.js:108",
+        "saakshi-landing/res/8b72f710-4684-4f09-b36e-7edb6f47fe91.js:130",
+        "saakshi-landing/res/8b72f710-4684-4f09-b36e-7edb6f47fe91.js:133",
+        "witness-wall/res/b04ae668-2ebb-4b6d-84d1-edfd69d86861.js:106",
+        "witness-wall/res/b04ae668-2ebb-4b6d-84d1-edfd69d86861.js:108",
+        "witness-wall/res/b04ae668-2ebb-4b6d-84d1-edfd69d86861.js:130",
+        "witness-wall/res/b04ae668-2ebb-4b6d-84d1-edfd69d86861.js:133",
+        "how-it-works/res/9f45d311-7417-419f-8956-f72bc7bd6f67.js:106",
+        "how-it-works/res/9f45d311-7417-419f-8956-f72bc7bd6f67.js:108",
+        "how-it-works/res/9f45d311-7417-419f-8956-f72bc7bd6f67.js:130",
+        "how-it-works/res/9f45d311-7417-419f-8956-f72bc7bd6f67.js:133"
+      ],
+      "decision": "→ var(--card) (handoff token wins, ΔE 0.00 < 2.3)"
+    },
+    {
+      "value": "#0F1320",
+      "uses": 58,
+      "nearest": "light.foreground",
+      "nearestOklch": "oklch(0.185 0.024 268)",
+      "nearestHex": "#0E121D",
+      "deltaE": 0.69,
+      "hueShift": 2,
+      "inCode": [
+        "saakshi-landing/template.html:1452",
+        "how-it-works/template.html:531",
+        "how-it-works/template.html:542",
+        "how-it-works/template.html:543",
+        "evidence-page/template.html:519",
+        "report-page/template.html:468",
+        "report-page/template.html:469",
+        "report-page/template.html:470",
+        "qr-poster/template.html:465",
+        "capture/template.html:509"
+      ],
+      "decision": "→ var(--foreground) (handoff token wins, ΔE 0.69 < 2.3)"
+    },
+    {
+      "value": "#D5DBE3",
+      "uses": 57,
+      "nearest": "light.border",
+      "nearestOklch": "oklch(0.885 0.013 252)",
+      "nearestHex": "#D3DAE2",
+      "deltaE": 0.4,
+      "hueShift": 4,
+      "inCode": [
+        "saakshi-landing/template.html:1230",
+        "saakshi-landing/template.html:1358",
+        "saakshi-landing/template.html:1362",
+        "saakshi-landing/template.html:1452",
+        "how-it-works/template.html:542",
+        "evidence-page/template.html:535",
+        "report-page/template.html:459"
+      ],
+      "decision": "→ var(--border) (handoff token wins, ΔE 0.40 < 2.3)"
+    },
+    {
+      "value": "#A9A3C2",
+      "uses": 56,
+      "nearest": "night.muted-foreground",
+      "nearestOklch": "oklch(0.73 0.04 295)",
+      "nearestHex": "#A9A3BF",
+      "deltaE": 0.45,
+      "hueShift": 1,
+      "inCode": [
+        "saakshi-landing/template.html:1137"
+      ],
+      "decision": "→ var(--muted-foreground) (handoff token wins, ΔE 0.45 < 2.3)"
+    },
+    {
+      "value": "#FFFFFF",
+      "uses": 50,
+      "nearest": "light.card",
+      "nearestOklch": "oklch(1 0 0)",
+      "nearestHex": "#FFFFFF",
+      "deltaE": 0,
+      "hueShift": 0,
+      "inCode": [
+        "how-it-works/template.html:531",
+        "how-it-works/template.html:542",
+        "evidence-page/template.html:535",
+        "spot-page/template.html:417",
+        "capture/template.html:500"
+      ],
+      "decision": "→ var(--card) (handoff token wins, ΔE 0.00 < 2.3)"
+    },
+    {
+      "value": "#1B7A4B",
+      "uses": 49,
+      "nearest": "light.verified",
+      "nearestOklch": "oklch(0.5 0.11 155)",
+      "nearestHex": "#1E7546",
+      "deltaE": 1.51,
+      "hueShift": 1,
+      "inCode": [
+        "saakshi-landing/template.html:1216",
+        "saakshi-landing/template.html:1283",
+        "saakshi-landing/res/8b72f710-4684-4f09-b36e-7edb6f47fe91.js:59",
+        "saakshi-landing/res/8b72f710-4684-4f09-b36e-7edb6f47fe91.js:104",
+        "witness-wall/res/b04ae668-2ebb-4b6d-84d1-edfd69d86861.js:59",
+        "witness-wall/res/b04ae668-2ebb-4b6d-84d1-edfd69d86861.js:104",
+        "how-it-works/template.html:544",
+        "how-it-works/res/9f45d311-7417-419f-8956-f72bc7bd6f67.js:59",
+        "how-it-works/res/9f45d311-7417-419f-8956-f72bc7bd6f67.js:104",
+        "demo-entry/res/cf0fd264-defc-41dc-b623-eb446f8561de.js:59",
+        "demo-entry/res/cf0fd264-defc-41dc-b623-eb446f8561de.js:104",
+        "evidence-page/template.html:515"
+      ],
+      "decision": "→ var(--verified) (handoff token wins, ΔE 1.51 < 2.3)"
+    },
+    {
+      "value": "#2C2447",
+      "uses": 44,
+      "nearest": "dark.accent",
+      "nearestOklch": "oklch(0.3 0.06 293)",
+      "nearestHex": "#2F2749",
+      "deltaE": 1.14,
+      "hueShift": 1,
+      "inCode": [
+        "saakshi-landing/template.html:1137",
+        "saakshi-landing/template.html:1183",
+        "saakshi-landing/template.html:1452",
+        "witness-wall/template.html:626"
+      ],
+      "decision": "→ var(--accent) (handoff token wins, ΔE 1.14 < 2.3)"
+    },
+    {
+      "value": "#4B2B8F",
+      "uses": 37,
+      "nearest": "light.primary",
+      "nearestOklch": "oklch(0.395 0.148 293)",
+      "nearestHex": "#4C2E8D",
+      "deltaE": 0.76,
+      "hueShift": 0,
+      "inCode": [
+        "saakshi-landing/template.html:1230",
+        "saakshi-landing/template.html:1358",
+        "saakshi-landing/res/8b72f710-4684-4f09-b36e-7edb6f47fe91.js:8",
+        "witness-wall/res/b04ae668-2ebb-4b6d-84d1-edfd69d86861.js:8",
+        "how-it-works/template.html:542",
+        "how-it-works/res/9f45d311-7417-419f-8956-f72bc7bd6f67.js:8",
+        "demo-entry/res/cf0fd264-defc-41dc-b623-eb446f8561de.js:8",
+        "evidence-page/template.html:521",
+        "evidence-page/template.html:535",
+        "evidence-page/res/4536b2b6-020d-41e8-a48b-e688f61063fe.js:8",
+        "spot-page/res/14239939-611a-4de8-bf55-55dbcbb81d54.js:8",
+        "report-page/template.html:459"
+      ],
+      "decision": "→ var(--primary) (handoff token wins, ΔE 0.76 < 2.3)"
+    },
+    {
+      "value": "#EDEAF6",
+      "uses": 33,
+      "nearest": "night.foreground",
+      "nearestOklch": "oklch(0.94 0.018 295)",
+      "nearestHex": "#ECE9F6",
+      "deltaE": 0.3,
+      "hueShift": 1,
+      "inCode": [
+        "saakshi-landing/template.html:1417",
+        "saakshi-landing/template.html:1452",
+        "saakshi-landing/template.html:1487",
+        "witness-wall/template.html:626",
+        "witness-wall/template.html:632"
+      ],
+      "decision": "→ var(--foreground) (handoff token wins, ΔE 0.30 < 2.3)"
+    },
+    {
+      "value": "#BE3328",
+      "uses": 29,
+      "nearest": "light.destructive",
+      "nearestOklch": "oklch(0.53 0.17 28)",
+      "nearestHex": "#BA362E",
+      "deltaE": 0.89,
+      "hueShift": 1,
+      "inCode": [
+        "saakshi-landing/template.html:1216",
+        "saakshi-landing/template.html:1221",
+        "saakshi-landing/template.html:1283",
+        "saakshi-landing/res/8b72f710-4684-4f09-b36e-7edb6f47fe91.js:59",
+        "witness-wall/res/b04ae668-2ebb-4b6d-84d1-edfd69d86861.js:59",
+        "how-it-works/template.html:544",
+        "how-it-works/res/9f45d311-7417-419f-8956-f72bc7bd6f67.js:59",
+        "demo-entry/template.html:492",
+        "demo-entry/res/cf0fd264-defc-41dc-b623-eb446f8561de.js:59",
+        "evidence-page/template.html:555",
+        "evidence-page/res/4536b2b6-020d-41e8-a48b-e688f61063fe.js:59",
+        "spot-page/res/14239939-611a-4de8-bf55-55dbcbb81d54.js:59"
+      ],
+      "decision": "→ var(--destructive) (handoff token wins, ΔE 0.89 < 2.3)"
+    },
+    {
+      "value": "#8A5A00",
+      "uses": 29,
+      "nearest": "light.review",
+      "nearestOklch": "oklch(0.5 0.105 72)",
+      "nearestHex": "#875806",
+      "deltaE": 0.85,
+      "hueShift": 1,
+      "inCode": [
+        "saakshi-landing/template.html:1214",
+        "saakshi-landing/template.html:1221",
+        "saakshi-landing/template.html:1283",
+        "saakshi-landing/res/8b72f710-4684-4f09-b36e-7edb6f47fe91.js:59",
+        "witness-wall/res/b04ae668-2ebb-4b6d-84d1-edfd69d86861.js:59",
+        "how-it-works/template.html:544",
+        "how-it-works/res/9f45d311-7417-419f-8956-f72bc7bd6f67.js:59",
+        "demo-entry/res/cf0fd264-defc-41dc-b623-eb446f8561de.js:59",
+        "evidence-page/template.html:515",
+        "evidence-page/res/4536b2b6-020d-41e8-a48b-e688f61063fe.js:59",
+        "spot-page/res/14239939-611a-4de8-bf55-55dbcbb81d54.js:59",
+        "report-page/template.html:467"
+      ],
+      "decision": "→ var(--review) (handoff token wins, ΔE 0.85 < 2.3)"
+    },
+    {
+      "value": "#171229",
+      "uses": 28,
+      "nearest": "night.card",
+      "nearestOklch": "oklch(0.195 0.045 292)",
+      "nearestHex": "#161027",
+      "deltaE": 0.76,
+      "hueShift": 2,
+      "inCode": [
+        "saakshi-landing/template.html:1183"
+      ],
+      "decision": "→ var(--card) (handoff token wins, ΔE 0.76 < 2.3)"
+    },
+    {
+      "value": "#0E0B1A",
+      "uses": 27,
+      "nearest": "night.background",
+      "nearestOklch": "oklch(0.155 0.035 292)",
+      "nearestHex": "#0D091A",
+      "deltaE": 0.79,
+      "hueShift": 1,
+      "inCode": [
+        "saakshi-landing/template.html:1296",
+        "saakshi-landing/template.html:1470",
+        "witness-wall/template.html:537"
+      ],
+      "decision": "→ var(--background) (handoff token wins, ΔE 0.79 < 2.3)"
+    },
+    {
+      "value": "#FF6F61",
+      "uses": 26,
+      "nearest": "dark.destructive",
+      "nearestOklch": "oklch(0.7 0.17 28)",
+      "nearestHex": "#F66E60",
+      "deltaE": 1.69,
+      "hueShift": 0,
+      "inCode": [
+        "saakshi-landing/template.html:1122",
+        "saakshi-landing/template.html:1193",
+        "saakshi-landing/res/8b72f710-4684-4f09-b36e-7edb6f47fe91.js:8",
+        "saakshi-landing/res/8b72f710-4684-4f09-b36e-7edb6f47fe91.js:59",
+        "witness-wall/res/b04ae668-2ebb-4b6d-84d1-edfd69d86861.js:8",
+        "witness-wall/res/b04ae668-2ebb-4b6d-84d1-edfd69d86861.js:59",
+        "how-it-works/res/9f45d311-7417-419f-8956-f72bc7bd6f67.js:8",
+        "how-it-works/res/9f45d311-7417-419f-8956-f72bc7bd6f67.js:59",
+        "demo-entry/res/cf0fd264-defc-41dc-b623-eb446f8561de.js:8",
+        "demo-entry/res/cf0fd264-defc-41dc-b623-eb446f8561de.js:59",
+        "evidence-page/res/4536b2b6-020d-41e8-a48b-e688f61063fe.js:8",
+        "evidence-page/res/4536b2b6-020d-41e8-a48b-e688f61063fe.js:59"
+      ],
+      "decision": "→ var(--destructive) (handoff token wins, ΔE 1.69 < 2.3)"
+    },
+    {
+      "value": "#1F5DBA",
+      "uses": 24,
+      "nearest": "light.measured",
+      "nearestOklch": "oklch(0.5 0.15 258)",
+      "nearestHex": "#2460B7",
+      "deltaE": 1.08,
+      "hueShift": 1,
+      "inCode": [
+        "saakshi-landing/template.html:1557",
+        "evidence-page/template.html:523",
+        "spot-page/template.html:417",
+        "report-page/template.html:460",
+        "report-page/template.html:466",
+        "report-page/template.html:467"
+      ],
+      "decision": "→ var(--measured) (handoff token wins, ΔE 1.08 < 2.3)"
+    },
+    {
+      "value": "#4FCB8A",
+      "uses": 23,
+      "nearest": "dark.verified",
+      "nearestOklch": "oklch(0.77 0.14 155)",
+      "nearestHex": "#5FCE8C",
+      "deltaE": 1.53,
+      "hueShift": 2,
+      "inCode": [
+        "saakshi-landing/template.html:1193",
+        "saakshi-landing/template.html:1417",
+        "saakshi-landing/template.html:1487",
+        "saakshi-landing/res/8b72f710-4684-4f09-b36e-7edb6f47fe91.js:59",
+        "saakshi-landing/res/ecab9dae-4774-4fae-a4c6-84ae241a51e3.js:56",
+        "witness-wall/res/b04ae668-2ebb-4b6d-84d1-edfd69d86861.js:59",
+        "how-it-works/res/9f45d311-7417-419f-8956-f72bc7bd6f67.js:59",
+        "demo-entry/res/cf0fd264-defc-41dc-b623-eb446f8561de.js:59",
+        "evidence-page/res/4536b2b6-020d-41e8-a48b-e688f61063fe.js:59",
+        "spot-page/res/14239939-611a-4de8-bf55-55dbcbb81d54.js:59",
+        "report-page/res/b00ab7df-4f95-4f6c-8df6-bc65f341d19a.js:59",
+        "qr-poster/res/60a6e063-8752-4673-9b9a-bc40355fc243.js:59"
+      ],
+      "decision": "→ var(--verified) (handoff token wins, ΔE 1.53 < 2.3)"
+    },
+    {
+      "value": "#9C7DFF",
+      "uses": 17,
+      "nearest": "night.primary",
+      "nearestOklch": "oklch(0.66 0.19 293)",
+      "nearestHex": "#9975FA",
+      "deltaE": 2,
+      "hueShift": 1,
+      "inCode": [
+        "saakshi-landing/template.html:1122",
+        "saakshi-landing/template.html:1176",
+        "saakshi-landing/template.html:1183",
+        "saakshi-landing/template.html:1228",
+        "saakshi-landing/template.html:1461",
+        "witness-wall/template.html:534",
+        "witness-wall/template.html:626",
+        "witness-wall/template.html:628",
+        "capture/template.html:506",
+        "capture/template.html:509",
+        "capture/template.html:516",
+        "saakshi-app/template.html:1049"
+      ],
+      "decision": "→ var(--primary) (handoff token wins, ΔE 2.00 < 2.3)"
+    },
+    {
+      "value": "#E3AE45",
+      "uses": 14,
+      "nearest": "dark.review",
+      "nearestOklch": "oklch(0.79 0.13 80)",
+      "nearestHex": "#E6B14E",
+      "deltaE": 1.08,
+      "hueShift": 1,
+      "inCode": [
+        "saakshi-landing/res/8b72f710-4684-4f09-b36e-7edb6f47fe91.js:59",
+        "witness-wall/res/b04ae668-2ebb-4b6d-84d1-edfd69d86861.js:59",
+        "how-it-works/res/9f45d311-7417-419f-8956-f72bc7bd6f67.js:59",
+        "demo-entry/res/cf0fd264-defc-41dc-b623-eb446f8561de.js:59",
+        "evidence-page/res/4536b2b6-020d-41e8-a48b-e688f61063fe.js:59",
+        "spot-page/res/14239939-611a-4de8-bf55-55dbcbb81d54.js:59",
+        "report-page/res/b00ab7df-4f95-4f6c-8df6-bc65f341d19a.js:59",
+        "qr-poster/res/60a6e063-8752-4673-9b9a-bc40355fc243.js:59",
+        "capture/template.html:491",
+        "capture/res/a6dba9f3-10ad-4e1c-b577-7accb2745b85.js:59",
+        "saakshi-app/res/b52deb24-a4ad-4865-b67e-b7014f65bbcf.js:59"
+      ],
+      "decision": "→ var(--review) (handoff token wins, ΔE 1.08 < 2.3)"
+    },
+    {
+      "value": "#5A6678",
+      "uses": 13,
+      "nearest": "light.estimated",
+      "nearestOklch": "oklch(0.49 0.03 258)",
+      "nearestHex": "#566172",
+      "deltaE": 1.73,
+      "hueShift": 1,
+      "inCode": [
+        "saakshi-landing/res/8b72f710-4684-4f09-b36e-7edb6f47fe91.js:133",
+        "witness-wall/res/b04ae668-2ebb-4b6d-84d1-edfd69d86861.js:133",
+        "how-it-works/res/9f45d311-7417-419f-8956-f72bc7bd6f67.js:133",
+        "demo-entry/res/cf0fd264-defc-41dc-b623-eb446f8561de.js:133",
+        "evidence-page/template.html:522",
+        "evidence-page/res/4536b2b6-020d-41e8-a48b-e688f61063fe.js:133",
+        "spot-page/res/14239939-611a-4de8-bf55-55dbcbb81d54.js:133",
+        "report-page/res/b00ab7df-4f95-4f6c-8df6-bc65f341d19a.js:133",
+        "qr-poster/res/60a6e063-8752-4673-9b9a-bc40355fc243.js:133",
+        "capture/res/a6dba9f3-10ad-4e1c-b577-7accb2745b85.js:133",
+        "saakshi-app/res/b52deb24-a4ad-4865-b67e-b7014f65bbcf.js:133"
+      ],
+      "decision": "→ var(--estimated) (handoff token wins, ΔE 1.73 < 2.3)"
+    },
+    {
+      "value": "#E8F3EC",
+      "uses": 11,
+      "nearest": "light.background",
+      "nearestOklch": "oklch(0.962 0.007 250)",
+      "nearestHex": "#EFF3F7",
+      "deltaE": 1.83,
+      "hueShift": 90,
+      "inCode": [
+        "evidence-page/template.html:515",
+        "evidence-page/template.html:555",
+        "capture/template.html:512"
+      ],
+      "decision": "extra variable (kept exact: a tint (chroma 0.015) the token would shift 90° in hue, ΔE 1.83)"
+    },
+    {
+      "value": "#EEF2F6",
+      "uses": 10,
+      "nearest": "light.background",
+      "nearestOklch": "oklch(0.962 0.007 250)",
+      "nearestHex": "#EFF3F7",
+      "deltaE": 0.3,
+      "hueShift": 0,
+      "decision": "→ var(--background) (handoff token wins, ΔE 0.30 < 2.3)"
+    },
+    {
+      "value": "#14583A",
+      "uses": 10,
+      "nearest": "light.verified",
+      "nearestOklch": "oklch(0.5 0.11 155)",
+      "nearestHex": "#1E7546",
+      "deltaE": 9.34,
+      "hueShift": 5,
+      "inCode": [
+        "evidence-page/template.html:515",
+        "capture/template.html:512"
+      ],
+      "decision": "extra variable (kept exact: ΔE 9.34 ≥ 2.3, not a handoff token; the rendered prototype wins)"
+    },
+    {
+      "value": "#E3E7ED",
+      "uses": 10,
+      "nearest": "light.secondary",
+      "nearestOklch": "oklch(0.935 0.009 250)",
+      "nearestHex": "#E5EAEF",
+      "deltaE": 0.82,
+      "hueShift": 10,
+      "inCode": [
+        "capture/template.html:509"
+      ],
+      "decision": "→ var(--secondary) (handoff token wins, ΔE 0.82 < 2.3)"
+    },
+    {
+      "value": "#3F7FE6",
+      "uses": 10,
+      "nearest": "light.measured",
+      "nearestOklch": "oklch(0.5 0.15 258)",
+      "nearestHex": "#2460B7",
+      "deltaE": 10.98,
+      "hueShift": 1,
+      "inCode": [
+        "saakshi-landing/res/8b72f710-4684-4f09-b36e-7edb6f47fe91.js:140",
+        "witness-wall/res/b04ae668-2ebb-4b6d-84d1-edfd69d86861.js:140",
+        "how-it-works/res/9f45d311-7417-419f-8956-f72bc7bd6f67.js:140",
+        "demo-entry/res/cf0fd264-defc-41dc-b623-eb446f8561de.js:140",
+        "evidence-page/res/4536b2b6-020d-41e8-a48b-e688f61063fe.js:140",
+        "spot-page/res/14239939-611a-4de8-bf55-55dbcbb81d54.js:140",
+        "report-page/res/b00ab7df-4f95-4f6c-8df6-bc65f341d19a.js:140",
+        "qr-poster/res/60a6e063-8752-4673-9b9a-bc40355fc243.js:140",
+        "capture/res/a6dba9f3-10ad-4e1c-b577-7accb2745b85.js:140",
+        "saakshi-app/res/b52deb24-a4ad-4865-b67e-b7014f65bbcf.js:140"
+      ],
+      "decision": "extra variable (kept exact: ΔE 10.98 ≥ 2.3, not a handoff token; the rendered prototype wins)"
+    },
+    {
+      "value": "#9AA3B2",
+      "uses": 6,
+      "nearest": "dark.muted-foreground",
+      "nearestOklch": "oklch(0.735 0.03 290)",
+      "nearestHex": "#A8A6BB",
+      "deltaE": 2.53,
+      "hueShift": 29,
+      "inCode": [
+        "evidence-page/template.html:515",
+        "capture/template.html:502",
+        "capture/template.html:509",
+        "capture/template.html:512"
+      ],
+      "decision": "extra variable (kept exact: ΔE 2.53 ≥ 2.3, not a handoff token; the rendered prototype wins)"
+    },
+    {
+      "value": "#C9B8FF",
+      "uses": 4,
+      "nearest": "dark.accent-foreground",
+      "nearestOklch": "oklch(0.9 0.05 293)",
+      "nearestHex": "#DFD9FD",
+      "deltaE": 9.43,
+      "hueShift": 2,
+      "decision": "extra variable (kept exact: ΔE 9.43 ≥ 2.3, not a handoff token; the rendered prototype wins)"
+    },
+    {
+      "value": "#3A3257",
+      "uses": 3,
+      "nearest": "dark.accent",
+      "nearestOklch": "oklch(0.3 0.06 293)",
+      "nearestHex": "#2F2749",
+      "deltaE": 4.46,
+      "hueShift": 1,
+      "decision": "extra variable (kept exact: ΔE 4.46 ≥ 2.3, not a handoff token; the rendered prototype wins)"
+    },
+    {
+      "value": "#F1F3F6",
+      "uses": 3,
+      "nearest": "light.background",
+      "nearestOklch": "oklch(0.962 0.007 250)",
+      "nearestHex": "#EFF3F7",
+      "deltaE": 0.28,
+      "hueShift": 10,
+      "inCode": [
+        "evidence-page/template.html:515",
+        "capture/template.html:512"
+      ],
+      "decision": "→ var(--background) (handoff token wins, ΔE 0.28 < 2.3)"
+    },
+    {
+      "value": "rgba(255,255,255,0.94)",
+      "uses": 3,
+      "decision": "kept as written (alpha or computed colour)"
+    },
+    {
+      "value": "#2F6BEA",
+      "uses": 3,
+      "nearest": "light.measured",
+      "nearestOklch": "oklch(0.5 0.15 258)",
+      "nearestHex": "#2460B7",
+      "deltaE": 8.36,
+      "hueShift": 4,
+      "decision": "extra variable (kept exact: ΔE 8.36 ≥ 2.3, not a handoff token; the rendered prototype wins)"
+    },
+    {
+      "value": "#C9D0DA",
+      "uses": 3,
+      "nearest": "light.border",
+      "nearestOklch": "oklch(0.885 0.013 252)",
+      "nearestHex": "#D3DAE2",
+      "deltaE": 3.03,
+      "hueShift": 6,
+      "inCode": [
+        "capture/template.html:500"
+      ],
+      "decision": "extra variable (kept exact: ΔE 3.03 ≥ 2.3, not a handoff token; the rendered prototype wins)"
+    },
+    {
+      "value": "#C9CDDF",
+      "uses": 3,
+      "nearest": "light.border",
+      "nearestOklch": "oklch(0.885 0.013 252)",
+      "nearestHex": "#D3DAE2",
+      "deltaE": 3.74,
+      "hueShift": 24,
+      "decision": "extra variable (kept exact: ΔE 3.74 ≥ 2.3, not a handoff token; the rendered prototype wins)"
+    },
+    {
+      "value": "#6EA2FF",
+      "uses": 2,
+      "nearest": "dark.measured",
+      "nearestOklch": "oklch(0.72 0.13 258)",
+      "nearestHex": "#70A6F5",
+      "deltaE": 2.03,
+      "hueShift": 3,
+      "decision": "→ var(--measured) (handoff token wins, ΔE 2.03 < 2.3)"
+    },
+    {
+      "value": "#E4E6F2",
+      "uses": 2,
+      "nearest": "light.secondary",
+      "nearestOklch": "oklch(0.935 0.009 250)",
+      "nearestHex": "#E5EAEF",
+      "deltaE": 1.26,
+      "hueShift": 31,
+      "decision": "→ var(--secondary) (handoff token wins, ΔE 1.26 < 2.3)"
+    },
+    {
+      "value": "#2B2545",
+      "uses": 2,
+      "nearest": "night.border",
+      "nearestOklch": "oklch(0.29 0.05 292)",
+      "nearestHex": "#2C2642",
+      "deltaE": 0.73,
+      "hueShift": 2,
+      "inCode": [
+        "saakshi-landing/template.html:1294"
+      ],
+      "decision": "→ var(--border) (handoff token wins, ΔE 0.73 < 2.3)"
+    },
+    {
+      "value": "rgba(0,0,0,0.62)",
+      "uses": 2,
+      "decision": "kept as written (alpha or computed colour)"
+    },
+    {
+      "value": "#F6F8FB",
+      "uses": 2,
+      "nearest": "light.primary-foreground",
+      "nearestOklch": "oklch(0.985 0.004 290)",
+      "nearestHex": "#FAFAFD",
+      "deltaE": 0.78,
+      "hueShift": 28,
+      "decision": "→ var(--primary-foreground) (handoff token wins, ΔE 0.78 < 2.3)"
+    },
+    {
+      "value": "#3A3160",
+      "uses": 2,
+      "nearest": "dark.accent",
+      "nearestOklch": "oklch(0.3 0.06 293)",
+      "nearestHex": "#2F2749",
+      "deltaE": 5.19,
+      "hueShift": 3,
+      "decision": "extra variable (kept exact: ΔE 5.19 ≥ 2.3, not a handoff token; the rendered prototype wins)"
+    },
+    {
+      "value": "rgba(14,11,26,0.78)",
+      "uses": 2,
+      "decision": "kept as written (alpha or computed colour)"
+    },
+    {
+      "value": "#120E22",
+      "uses": 2,
+      "nearest": "dark.primary-foreground",
+      "nearestOklch": "oklch(0.17 0.03 290)",
+      "nearestHex": "#0F0D1C",
+      "deltaE": 1.42,
+      "hueShift": 2,
+      "decision": "→ var(--primary-foreground) (handoff token wins, ΔE 1.42 < 2.3)"
+    },
+    {
+      "value": "#FBEDEB",
+      "uses": 2,
+      "nearest": "light.background",
+      "nearestOklch": "oklch(0.962 0.007 250)",
+      "nearestHex": "#EFF3F7",
+      "deltaE": 2.19,
+      "hueShift": 139,
+      "inCode": [
+        "evidence-page/template.html:555"
+      ],
+      "decision": "extra variable (kept exact: a tint (chroma 0.015) the token would shift 139° in hue, ΔE 2.19)"
+    },
+    {
+      "value": "#000",
+      "uses": 2,
+      "nearest": "night.background",
+      "nearestOklch": "oklch(0.155 0.035 292)",
+      "nearestHex": "#0D091A",
+      "deltaE": 15.97,
+      "hueShift": 67,
+      "decision": "extra variable (kept exact: ΔE 15.97 ≥ 2.3, not a handoff token; the rendered prototype wins)"
+    },
+    {
+      "value": "rgba(15,19,32,0.82)",
+      "uses": 2,
+      "decision": "kept as written (alpha or computed colour)"
+    },
+    {
+      "value": "rgba(138,90,0,0.92)",
+      "uses": 2,
+      "decision": "kept as written (alpha or computed colour)"
+    },
+    {
+      "value": "rgba(255,255,255,0.8)",
+      "uses": 2,
+      "decision": "kept as written (alpha or computed colour)"
+    },
+    {
+      "value": "rgba(14,11,26,0.72)",
+      "uses": 2,
+      "decision": "kept as written (alpha or computed colour)"
+    },
+    {
+      "value": "rgba(14,11,26,0.4)",
+      "uses": 2,
+      "decision": "kept as written (alpha or computed colour)"
+    },
+    {
+      "value": "#7B8494",
+      "uses": 2,
+      "nearest": "night.muted-foreground",
+      "nearestOklch": "oklch(0.73 0.04 295)",
+      "nearestHex": "#A9A3BF",
+      "deltaE": 12.06,
+      "hueShift": 33,
+      "inCode": [
+        "saakshi-landing/res/ecab9dae-4774-4fae-a4c6-84ae241a51e3.js:53",
+        "saakshi-landing/res/ecab9dae-4774-4fae-a4c6-84ae241a51e3.js:137"
+      ],
+      "decision": "extra variable (kept exact: ΔE 12.06 ≥ 2.3, not a handoff token; the rendered prototype wins)"
+    },
+    {
+      "value": "rgba(14,11,26,0.86)",
+      "uses": 1,
+      "decision": "kept as written (alpha or computed colour)"
+    },
+    {
+      "value": "rgba(10,9,22,0.46)",
+      "uses": 1,
+      "decision": "kept as written (alpha or computed colour)"
+    },
+    {
+      "value": "rgba(255,255,255,0.92)",
+      "uses": 1,
+      "decision": "kept as written (alpha or computed colour)"
+    },
+    {
+      "value": "rgba(255,255,255,0.7)",
+      "uses": 1,
+      "decision": "kept as written (alpha or computed colour)"
+    },
+    {
+      "value": "rgba(255,255,255,0.78)",
+      "uses": 1,
+      "decision": "kept as written (alpha or computed colour)"
+    },
+    {
+      "value": "rgba(255,255,255,0.42)",
+      "uses": 1,
+      "decision": "kept as written (alpha or computed colour)"
+    },
+    {
+      "value": "#221B3A",
+      "uses": 1,
+      "nearest": "night.muted",
+      "nearestOklch": "oklch(0.24 0.05 292)",
+      "nearestHex": "#201A35",
+      "deltaE": 1.05,
+      "hueShift": 0,
+      "decision": "→ var(--muted) (handoff token wins, ΔE 1.05 < 2.3)"
+    },
+    {
+      "value": "rgba(79,203,138,0.18)",
+      "uses": 1,
+      "decision": "kept as written (alpha or computed colour)"
+    },
+    {
+      "value": "rgba(23,18,41,0.9)",
+      "uses": 1,
+      "decision": "kept as written (alpha or computed colour)"
+    },
+    {
+      "value": "rgba(255,255,255,0.95)",
+      "uses": 1,
+      "decision": "kept as written (alpha or computed colour)"
+    },
+    {
+      "value": "#8F2419",
+      "uses": 1,
+      "nearest": "light.destructive",
+      "nearestOklch": "oklch(0.53 0.17 28)",
+      "nearestHex": "#BA362E",
+      "deltaE": 10.13,
+      "hueShift": 2,
+      "decision": "extra variable (kept exact: ΔE 10.13 ≥ 2.3, not a handoff token; the rendered prototype wins)"
+    },
+    {
+      "value": "rgba(255,255,255,0.85)",
+      "uses": 1,
+      "decision": "kept as written (alpha or computed colour)"
+    },
+    {
+      "value": "rgba(255,255,255,0.96)",
+      "uses": 1,
+      "decision": "kept as written (alpha or computed colour)"
+    },
+    {
+      "value": "rgba(79,203,138,0.12)",
+      "uses": 1,
+      "decision": "kept as written (alpha or computed colour)"
+    },
+    {
+      "value": "rgba(255,255,255,0.12)",
+      "uses": 1,
+      "decision": "kept as written (alpha or computed colour)"
+    },
+    {
+      "value": "rgba(255,255,255,0.45)",
+      "uses": 1,
+      "decision": "kept as written (alpha or computed colour)"
+    },
+    {
+      "value": "#2A2150",
+      "uses": 1,
+      "nearest": "dark.accent",
+      "nearestOklch": "oklch(0.3 0.06 293)",
+      "nearestHex": "#2F2749",
+      "deltaE": 2.62,
+      "hueShift": 4,
+      "inCode": [
+        "saakshi-landing/template.html:1183"
+      ],
+      "decision": "extra variable (kept exact: ΔE 2.62 ≥ 2.3, not a handoff token; the rendered prototype wins)"
+    },
+    {
+      "value": "#8E7BD6",
+      "uses": 1,
+      "nearest": "dark.primary",
+      "nearestOklch": "oklch(0.68 0.165 293)",
+      "nearestHex": "#9E81F4",
+      "deltaE": 5.22,
+      "hueShift": 1,
+      "inCode": [
+        "saakshi-landing/res/ecab9dae-4774-4fae-a4c6-84ae241a51e3.js:137"
+      ],
+      "decision": "extra variable (kept exact: ΔE 5.22 ≥ 2.3, not a handoff token; the rendered prototype wins)"
+    },
+    {
+      "value": "#6F6890",
+      "uses": 1,
+      "nearest": "light.estimated",
+      "nearestOklch": "oklch(0.49 0.03 258)",
+      "nearestHex": "#566172",
+      "deltaE": 6.4,
+      "hueShift": 33,
+      "inCode": [
+        "witness-wall/template.html:626"
+      ],
+      "decision": "extra variable (kept exact: ΔE 6.40 ≥ 2.3, not a handoff token; the rendered prototype wins)"
+    }
+  ],
+  "fontSizes": [
+    {
+      "v": "12px",
+      "n": 112
+    },
+    {
+      "v": "13px",
+      "n": 54
+    },
+    {
+      "v": "14px",
+      "n": 44
+    },
+    {
+      "v": "11px",
+      "n": 29
+    },
+    {
+      "v": "16px",
+      "n": 23
+    },
+    {
+      "v": "15px",
+      "n": 18
+    },
+    {
+      "v": "19px",
+      "n": 11
+    },
+    {
+      "v": "40px",
+      "n": 10
+    },
+    {
+      "v": "22px",
+      "n": 10
+    },
+    {
+      "v": "24px",
+      "n": 10
+    },
+    {
+      "v": "9px",
+      "n": 9
+    },
+    {
+      "v": "34px",
+      "n": 8
+    },
+    {
+      "v": "10px",
+      "n": 8
+    },
+    {
+      "v": "26px",
+      "n": 8
+    },
+    {
+      "v": "18px",
+      "n": 7
+    },
+    {
+      "v": "20px",
+      "n": 6
+    },
+    {
+      "v": "clamp(34px,4.4vw,68px)",
+      "n": 5
+    },
+    {
+      "v": "44px",
+      "n": 4
+    },
+    {
+      "v": "17px",
+      "n": 4
+    },
+    {
+      "v": "64px",
+      "n": 4
+    },
+    {
+      "v": "21px",
+      "n": 3
+    },
+    {
+      "v": "30px",
+      "n": 3
+    },
+    {
+      "v": "2.2cqw",
+      "n": 3
+    },
+    {
+      "v": "4.4cqw",
+      "n": 3
+    },
+    {
+      "v": "2.5cqw",
+      "n": 3
+    },
+    {
+      "v": "clamp(32px,4vw,58px)",
+      "n": 2
+    },
+    {
+      "v": "clamp(44px,7vw,112px)",
+      "n": 2
+    },
+    {
+      "v": "32px",
+      "n": 2
+    },
+    {
+      "v": "clamp(34px,4.2vw,60px)",
+      "n": 2
+    },
+    {
+      "v": "clamp(34px,5.4vw,64px)",
+      "n": 2
+    },
+    {
+      "v": "clamp(56px,9.4vw,156px)",
+      "n": 1
+    },
+    {
+      "v": "clamp(17px,1.5vw,21px)",
+      "n": 1
+    },
+    {
+      "v": "clamp(32px,4vw,56px)",
+      "n": 1
+    },
+    {
+      "v": "clamp(38px,5vw,76px)",
+      "n": 1
+    },
+    {
+      "v": "clamp(30px,3.4vw,50px)",
+      "n": 1
+    },
+    {
+      "v": "clamp(30px,3.6vw,50px)",
+      "n": 1
+    },
+    {
+      "v": "clamp(34px,4.6vw,70px)",
+      "n": 1
+    },
+    {
+      "v": "clamp(40px,5.6vw,88px)",
+      "n": 1
+    },
+    {
+      "v": "clamp(36px,4.8vw,74px)",
+      "n": 1
+    },
+    {
+      "v": "clamp(28px,3vw,48px)",
+      "n": 1
+    },
+    {
+      "v": "clamp(44px,6vw,96px)",
+      "n": 1
+    },
+    {
+      "v": "clamp(17px,1.6vw,22px)",
+      "n": 1
+    },
+    {
+      "v": "48px",
+      "n": 1
+    },
+    {
+      "v": "clamp(44px,7vw,104px)",
+      "n": 1
+    },
+    {
+      "v": "clamp(17px,1.5vw,20px)",
+      "n": 1
+    },
+    {
+      "v": "clamp(64px,8vw,104px)",
+      "n": 1
+    },
+    {
+      "v": "clamp(24px,2.6vw,34px)",
+      "n": 1
+    },
+    {
+      "v": "clamp(40px,6vw,88px)",
+      "n": 1
+    },
+    {
+      "v": "clamp(32px,5vw,56px)",
+      "n": 1
+    },
+    {
+      "v": "6cqw",
+      "n": 1
+    },
+    {
+      "v": "4.8cqw",
+      "n": 1
+    },
+    {
+      "v": "11.5cqw",
+      "n": 1
+    },
+    {
+      "v": "6.4cqw",
+      "n": 1
+    },
+    {
+      "v": "2.8cqw",
+      "n": 1
+    },
+    {
+      "v": "2.1cqw",
+      "n": 1
+    },
+    {
+      "v": "52px",
+      "n": 1
+    },
+    {
+      "v": "8px",
+      "n": 1
+    },
+    {
+      "v": "110px",
+      "n": 1
+    },
+    {
+      "v": "28px",
+      "n": 1
+    }
+  ],
+  "fontWeights": [
+    {
+      "v": "600",
+      "n": 81
+    },
+    {
+      "v": "700",
+      "n": 67
+    },
+    {
+      "v": "500",
+      "n": 48
+    },
+    {
+      "v": "650",
+      "n": 37
+    }
+  ],
+  "fontStretches": [
+    {
+      "v": "92%",
+      "n": 11
+    },
+    {
+      "v": "88%",
+      "n": 5
+    },
+    {
+      "v": "90%",
+      "n": 3
+    },
+    {
+      "v": "86%",
+      "n": 2
+    },
+    {
+      "v": "100%",
+      "n": 1
+    },
+    {
+      "v": "125%",
+      "n": 1
+    }
+  ],
+  "fontFamilies": [
+    {
+      "v": "'Anek Latin',sans-serif",
+      "n": 104
+    },
+    {
+      "v": "'IBM Plex Mono',monospace",
+      "n": 30
+    },
+    {
+      "v": "'IBM Plex Sans',sans-serif",
+      "n": 13
+    },
+    {
+      "v": "'Anek Devanagari',sans-serif",
+      "n": 7
+    },
+    {
+      "v": "'IBM Plex Sans','IBM Plex Sans Devanagari',system-ui,sans-serif",
+      "n": 1
+    },
+    {
+      "v": "'Anek Devanagari','Anek Latin',sans-serif",
+      "n": 1
+    },
+    {
+      "v": "{{ f.font }}",
+      "n": 1
+    },
+    {
+      "v": "'IBM Plex Sans','IBM Plex Sans Devanagari',sans-serif",
+      "n": 1
+    }
+  ],
+  "lineHeights": [
+    {
+      "v": "1",
+      "n": 37
+    },
+    {
+      "v": "1.5",
+      "n": 32
+    },
+    {
+      "v": "1.45",
+      "n": 13
+    },
+    {
+      "v": "0.95",
+      "n": 12
+    },
+    {
+      "v": "1.35",
+      "n": 10
+    },
+    {
+      "v": "1.4",
+      "n": 10
+    },
+    {
+      "v": "1.05",
+      "n": 7
+    },
+    {
+      "v": "1.55",
+      "n": 6
+    },
+    {
+      "v": "0.9",
+      "n": 5
+    },
+    {
+      "v": "0.92",
+      "n": 4
+    },
+    {
+      "v": "0.94",
+      "n": 3
+    },
+    {
+      "v": "0.98",
+      "n": 2
+    },
+    {
+      "v": "1.3",
+      "n": 2
+    },
+    {
+      "v": "1.1",
+      "n": 2
+    },
+    {
+      "v": "1.08",
+      "n": 1
+    },
+    {
+      "v": "1.02",
+      "n": 1
+    },
+    {
+      "v": "0.85",
+      "n": 1
+    }
+  ],
+  "letterSpacings": [
+    {
+      "v": "-0.02em",
+      "n": 17
+    },
+    {
+      "v": "-0.015em",
+      "n": 7
+    },
+    {
+      "v": "-0.01em",
+      "n": 1
+    },
+    {
+      "v": "-0.025em",
+      "n": 1
+    }
+  ],
+  "radii": [
+    {
+      "v": "12px",
+      "n": 54
+    },
+    {
+      "v": "8px",
+      "n": 47
+    },
+    {
+      "v": "6px",
+      "n": 42
+    },
+    {
+      "v": "10px",
+      "n": 29
+    },
+    {
+      "v": "5px",
+      "n": 28
+    },
+    {
+      "v": "4px",
+      "n": 22
+    },
+    {
+      "v": "9px",
+      "n": 21
+    },
+    {
+      "v": "3px",
+      "n": 13
+    },
+    {
+      "v": "7px",
+      "n": 9
+    },
+    {
+      "v": "14px",
+      "n": 8
+    },
+    {
+      "v": "16px",
+      "n": 5
+    },
+    {
+      "v": "2px",
+      "n": 4
+    },
+    {
+      "v": "50%",
+      "n": 4
+    },
+    {
+      "v": "24px",
+      "n": 1
+    },
+    {
+      "v": "18px",
+      "n": 1
+    },
+    {
+      "v": "20px",
+      "n": 1
+    },
+    {
+      "v": "12px 12px 0 0",
+      "n": 1
+    },
+    {
+      "v": "3cqw",
+      "n": 1
+    },
+    {
+      "v": "44px",
+      "n": 1
+    },
+    {
+      "v": "36px",
+      "n": 1
+    },
+    {
+      "v": "38px",
+      "n": 1
+    },
+    {
+      "v": "22px 22px 0 0",
+      "n": 1
+    },
+    {
+      "v": "{{ m.radius }}",
+      "n": 1
+    },
+    {
+      "v": "{{ t.radius }}",
+      "n": 1
+    }
+  ],
+  "shadows": [
+    {
+      "v": "0 6px 24px rgba(15,19,32,0.08)",
+      "n": 5
+    },
+    {
+      "v": "0 0 18px 4px rgba(110,162,255,0.8)",
+      "n": 2
+    },
+    {
+      "v": "0 10px 30px rgba(15,19,32,0.14)",
+      "n": 2
+    },
+    {
+      "v": "0 10px 30px rgba(15,19,32,0.1)",
+      "n": 1
+    },
+    {
+      "v": "0 30px 80px rgba(0,0,0,0.5)",
+      "n": 1
+    },
+    {
+      "v": "0 0 16px rgba(156,125,255,0.7)",
+      "n": 1
+    },
+    {
+      "v": "0 0 18px 4px rgba(79,203,138,0.55)",
+      "n": 1
+    },
+    {
+      "v": "0 30px 80px rgba(0,0,0,0.55)",
+      "n": 1
+    },
+    {
+      "v": "{{ o.shadow }}",
+      "n": 1
+    },
+    {
+      "v": "0 2px 8px rgba(15,19,32,0.18)",
+      "n": 1
+    },
+    {
+      "v": "{{ n.shadow }}",
+      "n": 1
+    },
+    {
+      "v": "0 30px 80px rgba(15,19,32,0.25)",
+      "n": 1
+    },
+    {
+      "v": "0 0 0 3px rgba(156,125,255,0.35)",
+      "n": 1
+    },
+    {
+      "v": "0 0 16px {{ accGlow }}",
+      "n": 1
+    },
+    {
+      "v": "0 0 0 3px var(--card)",
+      "n": 1
+    },
+    {
+      "v": "0 6px 18px rgba(0,0,0,0.12)",
+      "n": 1
+    },
+    {
+      "v": "0 0 0 2px var(--card)",
+      "n": 1
+    },
+    {
+      "v": "0 0 14px 3px color-mix(in oklch, var(--measured) 70%, transparent)",
+      "n": 1
+    },
+    {
+      "v": "-20px 0 60px rgba(0,0,0,0.2)",
+      "n": 1
+    },
+    {
+      "v": "0 0 0 4px color-mix(in oklch, var(--glow) 25%, transparent)",
+      "n": 1
+    },
+    {
+      "v": "0 30px 80px rgba(0,0,0,0.3)",
+      "n": 1
+    },
+    {
+      "v": "0 10px 30px rgba(0,0,0,0.2)",
+      "n": 1
+    }
+  ],
+  "transitions": [
+    {
+      "v": "border-color 160ms,box-shadow 160ms",
+      "n": 8
+    },
+    {
+      "v": "background 160ms,border-color 160ms",
+      "n": 2
+    },
+    {
+      "v": "opacity 160ms",
+      "n": 2
+    },
+    {
+      "v": "background 200ms,color 200ms,border-color 200ms",
+      "n": 1
+    },
+    {
+      "v": "opacity 300ms",
+      "n": 1
+    },
+    {
+      "v": "opacity 160ms,outline-color 160ms",
+      "n": 1
+    },
+    {
+      "v": "background 160ms,color 160ms",
+      "n": 1
+    },
+    {
+      "v": "width 200ms cubic-bezier(0.16,1,0.3,1)",
+      "n": 1
+    },
+    {
+      "v": "background 150ms",
+      "n": 1
+    },
+    {
+      "v": "border-color 150ms",
+      "n": 1
+    },
+    {
+      "v": "opacity 150ms",
+      "n": 1
+    }
+  ],
+  "transforms3d": [
+    {
+      "v": "rotate(-24deg)",
+      "n": 2
+    },
+    {
+      "v": "perspective:1400px",
+      "n": 2
+    },
+    {
+      "v": "perspective:1600px",
+      "n": 1
+    },
+    {
+      "v": "rotateX(56deg) rotateZ(-36deg)",
+      "n": 1
+    },
+    {
+      "v": "translateZ(0px)",
+      "n": 1
+    },
+    {
+      "v": "translateZ(70px)",
+      "n": 1
+    },
+    {
+      "v": "translateZ(140px)",
+      "n": 1
+    },
+    {
+      "v": "translateZ(210px)",
+      "n": 1
+    },
+    {
+      "v": "translateZ(280px)",
+      "n": 1
+    },
+    {
+      "v": "perspective:900px",
+      "n": 1
+    },
+    {
+      "v": "rotateX(46deg)",
+      "n": 1
+    },
+    {
+      "v": "perspective:1500px",
+      "n": 1
+    },
+    {
+      "v": "rotateX(54deg) rotateZ(-10deg) scale(1)",
+      "n": 1
+    },
+    {
+      "v": "rotate({{ m.rot }})",
+      "n": 1
+    },
+    {
+      "v": "rotate(45deg)",
+      "n": 1
+    },
+    {
+      "v": "rotate({{ t.rot }})",
+      "n": 1
+    },
+    {
+      "v": "perspective:1300px",
+      "n": 1
+    }
+  ]
+}

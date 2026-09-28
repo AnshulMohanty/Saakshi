@@ -1,44 +1,61 @@
+@import "./fonts.css";
+@import "./tokens.css";
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant night (&:is(.night *));
 
+/*
+ * Tokens from the Developer Handoff (SK.tokens → app/tokens.css, `pnpm design:tokens`): shadcn/ui
+ * names plus six functional tokens. :root is the app in light, .dark the app in dark, .night the
+ * story chapters and the Witness Wall. Status colours always sit next to a word or shape.
+ * Reconciliation with the prototypes' hex values: design/tokens.extracted.json.
+ */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-body);
-  --font-mono: var(--font-code);
-  --font-heading: var(--font-display);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-verified: var(--verified);
+  --color-review: var(--review);
+  --color-flagged: var(--flagged);
+  --color-measured: var(--measured);
+  --color-estimated: var(--estimated);
+  --color-glow: var(--glow);
+
+  --font-display: "Anek Latin", "Anek Devanagari", sans-serif;
+  --font-sans: "IBM Plex Sans", "IBM Plex Sans Devanagari", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace; /* hashes, coords, URLs only */
+  --font-heading: var(--font-display);
+  --font-deva: "Anek Devanagari", "Anek Latin", sans-serif; /* साक्षी next to the wordmark */
+
+  --text-hero: clamp(56px, 9.4vw, 156px); /* 700, wdth 88, lh 0.9 */
+  --text-chapter: clamp(34px, 4.6vw, 70px); /* 700, wdth 92, lh 0.95 */
+  --text-title: clamp(22px, 2.4vw, 32px); /* 650 */
+  --text-number: clamp(32px, 5vw, 112px); /* 700, tabular */
+  --text-body: 15px;
+  --text-ui: 14px;
+  --text-caption: 12px;
+
+  --ease-reveal: cubic-bezier(0.16, 1, 0.3, 1); /* expo out */
+  --ease-move: cubic-bezier(0.65, 0, 0.35, 1); /* cubic in-out */
+
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -49,89 +66,88 @@
 }
 
 :root {
-  /* Fonts are variables so the Phase 7 design system can swap them. */
-  --font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Noto Sans Devanagari", sans-serif;
-  --font-display: var(--font-body);
-  --font-code: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Motion tokens (lib/motion/tokens.ts mirrors them for JS). */
+  --dur-micro: 160ms; /* hover, focus, toggles */
+  --dur-ui: 240ms; /* chips, tabs, drawer items */
+  --dur-reveal: 800ms; /* 600 to 900 */
+  --dur-drawer: 320ms;
+
+  /*
+   * The prototype colours no handoff token covers (design/tokens.extracted.json, "extra
+   * variable"): ΔE ≥ 2.3 from every token, or a tint a token would shift in hue. Kept exact;
+   * components use these names, never the hex. Colours only drawn in canvas/GL live in
+   * lib/motion/scenes/*.ts.
+   */
+  --verified-tint: #e8f3ec; /* verified chip / banner background */
+  --verified-ink: #14583a; /* text on --verified-tint */
+  --flagged-tint: #fbedeb; /* flagged banner background */
+  --flagged-ink: #8f2419; /* text on --flagged-tint */
+  --neutral-dot: #9aa3b2; /* "no location" / unfilled dots */
+  --placeholder: #c9cddf; /* photo placeholders */
+  --hairline-strong: #c9d0da; /* unselected segmented control, framed panels */
+  --mask-tint: #2f6bea; /* litter mask overlay (with its opacity at the use site) */
+  --code-ink: #c9b8ff; /* code on night panels */
+  --night-chrome: #3a3257; /* window-chrome dots on night panels */
+  --night-code-border: #3a3160; /* transform chips on night panels */
+  --night-node-active: #2a2150; /* landing "Five steps" chapter: the open pipeline node */
+  --night-step-muted: #6f6890; /* Witness Wall: steps not reached yet */
+  --viewfinder: #000; /* camera viewfinder behind the video */
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-micro: 0ms;
+    --dur-ui: 0ms;
+    --dur-reveal: 0ms;
+    --dur-drawer: 0ms;
+  }
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
   html {
     @apply font-sans;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-variant-numeric: tabular-nums;
+  }
+  a {
+    color: var(--primary);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+  a:hover {
+    color: var(--accent-foreground);
+  }
+  ::selection {
+    background: var(--primary);
+    color: var(--primary-foreground);
+  }
+  button {
+    font: inherit;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
 }
+
+/* Loading skeletons: opacity pulse, no shimmer (Developer Handoff, States). */
+@keyframes skpulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
 /* Leaflet: undo preflight image sizing inside the map. */
 .leaflet-container img {
   max-width: none;
