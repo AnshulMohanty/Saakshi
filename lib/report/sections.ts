@@ -4,7 +4,8 @@
  *   5 flagged and excluded · 6 method note and credits
  * Every number comes from a claim, and each links to its evidence (/r/<id>#claim-<claimId>).
  */
-import { formatClaimValue, methodLabel, type Claim } from "../claims";
+import { methodLabel, type Claim } from "../claims";
+import { showClaim, type DisplayPolicy } from "../provenance";
 
 export const CAVEAT = "Measured on photo pixels. Camera angle, framing, season and light affect the result.";
 
@@ -15,6 +16,8 @@ export interface ReportData {
   /** Absolute origin for evidence links. */
   appUrl: string;
   generatedAt: string;
+  /** Production hides mock-derived numbers; development tags them. */
+  policy: DisplayPolicy;
   project: { name: string; type: string; description: string | null; place: string | null; locationApproximate: boolean };
   period: { from: string; to: string };
   claims: Claim[];
@@ -28,7 +31,7 @@ export interface ReportData {
     after: { id: string; date: string };
     /** Key of the composite image the renderer loads. */
     image: string;
-    metrics: Array<{ label: string; before: string; after: string; delta: string; method: string }>;
+    metrics: Array<{ label: string; before: string; after: string; delta: string; method: string; hidden?: boolean }>;
     lowConfidence: boolean;
   }>;
   trend: { spot: string; metric: string; unit: string; points: Array<{ t: number; value: number }> } | null;
@@ -38,8 +41,8 @@ export interface ReportData {
 }
 
 export type Section =
-  | { kind: "cover"; title: string; subtitle: string; period: string; generated: string; url: string }
-  | { kind: "numbers"; items: Array<{ id: string; label: string; value: string; method: string; photos: number; url: string; detail: string | null }>; notes: string[]; prose: string }
+  | { kind: "cover"; title: string; subtitle: string; period: string; generated: string; url: string; banner: string | null }
+  | { kind: "numbers"; items: Array<{ id: string; label: string; value: string; hidden: boolean; mock: boolean; method: string; photos: number; url: string; detail: string | null }>; notes: string[]; prose: string }
   | { kind: "pairs"; items: ReportData["pairs"]; caveat: string }
   | { kind: "trend"; trend: NonNullable<ReportData["trend"]>; caveat: string }
   | { kind: "gallery"; items: Array<ReportData["gallery"][number] & { url: string }> }
@@ -73,10 +76,24 @@ export function buildReportSections(d: ReportData): Section[] {
       period: `${longDate(d.period.from)} to ${longDate(d.period.to)}`,
       generated: `Generated ${longDate(d.generatedAt)} · report ${d.reportId.slice(0, 8)}`,
       url: d.reportUrl,
+      banner: !d.policy.production && d.claims.some((c) => (c.provider_mode ?? "mock") === "mock") ? "Generated with mock providers: numbers are for development only." : null,
     },
     {
       kind: "numbers",
-      items: d.claims.map((c) => ({ id: c.id, label: c.label, value: formatClaimValue(c), method: methodLabel(c), photos: c.asset_ids.length, url: `${d.reportUrl}#claim-${c.id}`, detail: claimDetail(c) })),
+      items: d.claims.map((c) => {
+        const shown = showClaim(c, d.policy);
+        return {
+          id: c.id,
+          label: c.label,
+          value: shown.text,
+          hidden: shown.kind === "hidden",
+          mock: shown.kind === "value" && shown.mock,
+          method: methodLabel(c),
+          photos: c.asset_ids.length,
+          url: `${d.reportUrl}#claim-${c.id}`,
+          detail: claimDetail(c),
+        };
+      }),
       notes: d.notes,
       prose: d.prose,
     },

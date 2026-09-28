@@ -30,7 +30,7 @@ describe("migrations", () => {
     expect(ext.rows).toHaveLength(1);
     const tables = await h.client.query<{ tablename: string }>(`select tablename from pg_tables where schemaname = 'public' order by 1`);
     expect(tables.rows.map((r) => r.tablename)).toEqual([
-      "assets", "audit_log", "capture_tokens", "comparisons", "data_migrations", "duplicates", "geocache", "measurements", "projects", "reports", "spots", "upload_tickets",
+      "assets", "audit_log", "capture_tokens", "comparisons", "data_migrations", "duplicates", "geocache", "measurements", "projects", "provider_usage", "reports", "spots", "upload_tickets",
     ]);
   });
 

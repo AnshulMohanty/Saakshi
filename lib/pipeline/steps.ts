@@ -45,7 +45,8 @@ export type Step = (deps: PipelineDeps, asset: Asset) => Promise<StepResult>;
 export const STEP_ORDER: PipelineStepName[] = ["parseMetadata", "analyze", "understand", "embed", "assign", "score", "measure", "finalize"];
 
 /** Signed, w_1024 derivative sent to the vision model (never the original). */
-export const UNDERSTAND_TRANSFORM = [{ width: 1024, crop: "limit" as const }, { format: "jpg" as const, quality: "auto" as const }];
+/** What the vision model sees: long side ≤ 1024 px, faces blurred (nothing identifying leaves for a third party). */
+export const UNDERSTAND_TRANSFORM = [{ width: 1024, crop: "limit" as const }, { effect: "blur_faces" as const }, { format: "jpg" as const, quality: "auto" as const }];
 
 const ingestOf = (a: Asset) => (a.pipeline?.ingest ?? {}) as NonNullable<MetadataInput["ingest"]> & {
   hint?: { projectId?: string | null; spotId?: string | null };
@@ -55,11 +56,12 @@ const parseMetadata: Step = async (deps, asset) => {
   const meta = parseAssetMetadata({ source: asset.source, ingest: ingestOf(asset), capture: asset.capture, defaultOffset: deps.exifDefaultOffset });
   const placeName = meta.location ? await deps.geocoder.reverse(meta.location.lat, meta.location.lng) : null;
   return {
-    output: { exifSource: meta.exifSource, capturedAt: meta.capturedAt, tzAssumed: meta.capturedAtTzAssumed, location: meta.location, placeName },
+    output: { exifSource: meta.exifSource, capturedAt: meta.capturedAt, precision: meta.capturedAtPrecision, tzAssumed: meta.capturedAtTzAssumed, location: meta.location, placeName },
     patch: {
       exifSource: meta.exifSource,
       capturedAt: meta.capturedAt ? new Date(meta.capturedAt) : null,
       capturedAtTzAssumed: meta.capturedAtTzAssumed,
+      capturedAtPrecision: meta.capturedAtPrecision,
       exifLat: meta.exifLat,
       exifLng: meta.exifLng,
       cameraMake: meta.cameraMake,
@@ -76,8 +78,13 @@ const analyze: Step = async (deps, asset) => {
     deps.analysis.detectWatermark(asset.cldPublicId),
   ]);
   return {
-    output: { tags, answers, watermark },
-    patch: { cldTags: tags, moderation: { status: "pending", answers, checkedAt: new Date().toISOString() }, watermark },
+    output: { tags, answers, watermark, provider: deps.analysis.id, mode: deps.analysis.kind },
+    patch: {
+      cldTags: tags,
+      moderation: { status: "pending", answers, checkedAt: new Date().toISOString() },
+      watermark,
+      provenance: { ...asset.provenance, analysis: { mode: deps.analysis.kind, provider: deps.analysis.id } },
+    },
   };
 };
 
@@ -85,8 +92,8 @@ const understand: Step = async (deps, asset) => {
   const url = deps.media.url(asset.cldPublicId, UNDERSTAND_TRANSFORM, { signed: true });
   const analysis = await deps.ai.describePhoto(url);
   return {
-    output: { activity: analysis.activity, stage: analysis.stage, confidence: analysis.confidence, textInImage: analysis.textInImage, model: analysis.model },
-    patch: { ai: analysis, caption: analysis.caption },
+    output: { activity: analysis.activity, stage: analysis.stage, confidence: analysis.confidence, textInImage: analysis.textInImage, model: analysis.model, mode: deps.ai.kind },
+    patch: { ai: { ...analysis, providerMode: deps.ai.kind }, caption: analysis.caption, provenance: { ...asset.provenance, ai: { mode: deps.ai.kind, model: analysis.model } } },
   };
 };
 
@@ -97,7 +104,10 @@ export function embeddingText(a: Pick<Asset, "caption" | "cldTags" | "ai" | "pla
 
 const embed: Step = async (deps, asset) => {
   const text = embeddingText(asset);
-  return { output: { text, dims: 1536 }, patch: { embedding: await deps.ai.embed(text) } };
+  return {
+    output: { text, dims: 1536, model: deps.ai.models.embed, mode: deps.ai.kind },
+    patch: { embedding: await deps.ai.embed(text), provenance: { ...asset.provenance, embedding: { mode: deps.ai.kind, model: deps.ai.models.embed } } },
+  };
 };
 
 /** Embeds each project's description once (projects.embedding). */
@@ -133,6 +143,7 @@ const assignStep: Step = async (deps, asset) => {
       radiusM: p.radiusM,
       startDate: p.startDate,
       endDate: p.endDate,
+      monitoringEndsAt: p.monitoringEndsAt,
       embedding: p.embedding,
     })),
     ss.map((s) => ({ id: s.id, projectId: s.projectId, center: { lat: s.lat, lng: s.lng }, radiusM: s.radiusM })),

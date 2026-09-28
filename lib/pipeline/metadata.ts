@@ -26,6 +26,8 @@ export interface ParsedMetadata {
   exifSource: "file" | "commons_api" | "none";
   capturedAt: string | null;
   capturedAtTzAssumed: boolean;
+  /** From the source: Commons dates can be day/month/year only; EXIF and Witness Capture are seconds. */
+  capturedAtPrecision: "second" | "minute" | "hour" | "day" | "month" | "year" | null;
   exifLat: number | null;
   exifLng: number | null;
   cameraMake: string | null;
@@ -39,6 +41,7 @@ export function parseAssetMetadata({ source, ingest, capture, defaultOffset }: M
     exifSource: "none",
     capturedAt: null,
     capturedAtTzAssumed: false,
+    capturedAtPrecision: null,
     exifLat: null,
     exifLng: null,
     cameraMake: null,
@@ -55,6 +58,7 @@ export function parseAssetMetadata({ source, ingest, capture, defaultOffset }: M
       exifSource: "commons_api",
       capturedAt: at,
       capturedAtTzAssumed: at !== null,
+      capturedAtPrecision: at ? (c.date!.precision as ParsedMetadata["capturedAtPrecision"]) : null,
       exifLat: c.lat,
       exifLng: c.lng,
       cameraMake: c.make,
@@ -68,6 +72,7 @@ export function parseAssetMetadata({ source, ingest, capture, defaultOffset }: M
         exifSource: "file",
         capturedAt: e.takenAt,
         capturedAtTzAssumed: e.takenAtTzAssumed,
+        capturedAtPrecision: e.takenAt ? "second" : null,
         exifLat: e.lat,
         exifLng: e.lng,
         cameraMake: e.make,
@@ -86,6 +91,7 @@ export function parseAssetMetadata({ source, ingest, capture, defaultOffset }: M
     if (capture.clientCapturedAt && !Number.isNaN(Date.parse(capture.clientCapturedAt))) {
       out.capturedAt = new Date(capture.clientCapturedAt).toISOString();
       out.capturedAtTzAssumed = false;
+      out.capturedAtPrecision = "second";
     }
   }
   return out;

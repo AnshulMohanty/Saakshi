@@ -49,24 +49,36 @@ export function createMockTicket(context: Record<string, string>, key: string, n
   return { provider: "mock", publicId: `${params.folder}/${params.public_id}`, uploadUrl: MOCK_UPLOAD_PATH, fields: { ...params, signature: signMockTicket(params, key) } };
 }
 
-/** Signed params for a direct browser upload to Cloudinary (type "authenticated"). */
-export function createCloudinaryTicket(context: Record<string, string>, creds: CloudinaryCreds, appUrl: string, now = new Date()): Ticket {
+/**
+ * Signed params for a direct browser upload to Cloudinary (type "authenticated", or "private"
+ * with CLD_DELIVERY_TYPE). The public id carries the full path, which works in both folder modes;
+ * asset_folder places the asset in dynamic folder mode (docs: upload parameters). Manual
+ * moderation, so /review decisions can set moderation_status.
+ */
+export function createCloudinaryTicket(
+  context: Record<string, string>,
+  creds: CloudinaryCreds,
+  appUrl: string,
+  now = new Date(),
+  { deliveryType = "authenticated" }: { deliveryType?: "authenticated" | "private" } = {},
+): Ticket {
   const params: Record<string, string> = {
     timestamp: String(Math.floor(now.getTime() / 1000)),
-    type: "authenticated",
-    folder: EVIDENCE_FOLDER,
-    public_id: randomId(),
+    type: deliveryType,
+    public_id: `${EVIDENCE_FOLDER}/${randomId()}`,
+    asset_folder: EVIDENCE_FOLDER,
     context: encodeContext(context),
     tags: "saakshi",
     media_metadata: "true",
     phash: "true",
     quality_analysis: "true",
     faces: "true",
+    moderation: "manual",
     notification_url: `${appUrl}/api/webhooks/cloudinary`,
   };
   return {
     provider: "cloudinary",
-    publicId: `${params.folder}/${params.public_id}`,
+    publicId: params.public_id,
     uploadUrl: `https://api.cloudinary.com/v1_1/${creds.cloudName}/image/upload`,
     fields: { ...params, api_key: creds.apiKey, signature: signCloudinaryParams(params, creds) },
   };

@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState } from "react";
+import { MockTag } from "@/components/mock-tag";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ComparisonCard } from "@/lib/measure/views";
@@ -79,9 +80,16 @@ export function CompareCard({ card, tint = "#f43f5e" }: { card: ComparisonCard; 
               <Badge variant={m.method === "measured" ? "secondary" : "outline"}>{m.method === "measured" ? "measured" : "AI estimate"}</Badge>
               {m.confidence !== null ? <span>confidence {Math.round(m.confidence * 100)}%</span> : null}
             </dt>
-            <dd className="font-heading text-lg tabular-nums">
-              {fmt(m.before, m.unit)} → {fmt(m.after, m.unit)} <span className={m === primary ? "font-semibold" : ""}>({signed(m.delta, m.unit)})</span>
-            </dd>
+            {m.hiddenText ? (
+              <dd className="text-sm text-muted-foreground">{m.hiddenText}</dd>
+            ) : (
+              <dd className="flex flex-wrap items-center gap-2 font-heading text-lg tabular-nums">
+                <span>
+                  {fmt(m.before, m.unit)} → {fmt(m.after, m.unit)} <span className={m === primary ? "font-semibold" : ""}>({signed(m.delta, m.unit)})</span>
+                </span>
+                {m.mock ? <MockTag /> : null}
+              </dd>
+            )}
           </div>
         ))}
       </dl>

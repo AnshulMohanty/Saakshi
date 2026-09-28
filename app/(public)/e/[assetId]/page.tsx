@@ -5,6 +5,8 @@ import { BandBadge, ReasonList } from "@/components/trust";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { getConfig } from "@/lib/config";
+import { displayPolicy } from "@/lib/display-policy";
+import { MockTag } from "@/components/mock-tag";
 import { getDb } from "@/lib/db/client";
 import { evidenceView } from "@/lib/evidence";
 import { getMediaProvider } from "@/lib/providers/media";
@@ -14,7 +16,7 @@ const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString("en-IN"
 
 async function load(assetId: string) {
   if (!UUID.test(assetId)) return null;
-  return evidenceView(await getDb(), getMediaProvider(), assetId, { appUrl: getConfig().appUrl });
+  return evidenceView(await getDb(), getMediaProvider(), assetId, { appUrl: getConfig().appUrl, policy: displayPolicy() });
 }
 
 export async function generateMetadata({ params }: PageProps<"/e/[assetId]">) {
@@ -57,7 +59,8 @@ export default async function EvidencePage({ params }: PageProps<"/e/[assetId]">
     <article className="flex flex-col gap-5" data-testid="evidence">
       <header className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <BandBadge band={v.trust.band} score={v.trust.score} />
+          {v.trust.hiddenText ? <Badge variant="outline">{v.trust.hiddenText}</Badge> : <BandBadge band={v.trust.band} score={v.trust.score} />}
+          {v.trust.mock ? <MockTag /> : null}
           <Badge variant={v.history.intact ? "default" : "destructive"} data-testid={v.history.intact ? "history-intact" : "history-broken"}>
             {v.history.intact ? `History intact · ${v.history.entries} entries` : `History broken at entry #${v.history.firstBrokenAt}`}
           </Badge>
@@ -94,10 +97,17 @@ export default async function EvidencePage({ params }: PageProps<"/e/[assetId]">
       <p className="text-xs text-muted-foreground">Faces are blurred. The strip under the photo is added by Cloudinary layers; its QR code links back to this page.</p>
 
       <Section title="Trust ledger">
-        <p className="text-sm text-muted-foreground">
-          Rule-based: every point and flag below comes from a fixed rule (docs/trust.md). Score {v.trust.score ?? "—"} of 100.
-        </p>
-        <ReasonList reasons={v.trust.reasons} />
+        {v.trust.hiddenText ? (
+          <p className="text-sm text-muted-foreground">{v.trust.hiddenText}. The ledger appears once real providers have analysed this photo.</p>
+        ) : (
+          <>
+            <p className="text-sm text-muted-foreground">
+              Rule-based: every point and flag below comes from a fixed rule (docs/trust.md). Score {v.trust.score ?? "—"} of 100.
+              {v.trust.mock ? " The signals behind it came from mock providers." : ""}
+            </p>
+            <ReasonList reasons={v.trust.reasons} />
+          </>
+        )}
         {v.review ? (
           <p className="text-sm">
             A reviewer {v.review.decision === "approve" ? "approved" : "rejected"} this photo on {when(v.review.at)}: “{v.review.note}”. The score and band are unchanged.
@@ -108,7 +118,7 @@ export default async function EvidencePage({ params }: PageProps<"/e/[assetId]">
       <Section title="Facts">
         <Facts
           rows={[
-            ["Taken", <>{when(f.capturedAt)}{f.tzNote ? <span className="block text-xs text-muted-foreground">{f.tzNote}</span> : null}</>],
+            ["Taken", <>{f.dateOnly ? f.captureLabel : when(f.capturedAt)}{f.tzNote && !f.dateOnly ? <span className="block text-xs text-muted-foreground">{f.tzNote}</span> : null}</>],
             ["Uploaded", when(f.uploadedAt)],
             ["Device", f.device],
             ["Location", f.location ? `${f.location.lat.toFixed(5)}, ${f.location.lng.toFixed(5)} (${f.location.from})` : "No location recorded"],
@@ -167,9 +177,18 @@ export default async function EvidencePage({ params }: PageProps<"/e/[assetId]">
           <ul className="flex flex-col gap-1 text-sm">
             {v.comparisons.map((c) => (
               <li key={c.id}>
-                {c.metric}: {c.before} → {c.after}
-                {c.unit === "%" ? "%" : ""} ({c.delta! > 0 ? "+" : ""}
-                {c.delta}) · {c.method === "measured" ? "measured" : "AI estimate"} · this photo is the {c.role} ·{" "}
+                {c.metric}:{" "}
+                {c.shown?.kind === "hidden" ? (
+                  <span className="text-muted-foreground">{c.shown.text}</span>
+                ) : (
+                  <>
+                    {c.before} → {c.after}
+                    {c.unit === "%" ? "%" : ""} ({c.delta! > 0 ? "+" : ""}
+                    {c.delta})
+                  </>
+                )}{" "}
+                · {c.method === "measured" ? "measured" : "AI estimate"}
+                {c.shown?.kind === "value" && c.shown.mock ? " (mock output)" : ""} · this photo is the {c.role} ·{" "}
                 <Link href={`/e/${c.other}`} className="underline underline-offset-2">
                   the {c.role === "before" ? "after" : "before"} photo
                 </Link>

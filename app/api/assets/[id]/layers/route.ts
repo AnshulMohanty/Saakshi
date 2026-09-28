@@ -1,5 +1,6 @@
 import { getConfig } from "@/lib/config";
 import { getDb } from "@/lib/db/client";
+import { displayPolicy } from "@/lib/display-policy";
 import { assetLayers } from "@/lib/demo-apis";
 import { getMediaProvider } from "@/lib/providers/media";
 
@@ -7,6 +8,6 @@ import { getMediaProvider } from "@/lib/providers/media";
 export async function GET(_request: Request, ctx: RouteContext<"/api/assets/[id]/layers">) {
   const { id } = await ctx.params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) return Response.json({ error: "Bad id" }, { status: 400 });
-  const layers = await assetLayers(await getDb(), getMediaProvider(), id, getConfig().appUrl);
+  const layers = await assetLayers(await getDb(), getMediaProvider(), id, getConfig().appUrl, displayPolicy());
   return layers ? Response.json(layers, { headers: { "cache-control": "no-store" } }) : Response.json({ error: "Not found" }, { status: 404 });
 }

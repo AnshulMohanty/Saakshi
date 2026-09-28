@@ -6,6 +6,7 @@ import { getAIProvider } from "@/lib/providers/ai";
 import { getMediaProvider } from "@/lib/providers/media";
 import { clientKey, createRateLimiter, tooMany } from "@/lib/ratelimit";
 import { generateReport, reportPath } from "@/lib/report/generate";
+import { flushUsageQuietly } from "@/lib/usage";
 
 const Day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const Body = z.object({ projectId: z.string().regex(/^[0-9a-f-]{36}$/i), from: Day.optional(), to: Day.optional() });
@@ -18,11 +19,14 @@ export async function POST(request: Request) {
   if (!rl.ok) return tooMany(rl.retryAfterS);
   const parsed = Body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Expected {projectId, from?, to?}" }, { status: 400 });
+  const db = await getDb();
   try {
-    const out = await generateReport({ db: await getDb(), media: getMediaProvider(), ai: getAIProvider(), appUrl: getConfig().appUrl }, parsed.data.projectId, parsed.data);
+    const out = await generateReport({ db, media: getMediaProvider(), ai: getAIProvider(), appUrl: getConfig().appUrl }, parsed.data.projectId, parsed.data);
     return Response.json({ id: out.report.id, url: reportPath(out.report.id), claims: out.report.claims.length, pdfBytes: out.pdfBytes }, { status: 201 });
   } catch (err) {
     if (err instanceof Error && /not found/i.test(err.message)) return Response.json({ error: err.message }, { status: 404 });
     throw err;
+  } finally {
+    await flushUsageQuietly(db);
   }
 }

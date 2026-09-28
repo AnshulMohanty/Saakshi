@@ -6,16 +6,18 @@
 import { randomUUID } from "node:crypto";
 import { eq, inArray } from "drizzle-orm";
 import { appendAudit } from "../audit";
-import { formatClaimValue, methodLabel, renderClaims, type Claim } from "../claims";
+import { methodLabel, renderClaims, type Claim } from "../claims";
 import type { DB } from "../db/client";
 import { assets, comparisons, measurements, reports, spots, type Asset, type CampaignKit, type Report } from "../db/schema";
 import { THUMB } from "../library";
-import { shortDate } from "../media/composite";
+import { captureDate, shortDate } from "../media/composite";
 import type { Transform } from "../media/transform";
 import { FRAME_KEY, METRIC_LABEL, METRICS, measureKind, unitOf } from "../measure/measure";
 import type { AIProvider } from "../providers/ai";
 import type { MediaProvider } from "../providers/media";
 import { describeReason } from "../trust";
+import { displayPolicy } from "../display-policy";
+import { assetMode, combineModes, showClaim, showEstimate, showNumber, type DisplayPolicy } from "../provenance";
 import { ensureQr } from "../evidence";
 import { buildClaims } from "./claims";
 import { renderReportPdf } from "./pdf";
@@ -27,6 +29,8 @@ export interface ReportDeps {
   ai: AIProvider;
   /** Absolute origin for links and QR codes. */
   appUrl: string;
+  /** Default: from config (production hides mock-derived numbers). */
+  policy?: DisplayPolicy;
 }
 
 export const reportPath = (id: string) => `/r/${id}`;
@@ -40,6 +44,7 @@ const STAT_ORDER = ["litter_cover_change", "green_cover_change", "photos_verifie
 export async function generateReport(deps: ReportDeps, projectId: string, opts: { from?: string | null; to?: string | null; now?: Date; actor?: string } = {}) {
   const now = opts.now ?? new Date();
   const { db, media, ai, appUrl } = deps;
+  const policy = deps.policy ?? displayPolicy();
   const c = await buildClaims(db, projectId, { from: opts.from, to: opts.to, now });
   const { project, claims, notes, photos, period } = c;
   const refs = claims.map((x) => ({ id: x.id, label: x.label }));
@@ -52,7 +57,8 @@ export async function generateReport(deps: ReportDeps, projectId: string, opts: 
   const id = randomUUID();
   const reportUrl = `${appUrl}${reportPath(id)}`;
   const title = `${project.name}: impact report`;
-  await db.insert(reports).values({ id, projectId, kind: "impact", title, periodFrom: period.from, periodTo: period.to, claims, prose, notes });
+  const providerMode = combineModes(claims.map((x) => x.provider_mode));
+  await db.insert(reports).values({ id, projectId, kind: "impact", title, periodFrom: period.from, periodTo: period.to, claims, prose, notes, providerMode });
 
   // --- Sections -------------------------------------------------------------------------------
   const byId = new Map(photos.map((p) => [p.id, p]));
@@ -69,23 +75,29 @@ export async function generateReport(deps: ReportDeps, projectId: string, opts: 
     const before = pairAssets.get(primary.beforeAssetId)!;
     const after = pairAssets.get(primary.afterAssetId)!;
     const key = `pair:${primary.beforeAssetId}>${primary.afterAssetId}`;
-    images.set(key, await media.fetchDerived(before.cldPublicId, asJpg(primary.compositeTransforms as Transform)));
+    images.set(key, await media.fetchDerived(primary.detail?.compositePublicId ?? before.cldPublicId, asJpg(primary.compositeTransforms as Transform)));
     const rows = cs.filter((x) => x.beforeAssetId === primary.beforeAssetId && x.afterAssetId === primary.afterAssetId);
     pairs.push({
       key,
       spot: spotName(primary.spotId),
-      before: { id: before.id, date: shortDate(before.capturedAt) },
-      after: { id: after.id, date: shortDate(after.capturedAt) },
+      before: { id: before.id, date: captureDate(before.capturedAt, before.capturedAtPrecision) },
+      after: { id: after.id, date: captureDate(after.capturedAt, after.capturedAtPrecision) },
       image: key,
       metrics: rows.map((r) => {
         const unit = unitOf(r.metric as keyof typeof METRIC_LABEL);
         const f = (v: number | null) => (v === null ? "?" : unit === "%" ? `${v.toFixed(1)}%` : `${Math.round(v)}`);
+        const method = r.method === "measured" ? "measured on photo pixels" : `AI estimate${r.confidence !== null ? `, confidence ${Math.round(r.confidence * 100)}%` : ""}`;
+        const label = METRIC_LABEL[r.metric as keyof typeof METRIC_LABEL] ?? r.metric;
+        // Same rule as claims: mock-derived values never ship; weak AI estimates aren't shown as numbers.
+        const shown = r.method === "ai_estimated" ? showEstimate(r.delta ?? 0, r.confidence, r.providerMode, policy) : showNumber(r.delta, r.providerMode, policy);
+        if (shown?.kind === "hidden") return { label, before: "", after: "", delta: shown.text, method, hidden: true };
         return {
-          label: METRIC_LABEL[r.metric as keyof typeof METRIC_LABEL] ?? r.metric,
+          label: `${label}${shown?.kind === "value" && shown.mock ? " (mock output)" : ""}`,
           before: f(r.beforeValue),
           after: f(r.afterValue),
           delta: `${r.delta! > 0 ? "+" : ""}${unit === "%" ? `${r.delta} points` : r.delta}`,
-          method: r.method === "measured" ? "measured on photo pixels" : `AI estimate${r.confidence !== null ? `, confidence ${Math.round(r.confidence * 100)}%` : ""}`,
+          method,
+          hidden: false,
         };
       }),
       lowConfidence: !!primary.detail?.agreement?.lowConfidence,
@@ -93,7 +105,8 @@ export async function generateReport(deps: ReportDeps, projectId: string, opts: 
   }
 
   let trend: ReportData["trend"] = null;
-  if (!pairs.length && kind) {
+  const trendAllowed = !policy.production || photos.every((p) => p.provenance && assetMode(p.provenance) === "real");
+  if (!pairs.length && kind && trendAllowed) {
     const metric = METRICS[kind].primary;
     const ms = photos.length ? await db.select().from(measurements).where(inArray(measurements.assetId, photos.map((p) => p.id))) : [];
     const best = spotRows
@@ -118,7 +131,7 @@ export async function generateReport(deps: ReportDeps, projectId: string, opts: 
   for (const a of galleryAssets) {
     const key = `thumb:${a.id}`;
     images.set(key, await media.fetchDerived(a.cldPublicId, asJpg(THUMB)));
-    gallery.push({ id: a.id, image: key, band: a.trustBand ?? "", caption: a.caption, date: shortDate(a.capturedAt) });
+    gallery.push({ id: a.id, image: key, band: a.trustBand ?? "", caption: a.caption, date: captureDate(a.capturedAt, a.capturedAtPrecision) });
   }
 
   const excluded: ReportData["excluded"] = photos
@@ -131,7 +144,7 @@ export async function generateReport(deps: ReportDeps, projectId: string, opts: 
         status: p.status,
         testCase: p.testCase,
         reasons: flags.length ? flags.map((r) => describeReason(r)) : [`Trust score ${p.trustScore ?? "?"} of 100, below the verified threshold.`],
-        date: shortDate(p.capturedAt ?? p.uploadedAt),
+        date: p.capturedAt ? captureDate(p.capturedAt, p.capturedAtPrecision) : shortDate(p.uploadedAt),
       };
     });
 
@@ -145,10 +158,11 @@ export async function generateReport(deps: ReportDeps, projectId: string, opts: 
     reportUrl,
     appUrl,
     generatedAt: now.toISOString(),
+    policy,
     project: { name: project.name, type: project.type, description: project.description, place: photos.find((p) => p.placeName)?.placeName ?? null, locationApproximate: project.locationApproximate },
     period,
     claims,
-    prose: renderClaims(prose, claims),
+    prose: renderClaims(prose, claims, { format: (c) => showClaim(c, policy).text }),
     notes,
     pairs,
     trend,
@@ -178,11 +192,11 @@ export async function generateReport(deps: ReportDeps, projectId: string, opts: 
     pair,
     photoAssetId: photo?.id ?? null,
     alts: {
-      stat: stat ? `${stat.label}: ${formatClaimValue(stat)} (${methodLabel(stat)}), ${project.name}.` : `${project.name}.`,
+      stat: stat ? `${stat.label}: ${showClaim(stat, policy).text} (${methodLabel(stat)}), ${project.name}.` : `${project.name}.`,
       split: pairs[0]
-        ? `Before (${pairs[0].before.date}) and after (${pairs[0].after.date}) at ${pairs[0].spot ?? "the spot"}: ${pairs[0].metrics.map((m) => `${m.label.toLowerCase()} ${m.before} to ${m.after}, ${m.method}`).join("; ")}.`
+        ? `Before (${pairs[0].before.date}) and after (${pairs[0].after.date}) at ${pairs[0].spot ?? "the spot"}: ${pairs[0].metrics.map((m) => (m.hidden ? `${m.label.toLowerCase()}: ${m.delta.toLowerCase()}` : `${m.label.toLowerCase()} ${m.before} to ${m.after}, ${m.method}`)).join("; ")}.`
         : "No before/after pair meets the rules for this project yet.",
-      proof: photo ? `Verified photo from ${photo.placeName ?? project.name}, ${shortDate(photo.capturedAt)}, with a Saakshi proof strip and QR code.` : "No verified photo yet.",
+      proof: photo ? `Verified photo from ${photo.placeName ?? project.name}, ${captureDate(photo.capturedAt, photo.capturedAtPrecision)}, with a Saakshi proof strip and QR code.` : "No verified photo yet.",
     },
   };
   const [report] = await db.update(reports).set({ pdfPublicId, campaign }).where(eq(reports.id, id)).returning();

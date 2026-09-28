@@ -24,11 +24,26 @@ export const EnvSchema = z.object({
   CLOUDINARY_CLOUD_NAME: optionalString(),
   CLOUDINARY_API_KEY: optionalString(),
   CLOUDINARY_API_SECRET: optionalString(),
+  /** Evidence delivery type. "private" is the fallback if on-the-fly signed transformations of authenticated assets fail (pnpm services:check checks). */
+  CLD_DELIVERY_TYPE: z.preprocess(blankToUndefined, z.enum(["authenticated", "private"]).default("authenticated")),
+  /** multi: one e_extract with every prompt (documented). union: one per prompt, masks joined with sharp. */
+  CLD_EXTRACT_MODE: z.preprocess(blankToUndefined, z.enum(["multi", "union"]).default("multi")),
+  /** layer: after photo as an l_authenticated layer (documented, whole URL signed). server: halves joined with sharp. */
+  CLD_COMPOSITE_MODE: z.preprocess(blankToUndefined, z.enum(["layer", "server"]).default("layer")),
+  /** signed: raw/authenticated signed URL. download: Download API URL (1 h expiry). */
+  CLD_PDF_DELIVERY: z.preprocess(blankToUndefined, z.enum(["signed", "download"]).default("signed")),
+  /** "1": generate THUMB, PREVIEW and VIEW as eager derivatives at upload. */
+  CLD_EAGER: z.preprocess(blankToUndefined, z.enum(["0", "1"]).default("0")),
 
   OPENAI_API_KEY: optionalString(),
   OPENAI_MODEL_FAST: stringWithDefault("gpt-5.6-luna"),
   OPENAI_MODEL_SMART: optionalString(),
   OPENAI_EMBED_MODEL: stringWithDefault("text-embedding-3-small"),
+  /** Image detail for vision calls. "auto" means original size on the GPT-5.6 models (expensive), so it isn't offered. */
+  OPENAI_IMAGE_DETAIL: z.preprocess(blankToUndefined, z.enum(["low", "high"]).default("high")),
+  /** Reasoning effort sent to reasoning models; "omit" leaves the parameter out (models without reasoning). */
+  OPENAI_REASONING_EFFORT: z.preprocess(blankToUndefined, z.enum(["none", "low", "medium", "high", "omit"]).default("low")),
+  OPENAI_TIMEOUT_MS: z.preprocess(blankToUndefined, z.coerce.number().int().min(1000).max(600_000).default(60_000)),
 
   DATABASE_URL: z.preprocess(blankToUndefined, z.string().regex(/^postgres(ql)?:\/\//, "must be a postgres:// URL").optional()),
   PGLITE_DIR: stringWithDefault("./.data/pglite"),
@@ -53,6 +68,15 @@ export const EnvSchema = z.object({
   MEASURE_MAX_PER_PROJECT: z.preprocess(blankToUndefined, z.coerce.number().int().min(0).max(1000).default(40)),
   /** UTC offset assumed for EXIF timestamps that carry none (most phones omit it). */
   EXIF_DEFAULT_UTC_OFFSET: z.preprocess(blankToUndefined, z.string().regex(/^[+-]\d{2}:\d{2}$/).default("+05:30")),
+  /** Venue of the live stage demo and the try-to-fool-it sandbox site (no default on purpose). */
+  STAGE_LAT: z.preprocess(blankToUndefined, z.coerce.number().min(-90).max(90).optional()),
+  STAGE_LNG: z.preprocess(blankToUndefined, z.coerce.number().min(-180).max(180).optional()),
+  /** The featured demo project (slug). The final choice is made after real masks (Phase 10). */
+  DEMO_HERO: stringWithDefault("demo-hero-cleanup"),
+  /** "1" (default): public demo; anyone may review (rate-limited, actor "Demo visitor"). "0": reviews need the admin secret in production. */
+  DEMO_MODE: z.preprocess(blankToUndefined, z.enum(["0", "1"]).default("1")),
+  /** AI-estimated values below this confidence show "Not enough confidence to estimate" instead of a number. */
+  AI_MIN_CONFIDENCE: z.preprocess(blankToUndefined, z.coerce.number().min(0).max(1).default(0.5)),
 });
 export type Env = z.infer<typeof EnvSchema>;
 
@@ -149,8 +173,17 @@ export interface Config {
   appUrl: string;
   isProduction: boolean;
   warnings: string[];
-  openai: { apiKey?: string; modelFast: string; modelSmart: string; embedModel: string };
-  cloudinary: { cloudName?: string; apiKey?: string; apiSecret?: string };
+  openai: { apiKey?: string; modelFast: string; modelSmart: string; embedModel: string; imageDetail: "low" | "high"; timeoutMs: number; reasoningEffort?: string };
+  cloudinary: {
+    cloudName?: string;
+    apiKey?: string;
+    apiSecret?: string;
+    deliveryType: "authenticated" | "private";
+    extractMode: "multi" | "union";
+    compositeMode: "layer" | "server";
+    pdfDelivery: "signed" | "download";
+    eager: boolean;
+  };
 }
 
 let cached: Config | undefined;
@@ -182,11 +215,19 @@ export function loadConfig(raw: Record<string, string | undefined> = process.env
       modelFast: env.OPENAI_MODEL_FAST,
       modelSmart: env.OPENAI_MODEL_SMART ?? env.OPENAI_MODEL_FAST,
       embedModel: env.OPENAI_EMBED_MODEL,
+      imageDetail: env.OPENAI_IMAGE_DETAIL,
+      timeoutMs: env.OPENAI_TIMEOUT_MS,
+      reasoningEffort: env.OPENAI_REASONING_EFFORT === "omit" ? undefined : env.OPENAI_REASONING_EFFORT,
     },
     cloudinary: {
       cloudName: env.CLOUDINARY_CLOUD_NAME,
       apiKey: env.CLOUDINARY_API_KEY,
       apiSecret: env.CLOUDINARY_API_SECRET,
+      deliveryType: env.CLD_DELIVERY_TYPE,
+      extractMode: env.CLD_EXTRACT_MODE,
+      compositeMode: env.CLD_COMPOSITE_MODE,
+      pdfDelivery: env.CLD_PDF_DELIVERY,
+      eager: env.CLD_EAGER === "1",
     },
   };
 }

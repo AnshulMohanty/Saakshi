@@ -6,10 +6,11 @@ import { and, asc, desc, eq, inArray, or } from "drizzle-orm";
 import type { DB } from "../db/client";
 import { assets, comparisons, measurements, projects, spots, type Comparison, type MetricId } from "../db/schema";
 import { THUMB } from "../library";
-import { shortDate } from "../media/composite";
+import { captureDate } from "../media/composite";
 import type { MediaProvider } from "../providers/media";
 import { CAVEAT, FRAME_KEY, METRIC_LABEL, METRICS, measureKind, pairPhotoOf, unitOf } from "./measure";
 import { exclusionsOf } from "./pairing";
+import { combineModes, HIDDEN_MOCK, numberPolicy, showEstimate, showNumber, type DisplayPolicy } from "../provenance";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -22,13 +23,25 @@ export interface ComparisonCard {
   before: { id: string; date: string; viewUrl: string; maskUrl: string | null };
   after: { id: string; date: string; viewUrl: string; maskUrl: string | null };
   compositeUrl: string | null;
-  metrics: Array<{ metric: MetricId; label: string; unit: "%" | "items"; before: number; after: number; delta: number; method: "measured" | "ai_estimated"; confidence: number | null }>;
+  metrics: Array<{
+    metric: MetricId;
+    label: string;
+    unit: "%" | "items";
+    before: number;
+    after: number;
+    delta: number;
+    method: "measured" | "ai_estimated";
+    confidence: number | null;
+    /** Set when the display policy withholds the number (mock in production, low-confidence estimate). */
+    hiddenText: string | null;
+    mock: boolean;
+  }>;
   lowConfidence: boolean;
   caveat: string;
   note: string | null;
 }
 
-export async function projectView(db: DB, media: MediaProvider, idOrSlug: string) {
+export async function projectView(db: DB, media: MediaProvider, idOrSlug: string, policy: DisplayPolicy = { production: false, minConfidence: 0.5 }) {
   const [project] = await db
     .select()
     .from(projects)
@@ -44,8 +57,8 @@ export async function projectView(db: DB, media: MediaProvider, idOrSlug: string
     db.select().from(comparisons).where(eq(comparisons.projectId, project.id)).orderBy(asc(comparisons.origin), desc(comparisons.updatedAt)),
   ]);
   const ids = [...new Set(cs.flatMap((c) => [c.beforeAssetId, c.afterAssetId]))];
-  const dated = ids.length ? await db.select({ id: assets.id, capturedAt: assets.capturedAt }).from(assets).where(inArray(assets.id, ids)) : [];
-  const dateOf = new Map(dated.map((a) => [a.id, shortDate(a.capturedAt)]));
+  const dated = ids.length ? await db.select({ id: assets.id, capturedAt: assets.capturedAt, precision: assets.capturedAtPrecision }).from(assets).where(inArray(assets.id, ids)) : [];
+  const dateOf = new Map(dated.map((a) => [a.id, captureDate(a.capturedAt, a.precision)]));
   const spotOf = new Map(ss.map((s) => [s.id, s]));
 
   const cards = new Map<string, ComparisonCard>();
@@ -73,7 +86,10 @@ export async function projectView(db: DB, media: MediaProvider, idOrSlug: string
       card.after.maskUrl = c.maskAfterUrl;
     }
     card.lowConfidence ||= !!c.detail?.agreement?.lowConfidence;
+    const shown = c.method === "ai_estimated" ? showEstimate(c.delta ?? 0, c.confidence, c.providerMode, policy) : showNumber(c.delta ?? 0, c.providerMode, policy);
     card.metrics.push({
+      hiddenText: shown?.kind === "hidden" ? shown.text : null,
+      mock: shown?.kind === "value" && shown.mock,
       metric: c.metric as MetricId,
       label: METRIC_LABEL[c.metric as MetricId] ?? c.metric,
       unit: unitOf(c.metric as MetricId),
@@ -116,7 +132,7 @@ export interface TrendPoint {
   source: string;
 }
 
-export async function spotView(db: DB, media: MediaProvider, slug: string) {
+export async function spotView(db: DB, media: MediaProvider, slug: string, policy: DisplayPolicy = { production: false, minConfidence: 0.5 }) {
   const [spot] = await db
     .select()
     .from(spots)
@@ -133,9 +149,10 @@ export async function spotView(db: DB, media: MediaProvider, slug: string) {
   const trend: TrendPoint[] = ms
     .map((m) => {
       const a = photos.find((p) => p.id === m.assetId)!;
-      return { t: a.capturedAt!.getTime(), label: shortDate(a.capturedAt), value: m.value, assetId: a.id, source: a.source };
+      return { t: a.capturedAt!.getTime(), label: captureDate(a.capturedAt, a.capturedAtPrecision), value: m.value, assetId: a.id, source: a.source };
     })
     .sort((x, y) => x.t - y.t || x.assetId.localeCompare(y.assetId));
+  const trendPolicy = numberPolicy(combineModes(ms.map((m) => m.providerMode)), policy);
   const baseline = photos.find((p) => p.id === spot.baselineAssetId) ?? null;
   const pin = (a: (typeof photos)[number]) => {
     const fix = a.source === "witness" ? a.capture?.deviceFix : null;
@@ -145,9 +162,12 @@ export async function spotView(db: DB, media: MediaProvider, slug: string) {
     spot: { id: spot.id, name: spot.name, slug: spot.slug, lat: spot.lat, lng: spot.lng, radiusM: spot.radiusM },
     project: { id: project.id, name: project.name, slug: project.slug, type: project.type, locationApproximate: project.locationApproximate },
     metric: metric ? { id: metric, label: METRIC_LABEL[metric], unit: unitOf(metric) } : null,
-    trend,
-    baseline: baseline ? { id: baseline.id, date: shortDate(baseline.capturedAt), thumbUrl: media.url(baseline.cldPublicId, THUMB, { signed: true }) } : null,
-    latest: photos.slice(0, 12).map((a) => ({ id: a.id, date: shortDate(a.capturedAt), source: a.source, thumbUrl: media.url(a.cldPublicId, THUMB, { signed: true }), location: pin(a) })),
+    // Mock-derived measurements never ship: no trend in production until real masks exist.
+    trend: trendPolicy === "hide" ? [] : trend,
+    trendHidden: trendPolicy === "hide" && trend.length > 0 ? HIDDEN_MOCK : null,
+    trendMock: trendPolicy === "tag",
+    baseline: baseline ? { id: baseline.id, date: captureDate(baseline.capturedAt, baseline.capturedAtPrecision), thumbUrl: media.url(baseline.cldPublicId, THUMB, { signed: true }) } : null,
+    latest: photos.slice(0, 12).map((a) => ({ id: a.id, date: captureDate(a.capturedAt, a.capturedAtPrecision), source: a.source, thumbUrl: media.url(a.cldPublicId, THUMB, { signed: true }), location: pin(a) })),
     photos: photos.length,
     checkinPath: `/capture?spot=${encodeURIComponent(spot.slug ?? spot.id)}`,
     caveat: CAVEAT,

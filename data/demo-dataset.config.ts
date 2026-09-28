@@ -19,6 +19,10 @@ export interface DiscoveryQuery {
 
 /** Geotagged files within ~1800 km of central India (India and immediate neighbours). */
 const NEAR_INDIA = "nearcoord:1800km,22.5,79";
+/** Phase 7 broader pass: geotagged files near the three existing demo clusters. */
+const NEAR_TIRUPPUR = "nearcoord:25km,11.1048,77.3517";
+const NEAR_PIMPRI = "nearcoord:15km,18.6439,73.7712";
+const NEAR_MUNDIKUNTA = "nearcoord:5km,17.4641,78.3736";
 
 export const DISCOVERY_QUERIES: DiscoveryQuery[] = [
   {
@@ -32,7 +36,7 @@ export const DISCOVERY_QUERIES: DiscoveryQuery[] = [
     id: "cleanup-drive",
     label: "Clean-up drive",
     activity: "cleanup",
-    search: [`"cleaning drive" ${NEAR_INDIA}`, `"cleanliness drive" ${NEAR_INDIA}`, `"clean up" volunteers ${NEAR_INDIA}`],
+    search: [`"cleaning drive" ${NEAR_INDIA}`, `"cleanliness drive" ${NEAR_INDIA}`, `"clean up" volunteers ${NEAR_INDIA}`, `"clean-up drive" ${NEAR_INDIA}`, `"cleanup drive" ${NEAR_INDIA}`],
   },
   {
     id: "swachh-bharat",
@@ -45,20 +49,23 @@ export const DISCOVERY_QUERIES: DiscoveryQuery[] = [
     id: "litter",
     label: "Litter / garbage dump",
     activity: "cleanup",
-    search: [`garbage ${NEAR_INDIA}`, `"plastic waste" ${NEAR_INDIA}`, `"garbage dump" ${NEAR_INDIA}`],
+    search: [`garbage ${NEAR_INDIA}`, `"plastic waste" ${NEAR_INDIA}`, `"garbage dump" ${NEAR_INDIA}`, `Noyyal ${NEAR_TIRUPPUR}`, `Tiruppur river ${NEAR_TIRUPPUR}`, `garbage ${NEAR_TIRUPPUR}`, `plastic ${NEAR_TIRUPPUR}`],
     categories: ["Category:Litter in India", "Category:Plastic pollution in India", "Category:Waste in India", "Category:Landfills in India"],
   },
   {
     id: "lake-cleanup",
     label: "Lake clean-up",
     activity: "water",
-    search: [`lake cleaning ${NEAR_INDIA}`, `lake garbage ${NEAR_INDIA}`, `lake pollution ${NEAR_INDIA}`],
+    search: [`lake cleaning ${NEAR_INDIA}`, `lake garbage ${NEAR_INDIA}`, `lake pollution ${NEAR_INDIA}`, `Mundikunta ${NEAR_MUNDIKUNTA}`, `lake ${NEAR_MUNDIKUNTA}`, `rubbish ${NEAR_MUNDIKUNTA}`],
   },
   {
     id: "tree-planting",
     label: "Tree planting / saplings",
     activity: "plantation",
-    search: [`"tree planting" ${NEAR_INDIA}`, `"tree plantation" ${NEAR_INDIA}`, `"planting saplings" ${NEAR_INDIA}`, `saplings planted ${NEAR_INDIA}`],
+    search: [
+      `"tree planting" ${NEAR_INDIA}`, `"tree plantation" ${NEAR_INDIA}`, `"planting saplings" ${NEAR_INDIA}`, `saplings planted ${NEAR_INDIA}`,
+      `"tree plantation drive" ${NEAR_INDIA}`, `tree ${NEAR_PIMPRI}`, `sapling ${NEAR_PIMPRI}`, `plantation ${NEAR_PIMPRI}`, `"Pimpri Chinchwad" tree`,
+    ],
     categories: ["Category:Tree planting in India", "Category:Van Mahotsav"],
   },
   {
@@ -151,7 +158,7 @@ export const DEMO_DATASET = {
   radiusQuantile: 0.9,
   radiusMinM: 300,
   radiusMaxM: 3000,
-  /** Project window = min/max capture date ± this many days. */
+  /** Event window = the densest run of capture days (days ≤ 7 apart) ± this many days; later photos at a spot are check-ins. */
   datePaddingDays: 7,
   /**
    * Minimum hours between a before and an after photo. A clean-up finishes within hours, so a

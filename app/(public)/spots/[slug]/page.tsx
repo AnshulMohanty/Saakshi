@@ -4,6 +4,8 @@ import { connection } from "next/server";
 import { Badge } from "@/components/ui/badge";
 import { getDb } from "@/lib/db/client";
 import { spotView } from "@/lib/measure/views";
+import { displayPolicy } from "@/lib/display-policy";
+import { MockTag } from "@/components/mock-tag";
 import { getMediaProvider } from "@/lib/providers/media";
 import { SpotMapLazy, SpotTrend } from "./spot-trend";
 
@@ -16,7 +18,7 @@ export async function generateMetadata({ params }: PageProps<"/spots/[slug]">) {
 /** Public spot page: where it is, how it has changed, and a link to check in with a new photo. */
 export default async function SpotPage({ params }: PageProps<"/spots/[slug]">) {
   await connection();
-  const v = await spotView(await getDb(), getMediaProvider(), (await params).slug);
+  const v = await spotView(await getDb(), getMediaProvider(), (await params).slug, displayPolicy());
   if (!v) notFound();
   const last = v.trend.at(-1);
   return (
@@ -44,7 +46,12 @@ export default async function SpotPage({ params }: PageProps<"/spots/[slug]">) {
           <h2 className="font-heading text-lg font-medium">
             {v.metric.label} over time{last ? `: ${last.value.toFixed(1)}${v.metric.unit === "%" ? "%" : ""} on ${last.label}` : ""}
           </h2>
-          {v.trend.length ? <SpotTrend trend={v.trend} metric={v.metric} /> : <p className="text-sm text-muted-foreground">Nothing measured here yet.</p>}
+          {v.trendMock ? <MockTag /> : null}
+          {v.trend.length ? (
+            <SpotTrend trend={v.trend} metric={v.metric} />
+          ) : (
+            <p className="text-sm text-muted-foreground">{v.trendHidden ?? "Nothing measured here yet."}</p>
+          )}
           <p className="text-xs text-muted-foreground">One point per measured photo ({v.trend.length}). {v.caveat}</p>
         </section>
       ) : null}

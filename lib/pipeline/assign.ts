@@ -1,7 +1,8 @@
 /**
  * Pure project/spot assignment. Priority:
  *   manual (never overridden) > capture hint (token or upload project/spot) >
- *   GPS inside a project's radius AND capture date inside its window >
+ *   GPS inside a project's radius AND capture date inside its event window >
+ *   GPS inside AND date inside its monitoring period (after the event; check-ins) >
  *   cosine similarity to a project description ≥ threshold > unassigned.
  * Then the nearest spot of that project whose radius contains the photo.
  */
@@ -13,9 +14,11 @@ export interface AssignProject {
   id: string;
   center: LatLng | null;
   radiusM: number | null;
-  /** YYYY-MM-DD, inclusive. */
+  /** Event window, YYYY-MM-DD, inclusive. */
   startDate: string | null;
   endDate: string | null;
+  /** Monitoring runs after endDate until this date; null = open-ended. */
+  monitoringEndsAt?: string | null;
   embedding: number[] | null;
 }
 
@@ -61,6 +64,12 @@ function inWindow(capturedAt: string, p: AssignProject): boolean {
   return t >= Date.parse(`${p.startDate}T00:00:00Z`) && t <= Date.parse(`${p.endDate}T23:59:59.999Z`);
 }
 
+function inMonitoring(capturedAt: string, p: AssignProject): boolean {
+  if (!p.endDate) return false;
+  const t = Date.parse(capturedAt);
+  return t > Date.parse(`${p.endDate}T23:59:59.999Z`) && (!p.monitoringEndsAt || t <= Date.parse(`${p.monitoringEndsAt}T23:59:59.999Z`));
+}
+
 function nearestSpot(projectId: string, location: LatLng | null, spots: AssignSpot[]): { id: string; distanceM: number } | null {
   if (!location) return null;
   let best: { id: string; distanceM: number } | null = null;
@@ -86,16 +95,18 @@ export function assign(input: AssignInput, projects: AssignProject[], spots: Ass
   const hintProject = input.hint?.projectId;
   if (hintProject && projects.some((p) => p.id === hintProject)) return withSpot(hintProject, "capture_hint", { hint: "project" });
 
-  // 2. Inside a project's radius and window (nearest centre wins).
+  // 2. Inside a project's radius and event window (nearest centre wins); then its monitoring period.
   if (input.location && input.capturedAt) {
     const loc = input.location;
     const at = input.capturedAt;
-    const hits = projects
-      .filter((p) => p.center && p.radiusM !== null && inWindow(at, p))
-      .map((p) => ({ p, d: haversine(p.center!, loc) }))
-      .filter(({ p, d }) => d <= p.radiusM!)
-      .sort((a, b) => a.d - b.d);
-    if (hits[0]) return withSpot(hits[0].p.id, "geo_time", { distanceM: Math.round(hits[0].d) });
+    for (const [period, test] of [["event", inWindow], ["monitoring", inMonitoring]] as const) {
+      const hits = projects
+        .filter((p) => p.center && p.radiusM !== null && test(at, p))
+        .map((p) => ({ p, d: haversine(p.center!, loc) }))
+        .filter(({ p, d }) => d <= p.radiusM!)
+        .sort((a, b) => a.d - b.d);
+      if (hits[0]) return withSpot(hits[0].p.id, "geo_time", { distanceM: Math.round(hits[0].d), period });
+    }
   }
 
   // 3. Content similarity to project descriptions.

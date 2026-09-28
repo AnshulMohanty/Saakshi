@@ -3,20 +3,28 @@
  * tamper demo, "Try to fool it"). Plain functions over the DB and media provider; the API routes
  * are thin wrappers, so tests exercise these directly.
  */
-import { and, count, eq, gte, isNotNull, lt } from "drizzle-orm";
+import { and, count, eq, gte, isNotNull, lt, sql } from "drizzle-orm";
 import { appendAudit } from "./audit";
 import type { DB } from "./db/client";
 import { assets, comparisons, measurements, projects, spots } from "./db/schema";
 import { uuidv5, DEMO_NAMESPACE } from "./demo/common";
+import { heroProject } from "./demo/hero";
 import { ensureQr, locationOf } from "./evidence";
 import { PREVIEW } from "./library";
-import { shortDate } from "./media/composite";
+import { captureDate, shortDate } from "./media/composite";
 import { proofStripTransform } from "./media/proof";
 import { compileTransform, type Transform, type TransformStep } from "./media/transform";
 import type { PipelineDeps } from "./pipeline/steps";
 import { runPipeline } from "./pipeline/runner";
 import type { MediaProvider } from "./providers/media";
 import { describeReason } from "./trust";
+import { assetMode, HIDDEN_MOCK, numberPolicy, type DisplayPolicy, type ProviderMode } from "./provenance";
+
+/** A measured value under the display policy: withheld (production + mock) or tagged (development + mock). */
+function shownValue(value: number, mode: ProviderMode, policy: DisplayPolicy) {
+  const p = numberPolicy(mode, policy);
+  return p === "hide" ? { value: null, hiddenText: HIDDEN_MOCK, providerMode: mode } : { value, providerMode: mode, mock: p === "tag" };
+}
 
 // --- /api/stats ---------------------------------------------------------------------------------
 
@@ -26,30 +34,53 @@ export function startOfIstDay(now = new Date()): Date {
   return new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate()) - 330 * 60_000);
 }
 
-export async function stats(db: DB, now = new Date()) {
+/**
+ * Counters from SQL. Photo, spot and project counts are plain row counts. Verified, flagged and
+ * pairs rest on provider output: in production they count only real-provider rows (a mock-derived
+ * number never ships); in development they count everything and say how many are mock-derived.
+ */
+export async function stats(db: DB, now = new Date(), policy: DisplayPolicy = { production: false, minConfidence: 0.5 }) {
   const n = async (q: Promise<Array<{ n: number }>>) => (await q)[0].n;
-  const [photos, verified, flagged, spotsN, witnessToday, projectsN, pairs] = await Promise.all([
+  const real = sql`${assets.provenance}->'analysis'->>'mode' = 'real' and ${assets.provenance}->'ai'->>'mode' = 'real'`;
+  const [photos, verifiedAll, flaggedAll, verifiedReal, flaggedReal, spotsN, witnessToday, projectsN, pairsAll, pairsReal] = await Promise.all([
     n(db.select({ n: count() }).from(assets)),
     n(db.select({ n: count() }).from(assets).where(eq(assets.trustBand, "VERIFIED"))),
     n(db.select({ n: count() }).from(assets).where(eq(assets.trustBand, "FLAGGED"))),
+    n(db.select({ n: count() }).from(assets).where(and(eq(assets.trustBand, "VERIFIED"), real))),
+    n(db.select({ n: count() }).from(assets).where(and(eq(assets.trustBand, "FLAGGED"), real))),
     n(db.select({ n: count() }).from(spots)),
     n(db.select({ n: count() }).from(assets).where(and(eq(assets.source, "witness"), gte(assets.createdAt, startOfIstDay(now))))),
     n(db.select({ n: count() }).from(projects)),
     n(db.select({ n: count() }).from(comparisons).where(isNotNull(comparisons.maskBeforeUrl))),
+    n(db.select({ n: count() }).from(comparisons).where(and(isNotNull(comparisons.maskBeforeUrl), eq(comparisons.providerMode, "real")))),
   ]);
-  return { photos, verified, flagged, spots: spotsN, witnessToday, projects: projectsN, pairs, at: now.toISOString() };
+  const hero = await heroProject(db);
+  const mockDerived = { verified: verifiedAll - verifiedReal, flagged: flaggedAll - flaggedReal, pairs: pairsAll - pairsReal };
+  return {
+    photos,
+    verified: policy.production ? verifiedReal : verifiedAll,
+    flagged: policy.production ? flaggedReal : flaggedAll,
+    spots: spotsN,
+    witnessToday,
+    projects: projectsN,
+    pairs: policy.production ? pairsReal : pairsAll,
+    /** Development only: how many of the counts above rest on mock providers ("Mock output"). */
+    ...(policy.production ? {} : { mockDerived }),
+    hero: hero.project ? { slug: hero.slug, name: hero.project.name } : null,
+    at: now.toISOString(),
+  };
 }
 
 // --- /api/assets/[id]/layers ----------------------------------------------------------------------
 
 /** Everything the 3D evidence viewer stacks: photo, capture facts, pHash bits, tags, mask, trust, proof strip. */
-export async function assetLayers(db: DB, media: MediaProvider, id: string, appUrl: string) {
+export async function assetLayers(db: DB, media: MediaProvider, id: string, appUrl: string, policy: DisplayPolicy = { production: false, minConfidence: 0.5 }) {
   const [a] = await db.select().from(assets).where(eq(assets.id, id)).limit(1);
   if (!a) return null;
   const ms = await db.select().from(measurements).where(eq(measurements.assetId, a.id));
   const mask = ms.find((m) => m.maskUrl);
   await ensureQr(media, a.id, appUrl);
-  const date = shortDate(a.capturedAt ?? a.uploadedAt);
+  const date = a.capturedAt ? captureDate(a.capturedAt, a.capturedAtPrecision) : shortDate(a.uploadedAt);
   const proof = proofStripTransform({ assetId: a.id, place: a.placeName, date, band: a.trustBand });
   const bits = a.phash ? BigInt(`0x${a.phash}`).toString(2).padStart(64, "0").split("").map(Number) : null;
   return {
@@ -75,8 +106,14 @@ export async function assetLayers(db: DB, media: MediaProvider, id: string, appU
       regions: [] as Array<{ label: string; box: [number, number, number, number] }>,
       method: "ai_estimated" as const,
     },
-    mask: mask ? { url: mask.maskUrl, metric: mask.metric, value: mask.value } : null,
-    trust: { score: a.trustScore, band: a.trustBand, reasons: (a.trustReasons ?? []).map((r) => ({ ...r, sentence: describeReason(r) })) },
+    mask: mask ? { url: mask.maskUrl, metric: mask.metric, ...shownValue(mask.value, mask.providerMode, policy) } : null,
+    trust: (() => {
+      const mode = assetMode(a.provenance);
+      const p = numberPolicy(mode, policy);
+      return p === "hide"
+        ? { score: null, band: null, reasons: [], providerMode: mode, hiddenText: HIDDEN_MOCK }
+        : { score: a.trustScore, band: a.trustBand, reasons: (a.trustReasons ?? []).map((r) => ({ ...r, sentence: describeReason(r) })), providerMode: mode, mock: p === "tag" };
+    })(),
     proofStrip: { url: media.url(a.cldPublicId, proof, { signed: true }), place: a.placeName, date, band: a.trustBand, evidenceUrl: `${appUrl}/e/${a.id}` },
   };
 }
@@ -107,14 +144,37 @@ export const SANDBOX_SLUG = "try-to-fool-it";
 export const sandboxProjectId = () => uuidv5(`project:${SANDBOX_SLUG}`, DEMO_NAMESPACE);
 export const SANDBOX_TTL_MS = 24 * 3_600_000;
 
-export async function ensureSandbox(db: DB): Promise<string> {
+export interface SandboxOptions {
+  /** The stage venue (STAGE_LAT/STAGE_LNG): the sandbox's site. Without it nothing can be verified. */
+  venue?: { lat: number; lng: number } | null;
+  now?: Date;
+}
+
+export const SANDBOX_RADIUS_M = 300;
+const dayOf = (t: number) => new Date(t).toISOString().slice(0, 10);
+
+/** The configured venue, if any. */
+export function sandboxVenue(env: { STAGE_LAT?: number; STAGE_LNG?: number }): { lat: number; lng: number } | null {
+  return env.STAGE_LAT !== undefined && env.STAGE_LNG !== undefined ? { lat: env.STAGE_LAT, lng: env.STAGE_LNG } : null;
+}
+
+/** The sandbox project: the stage venue, 300 m, today ± 1 day when a venue is set; otherwise no site. */
+export async function ensureSandbox(db: DB, { venue = null, now = new Date() }: SandboxOptions = {}): Promise<string> {
   const id = sandboxProjectId();
   const values = {
     name: "Try to fool it",
     slug: SANDBOX_SLUG,
     type: "other" as const,
-    description: "Sandbox: upload any image and see what the Trust Engine makes of it. Photos are deleted after 24 hours. No site or dates, so location and time score nothing here.",
+    description: venue
+      ? "Sandbox at the stage venue: upload any image and see what the Trust Engine makes of it. A photo taken here today with camera GPS can be verified; an internet image cannot. Photos are deleted after 24 hours."
+      : "Sandbox with no site set, so nothing here can be verified. Photos are deleted after 24 hours.",
     source: "user" as const,
+    centerLat: venue?.lat ?? null,
+    centerLng: venue?.lng ?? null,
+    radiusM: venue ? SANDBOX_RADIUS_M : null,
+    startDate: venue ? dayOf(now.getTime() - 86_400_000) : null,
+    endDate: venue ? dayOf(now.getTime() + 86_400_000) : null,
+    monitoringEndsAt: venue ? dayOf(now.getTime() + 86_400_000) : null,
   };
   await db.insert(projects).values({ id, ...values }).onConflictDoUpdate({ target: projects.id, set: values });
   return id;
@@ -136,9 +196,9 @@ export async function sweepSandbox(db: DB, media: MediaProvider, now = new Date(
 }
 
 /** Uploads an image into the sandbox, runs the whole pipeline now, returns its trust ledger. */
-export async function tryToFoolIt(deps: PipelineDeps, file: Buffer, filename: string, appUrl: string) {
+export async function tryToFoolIt(deps: PipelineDeps, file: Buffer, filename: string, appUrl: string, opts: SandboxOptions = {}) {
   await sweepSandbox(deps.db, deps.media);
-  const projectId = await ensureSandbox(deps.db);
+  const projectId = await ensureSandbox(deps.db, opts);
   const up = await deps.media.upload({ file, folder: "saakshi/sandbox", tags: ["saakshi", "sandbox"], context: { filename: filename.slice(0, 120) } });
   const [row] = await deps.db
     .insert(assets)
@@ -164,7 +224,10 @@ export async function tryToFoolIt(deps: PipelineDeps, file: Buffer, filename: st
     band: a.trustBand,
     reasons: (a.trustReasons ?? []).map((r) => ({ code: r.code, kind: r.kind, points: r.points, sentence: describeReason(r) })),
     evidenceUrl: `${appUrl}/e/${a.id}`,
-    note: "The sandbox has no site or dates, so location and time can't earn points here, and even a genuine photo can't reach VERIFIED. Watch the flags: reuse, stock, screen, stamp.",
+    note: opts.venue
+      ? "The sandbox site is the stage venue (300 m, today ± 1 day). A genuine photo taken here with camera GPS can reach Verified; an internet image cannot."
+      : "No site set, so nothing here can be verified.",
+    site: opts.venue ? { ...opts.venue, radiusM: SANDBOX_RADIUS_M } : null,
     expiresAt: new Date(a.createdAt.getTime() + SANDBOX_TTL_MS).toISOString(),
   };
 }

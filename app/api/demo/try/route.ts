@@ -1,5 +1,5 @@
 import { getConfig } from "@/lib/config";
-import { tryToFoolIt } from "@/lib/demo-apis";
+import { sandboxVenue, tryToFoolIt } from "@/lib/demo-apis";
 import { getPipelineDeps } from "@/lib/pipeline";
 import { clientKey, createRateLimiter, tooMany } from "@/lib/ratelimit";
 
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   if (file.size > MAX_BYTES) return Response.json({ error: "Images up to 10 MB" }, { status: 413 });
   if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return Response.json({ error: "JPEG, PNG or WebP only" }, { status: 415 });
   try {
-    const out = await tryToFoolIt(await getPipelineDeps(), Buffer.from(await file.arrayBuffer()), file.name || "upload.jpg", getConfig().appUrl);
+    const out = await tryToFoolIt(await getPipelineDeps(), Buffer.from(await file.arrayBuffer()), file.name || "upload.jpg", getConfig().appUrl, { venue: sandboxVenue(getConfig().env) });
     return Response.json(out, { status: 201 });
   } catch (err) {
     return Response.json({ error: err instanceof Error ? err.message : String(err) }, { status: 422 });

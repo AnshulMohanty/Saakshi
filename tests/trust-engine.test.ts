@@ -5,7 +5,7 @@ import { defaultTrustConfig, describeReason, findMatches, isLater, REASON_CODES,
 
 // Tiruppur, a 500 m site, a three-day event.
 const SITE = { lat: 11.1085, lng: 77.3411 };
-const project: TrustProject = { id: "p1", name: "Noyyal cleanup", center: SITE, radiusM: 500, startDate: "2024-01-10", endDate: "2024-01-12", minPairGapHours: 0.5 };
+const project: TrustProject = { id: "p1", name: "Noyyal cleanup", center: SITE, radiusM: 500, startDate: "2024-01-10", endDate: "2024-01-12", monitoringEndsAt: null, minPairGapHours: 0.5 };
 const spot: TrustSpot = { id: "s1", name: "Bridge", center: SITE, radiusM: 30 };
 const north = (m: number) => ({ lat: SITE.lat + m / 111_195, lng: SITE.lng });
 
@@ -20,6 +20,7 @@ const witness = (o: Partial<TrustSignals> = {}): TrustSignals => ({
   uploaderLocation: null,
   capturedAt: "2024-01-11T04:30:00Z",
   capturedAtTzAssumed: false,
+  capturedAtPrecision: "second",
   uploadedAt: "2024-01-11T04:31:00Z",
   moderation: { watermark_or_stock: false, screen_or_print: false, composited_or_generated: false, children_faces: false },
   watermark: false,
@@ -34,11 +35,14 @@ const witness = (o: Partial<TrustSignals> = {}): TrustSignals => ({
 const archive = (o: Partial<TrustSignals> = {}) =>
   witness({ source: "archive", exifSource: "commons_api", deviceFix: null, attested: false, exifLocation: north(100), ...o });
 
-const dup = (o: Partial<DuplicateMatch> = {}): DuplicateMatch => ({
-  assetId: "other", projectId: "p1", projectName: "Noyyal cleanup", spotId: null, hamming: 3, exact: false, strong: true,
-  capturedAt: "2024-01-11T04:00:00Z", uploadedAt: "2024-01-11T04:00:00Z", sameProject: true, sameSpot: false, gapHours: 0.5, otherIsLater: false,
-  ...o,
-});
+const dup = (o: Partial<DuplicateMatch> = {}): DuplicateMatch => {
+  const d = {
+    assetId: "other", projectId: "p1", projectName: "Noyyal cleanup", spotId: null, hamming: 3, exact: false, strong: true,
+    capturedAt: "2024-01-11T04:00:00Z", uploadedAt: "2024-01-11T04:00:00Z", sameProject: true, sameSpot: false, gapHours: 0.5, otherIsLater: false,
+    ...o,
+  };
+  return { gapHoursMin: d.gapHours, gapHoursMax: d.gapHours, ...d };
+};
 
 const codes = (r: ReturnType<typeof scoreAsset>) => r.reasons.map((x) => x.code);
 const reason = (r: ReturnType<typeof scoreAsset>, code: string) => r.reasons.find((x) => x.code === code);
@@ -126,12 +130,26 @@ describe("time (max 20)", () => {
     expect(r.hardFlags).toEqual([]);
   });
 
-  it("an attested check-in at a spot after the event is monitoring, not an old photo", () => {
+  it("after the event, at a monitored spot, while monitoring runs: a check-in (+20)", () => {
     const later = witness({ capturedAt: "2024-03-01T05:00:00Z" });
     expect(reason(scoreAsset(later, project, spot, []), "TIME_CHECKIN")?.points).toBe(20);
-    // Without a spot, or unattested, it is simply outside the window.
-    expect(codes(scoreAsset(later, project, null, []))).toContain("TIME_OUTSIDE");
-    expect(codes(scoreAsset({ ...later, attested: false }, project, spot, []))).toContain("TIME_OUTSIDE");
+    // Any photo at a monitored spot counts, archive ones too (the 2020 Tiruppur revisit).
+    expect(reason(scoreAsset(archive({ capturedAt: "2024-03-01T05:00:00Z" }), project, spot, []), "TIME_CHECKIN")?.points).toBe(20);
+    // Not at a spot: simply after the event.
+    expect(reason(scoreAsset(later, project, null, []), "TIME_OUTSIDE")).toMatchObject({ points: -20, detail: { side: "after", atSpot: false } });
+  });
+
+  it("the monitoring period can end; after it, a photo is outside (−20)", () => {
+    const ended = { ...project, monitoringEndsAt: "2024-02-01" };
+    expect(codes(scoreAsset(witness({ capturedAt: "2024-01-25T05:00:00Z" }), ended, spot, []))).toContain("TIME_CHECKIN");
+    const late = scoreAsset(witness({ capturedAt: "2024-03-01T05:00:00Z" }), ended, spot, []);
+    expect(reason(late, "TIME_OUTSIDE")).toMatchObject({ points: -20, detail: { monitoringOver: true } });
+    expect(describeReason(reason(late, "TIME_OUTSIDE")!)).toBe("Taken on 2024-03-01, after monitoring ended.");
+  });
+
+  it("a date-only capture says so", () => {
+    const r = scoreAsset(archive({ capturedAt: "2024-01-11T00:00:00Z", capturedAtPrecision: "day" }), project, null, []);
+    expect(describeReason(reason(r, "TIME_IN_WINDOW")!)).toBe("Taken on 2024-01-11 (date only), inside the event dates.");
   });
 
   it("no project or no dates: 0", () => {
@@ -164,6 +182,15 @@ describe("uniqueness (max 20)", () => {
     const r = scoreAsset(archive(), project, spot, [dup({ sameSpot: true, gapHours: 48 }), dup({ assetId: "b", gapHours: 0.05 })]);
     expect(codes(r)).toContain("BURST");
     expect(codes(r)).not.toContain("REVISIT");
+  });
+
+  it("date-only photos on the same day are neither a burst nor a revisit (unknown gap)", () => {
+    const sameDay = dup({ sameSpot: true, gapHours: 0, gapHoursMin: 0, gapHoursMax: 24 });
+    const r = scoreAsset(archive(), project, spot, [sameDay]);
+    expect(codes(r)).toContain("SIMILAR_IN_PROJECT");
+    expect(codes(r)).not.toContain("BURST");
+    // Different days, day precision: at least 48 h apart, a revisit.
+    expect(codes(scoreAsset(archive(), project, spot, [dup({ sameSpot: true, gapHours: 72, gapHoursMin: 48, gapHoursMax: 96 })]))).toContain("REVISIT");
   });
 
   it("identical file in the same project: review POSSIBLE_DUPLICATE", () => {
@@ -359,7 +386,7 @@ describe("score, cap and bands", () => {
   it("missing everything: a low score, no flags, no crash", () => {
     const empty: TrustSignals = {
       assetId: "x", source: "upload", exifSource: "none", deviceFix: null, attested: false, exifLocation: null, uploaderLocation: null,
-      capturedAt: null, capturedAtTzAssumed: false, uploadedAt: "2024-01-01T00:00:00Z", moderation: null, watermark: null, textInImage: null,
+      capturedAt: null, capturedAtTzAssumed: false, capturedAtPrecision: null, uploadedAt: "2024-01-01T00:00:00Z", moderation: null, watermark: null, textInImage: null,
       childrenVisible: false, qualityScore: null, cameraMake: null, cameraModel: null,
     };
     const r = scoreAsset(empty, null, null, []);
@@ -399,6 +426,6 @@ describe("lib/trust is browser-safe", () => {
     };
     visit(path.join(root, "lib/trust/index.ts"));
     const files = [...seen].map((f) => path.relative(root, f).replaceAll("\\", "/")).sort();
-    expect(files.every((f) => f.startsWith("lib/trust/") || f === "lib/geo.ts" || f === "lib/hamming.ts"), files.join(", ")).toBe(true);
+    expect(files.every((f) => f.startsWith("lib/trust/") || ["lib/geo.ts", "lib/hamming.ts", "lib/dates.ts"].includes(f)), files.join(", ")).toBe(true);
   });
 });

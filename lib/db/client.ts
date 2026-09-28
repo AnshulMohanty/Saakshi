@@ -57,8 +57,11 @@ export async function openPostgres(url: string, { migrate = false } = {}): Promi
     import("drizzle-orm/postgres-js"),
     import("drizzle-orm/postgres-js/migrator"),
   ]);
-  // prepare: false keeps Supabase's transaction-mode pooler happy.
-  const client = postgres(url, { prepare: false, max: 5 });
+  // Supabase transaction pooler (port 6543): prepared statements are unsupported, so prepare: false.
+  // Serverless: few connections per instance, short idle time, fail fast on connect. Supabase warns
+  // that postgres.js pipelining over the transaction pooler can hang; if that is ever seen, point
+  // DATABASE_URL at the session pooler (port 5432) instead (docs/external-apis.md).
+  const client = postgres(url, { prepare: false, max: 5, idle_timeout: 20, connect_timeout: 10 });
   const db = drizzle({ client, schema });
   if (migrate) {
     await runMigrations(db, { migrationsFolder: MIGRATIONS_FOLDER });

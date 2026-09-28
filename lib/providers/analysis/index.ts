@@ -6,6 +6,7 @@ import "server-only";
 import { getConfig } from "../../config";
 import { getMediaProvider } from "../media";
 import { MockMediaProvider } from "../media/mock";
+import { CloudinaryMediaProvider } from "../media/real";
 import { MockAnalysisProvider } from "./mock";
 import { CloudinaryAnalysisProvider } from "./real";
 
@@ -21,6 +22,8 @@ export interface ModerationQuestion {
 
 export interface AnalysisProvider {
   readonly kind: "mock" | "real";
+  /** Provider id, recorded as provenance on tags, moderation answers and watermark results. */
+  readonly id: string;
   /** Names of the taxonomy entries that apply to the image. */
   tag(publicId: string, taxonomy: TaxonomyEntry[]): Promise<string[]>;
   /** Yes/no answer per question id. */
@@ -33,10 +36,10 @@ let instance: AnalysisProvider | undefined;
 export function getAnalysisProvider(): AnalysisProvider {
   if (!instance) {
     const config = getConfig();
-    if (config.providers.analysis.mode === "real") {
-      instance = new CloudinaryAnalysisProvider();
+    const media = getMediaProvider();
+    if (config.providers.analysis.mode === "real" && media instanceof CloudinaryMediaProvider) {
+      instance = new CloudinaryAnalysisProvider(media.client, (id, t) => media.url(id, t, { signed: true }));
     } else {
-      const media = getMediaProvider();
       instance = new MockAnalysisProvider((id) => (media instanceof MockMediaProvider ? media.haystack(id) : Promise.resolve(id)));
     }
   }

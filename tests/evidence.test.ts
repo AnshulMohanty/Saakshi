@@ -103,6 +103,10 @@ describe("evidence page read model", () => {
     expect(v.edits[0]).toMatchObject({ who: "demo:plant", note: "watermark added" });
     expect(v.attribution?.author).toBe("A. Photographer");
     expect(await evidenceView(ctx.db, ctx.media, "00000000-0000-4000-8000-000000000000", { appUrl: "x" })).toBeNull();
+    expect(v.trust).toMatchObject({ mock: true, providerMode: "mock" });
+    // Production: a mock-derived trust score and ledger never render.
+    const prodView = (await evidenceView(ctx.db, ctx.media, a.id, { appUrl: "https://saakshi.example", policy: { production: true, minConfidence: 0.5 } }))!;
+    expect(prodView.trust).toMatchObject({ score: null, band: null, reasons: [], hiddenText: "Not available: computed with mock providers" });
     const [row] = await ctx.db.select().from(assets).where(eq(assets.id, a.id));
     expect(row.status).toBe("ready");
   });

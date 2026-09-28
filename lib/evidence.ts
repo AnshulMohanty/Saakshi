@@ -11,13 +11,14 @@ import { assets, auditLog, comparisons, duplicates, measurements, projects, spot
 import { haversine } from "./geo";
 import { similarityPct } from "./hamming";
 import { PREVIEW } from "./library";
-import { shortDate } from "./media/composite";
+import { captureDate, shortDate } from "./media/composite";
 import { describeTransform, type DescribedStep } from "./media/describe";
 import { proofStripTransform, qrPublicId } from "./media/proof";
 import type { Transform } from "./media/transform";
 import { FRAME, GREEN_PROMPTS, LITTER_PROMPTS, METRIC_LABEL, VIEW } from "./measure/measure";
 import { maskTransform, type MediaProvider } from "./providers/media";
 import { describeReason } from "./trust";
+import { assetMode, showEstimate, showNumber, type DisplayPolicy } from "./provenance";
 
 export const evidencePath = (assetId: string) => `/e/${assetId}`;
 
@@ -26,7 +27,8 @@ export async function ensureQr(media: MediaProvider, assetId: string, appUrl: st
   const publicId = qrPublicId(assetId);
   if (!(await media.exists(publicId))) {
     const png = await QRCode.toBuffer(`${appUrl}${evidencePath(assetId)}`, { type: "png", margin: 1, width: 360, errorCorrectionLevel: "M" });
-    await media.upload({ file: png, folder: "saakshi/qr", publicId, tags: ["saakshi", "qr"] });
+    // Public delivery type: a QR code of a public URL carries nothing personal (overlays need no signature).
+    await media.upload({ file: png, folder: "saakshi/qr", publicId, tags: ["saakshi", "qr"], access: "public" });
   }
   return publicId;
 }
@@ -46,7 +48,7 @@ export interface EditEntry {
   steps: DescribedStep[];
 }
 
-export async function evidenceView(db: DB, media: MediaProvider, assetId: string, { appUrl }: { appUrl: string }) {
+export async function evidenceView(db: DB, media: MediaProvider, assetId: string, { appUrl, policy = { production: false, minConfidence: 0.5 } }: { appUrl: string; policy?: DisplayPolicy }) {
   const [a] = await db.select().from(assets).where(eq(assets.id, assetId)).limit(1);
   if (!a) return null;
   const [[project], [spot]] = await Promise.all([
@@ -55,7 +57,7 @@ export async function evidenceView(db: DB, media: MediaProvider, assetId: string
   ]);
 
   await ensureQr(media, a.id, appUrl);
-  const date = shortDate(a.capturedAt ?? a.uploadedAt);
+  const date = a.capturedAt ? captureDate(a.capturedAt, a.capturedAtPrecision) : shortDate(a.uploadedAt);
   const proof = proofStripTransform({ assetId: a.id, place: a.placeName, date, band: a.trustBand });
   const loc = locationOf(a);
 
@@ -99,15 +101,27 @@ export async function evidenceView(db: DB, media: MediaProvider, assetId: string
     status: a.status,
     imageUrl: media.url(a.cldPublicId, proof, { signed: true }),
     pageUrl: `${appUrl}${evidencePath(a.id)}`,
-    trust: {
-      score: a.trustScore,
-      band: a.trustBand,
-      scoredAt: a.scoredAt?.toISOString() ?? null,
-      reasons: (a.trustReasons ?? []).map((r) => ({ ...r, sentence: describeReason(r) })),
-    },
+    trust: (() => {
+      // The score rests on analysis and AI output: hidden in production when either was a mock.
+      const shown = showNumber(a.trustScore, assetMode(a.provenance), policy);
+      const hidden = shown?.kind === "hidden";
+      return {
+        score: hidden ? null : a.trustScore,
+        band: hidden ? null : a.trustBand,
+        scoredAt: a.scoredAt?.toISOString() ?? null,
+        reasons: hidden ? [] : (a.trustReasons ?? []).map((r) => ({ ...r, sentence: describeReason(r) })),
+        hiddenText: hidden ? shown.text : null,
+        mock: shown?.kind === "value" && shown.mock,
+        providerMode: assetMode(a.provenance),
+      };
+    })(),
+    provenance: a.provenance,
     review: a.review,
     facts: {
       capturedAt: a.capturedAt?.toISOString() ?? null,
+      capturedAtPrecision: a.capturedAtPrecision,
+      dateOnly: a.capturedAtPrecision === "day" || a.capturedAtPrecision === "month" || a.capturedAtPrecision === "year",
+      captureLabel: a.capturedAt ? captureDate(a.capturedAt, a.capturedAtPrecision) : null,
       tzNote: a.capturedAtTzAssumed ? "The source gave no time zone; +05:30 (IST) was assumed." : a.source === "witness" ? "Device time, checked against the server's clock." : null,
       uploadedAt: a.uploadedAt.toISOString(),
       device: a.source === "witness" ? `Witness Capture${a.capture?.deviceFix?.accuracyM ? `, location ±${Math.round(a.capture.deviceFix.accuracyM)} m` : ""}` : [a.cameraMake, a.cameraModel].filter(Boolean).join(" ") || null,
@@ -132,6 +146,7 @@ export async function evidenceView(db: DB, media: MediaProvider, assetId: string
     spot: spot ? { name: spot.name, slug: spot.slug, radiusM: spot.radiusM } : null,
     duplicates: dups.map((d) => ({ ...d, capturedAt: d.capturedAt?.toISOString() ?? null, similarityPct: similarityPct(d.hamming), href: evidencePath(d.id) })),
     comparisons: comps.map((c) => ({
+      shown: c.method === "ai_estimated" ? showEstimate(c.delta ?? 0, c.confidence, c.providerMode, policy) : showNumber(c.delta, c.providerMode, policy),
       id: c.id,
       metric: METRIC_LABEL[c.metric as keyof typeof METRIC_LABEL] ?? c.metric,
       role: c.beforeAssetId === a.id ? ("before" as const) : ("after" as const),

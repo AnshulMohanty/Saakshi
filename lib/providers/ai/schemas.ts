@@ -25,6 +25,8 @@ export const PhotoAnalysisOutput = z.object({
 export const PhotoAnalysis = PhotoAnalysisOutput.extend({
   method: z.literal("ai_estimated"),
   model: z.string(),
+  /** Stored with the asset: which provider produced it (mock-derived values never ship). */
+  providerMode: z.enum(["mock", "real"]).optional(),
 });
 export type PhotoAnalysis = z.infer<typeof PhotoAnalysis>;
 

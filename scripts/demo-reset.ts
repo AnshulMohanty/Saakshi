@@ -3,6 +3,7 @@
  * `--online` allows network fetches for anything missing from the cache.
  * `--include-witness` also deletes witness photos in demo projects (full wipe).
  */
+import "./_env";
 import { runDemoReset } from "../lib/demo/run";
 import { runCli } from "./_demo-cli";
 

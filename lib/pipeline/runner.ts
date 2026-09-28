@@ -12,6 +12,7 @@ import { eq, sql } from "drizzle-orm";
 import { appendAudit } from "../audit";
 import type { DB } from "../db/client";
 import { assets, type PipelineStepName, type PipelineStepRecord } from "../db/schema";
+import { flushUsageQuietly, withUsageAsset } from "../usage";
 import { loadAsset, STEP_ORDER, STEPS, type PipelineDeps } from "./steps";
 
 export type StepWrapper = <T>(name: string, fn: () => Promise<T>) => Promise<T>;
@@ -56,7 +57,7 @@ export async function executeStep(deps: PipelineDeps, assetId: string, name: Pip
   const attempts = (previous?.attempts ?? 0) + 1;
   await writeStepRecord(deps.db, assetId, name, { status: "running", attempts, startedAt });
   try {
-    const { output, patch, apply } = await STEPS[name](deps, asset);
+    const { output, patch, apply } = await withUsageAsset(assetId, () => STEPS[name](deps, asset));
     const rec: PipelineStepRecord = { status: "done", attempts, startedAt, finishedAt: new Date().toISOString(), output };
     await deps.db.transaction(async (tx) => {
       const pipelinePatch =
@@ -67,8 +68,10 @@ export async function executeStep(deps: PipelineDeps, assetId: string, name: Pip
       await tx.update(assets).set({ ...patch, pipeline: pipelinePatch }).where(eq(assets.id, assetId));
       await appendAudit(tx as unknown as DB, { assetId, actor: PIPELINE_ACTOR, action: `pipeline.${name}`, detail: auditDetail(output) });
     });
+    await flushUsageQuietly(deps.db);
     return { step: name, skipped: false, output };
   } catch (err) {
+    await flushUsageQuietly(deps.db);
     const message = err instanceof Error ? err.message : String(err);
     await writeStepRecord(deps.db, assetId, name, { status: "error", attempts, startedAt, finishedAt: new Date().toISOString(), error: message.slice(0, 500) });
     throw err;
@@ -80,4 +83,20 @@ export async function runPipeline(deps: PipelineDeps, assetId: string, step: Ste
   const outcomes: StepOutcome[] = [];
   for (const name of STEP_ORDER) outcomes.push(await step(name, () => executeStep(deps, assetId, name)));
   return outcomes;
+}
+
+/**
+ * Forgets the records of these steps so the next run executes them again (e.g. after switching a
+ * provider from mock to real). Bookkeeping only: the asset's values change when the steps re-run.
+ * One audit row records the reset.
+ */
+export async function resetSteps(db: DB, assetId: string, names: PipelineStepName[], reason: string): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [a] = await tx.select({ pipeline: assets.pipeline }).from(assets).where(eq(assets.id, assetId)).limit(1);
+    if (!a) return;
+    const steps = { ...(a.pipeline?.steps ?? {}) };
+    for (const n of names) delete steps[n];
+    await tx.update(assets).set({ pipeline: { ...a.pipeline, steps, completedAt: undefined } }).where(eq(assets.id, assetId));
+    await appendAudit(tx as unknown as DB, { assetId, actor: PIPELINE_ACTOR, action: "pipeline.reset", detail: { steps: names, reason: reason.slice(0, 200) } });
+  });
 }

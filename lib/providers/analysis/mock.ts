@@ -28,6 +28,7 @@ const applies = (words: Set<string>, text: string) => {
 
 export class MockAnalysisProvider implements AnalysisProvider {
   readonly kind = "mock" as const;
+  readonly id = "mock-analysis-1";
 
   /** @param describe returns the text to match for a public id (filename, tags, context). */
   constructor(private readonly describe: (publicId: string) => Promise<string>) {}

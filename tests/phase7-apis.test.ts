@@ -85,6 +85,9 @@ describe("APIs for Phase 7", () => {
     const s = await stats(ctx.db);
     expect(s).toMatchObject({ photos: 1, verified: 1, flagged: 0, spots: 1, witnessToday: 1, projects: 1 });
     expect(startOfIstDay(new Date("2026-09-28T20:00:00Z")).toISOString()).toBe("2026-09-28T18:30:00.000Z");
+    // Production: counts that rest on provider output include real-provider rows only.
+    expect(await stats(ctx.db, new Date(), { production: true, minConfidence: 0.5 })).toMatchObject({ photos: 1, verified: 0, flagged: 0, pairs: 0 });
+    expect(s).toMatchObject({ mockDerived: { verified: 1 } });
   });
 
   it("layers: photo, capture, pHash bits, tags, mask, trust and proof strip", async () => {
@@ -112,6 +115,25 @@ describe("APIs for Phase 7", () => {
     expect(await sweepSandbox(ctx.db, ctx.media)).toBe(0);
     expect(await sweepSandbox(ctx.db, ctx.media, new Date(Date.now() + 25 * 3_600_000))).toBe(1);
     expect(await ctx.db.select().from(assets).where(eq(assets.id, out.id))).toHaveLength(0);
+  });
+
+  it("sandbox at the stage venue: a genuine photo with camera GPS reaches Verified; an internet image can't", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const path = await import("node:path");
+    // The fixture carries camera EXIF: GPS 12.971667, 77.5946 and 2025-03-14 09:30 IST.
+    const venue = { lat: 12.9716, lng: 77.5946 };
+    const now = new Date("2025-03-14T06:00:00Z");
+    const genuine = await tryToFoolIt(ctx.deps, await readFile(path.join(__dirname, "fixtures", "geotagged.jpg")), "at-the-venue.jpg", "https://s.example", { venue, now });
+    expect(genuine.band).toBe("VERIFIED");
+    expect(genuine.reasons.map((r) => r.code)).toEqual(expect.arrayContaining(["LOCATION_EXIF", "TIME_IN_WINDOW"]));
+    expect(genuine.site).toMatchObject({ radiusM: 300 });
+    const web = await tryToFoolIt(ctx.deps, await synthScene(77), "downloaded-from-google.jpg", "https://s.example", { venue, now });
+    expect(web.band).not.toBe("VERIFIED");
+    expect(web.reasons.map((r) => r.code)).toContain("LOCATION_NONE");
+    // Without a venue: no site, and the response says so.
+    const nosite = await tryToFoolIt(ctx.deps, await synthScene(78), "another.jpg", "https://s.example");
+    expect(nosite.note).toBe("No site set, so nothing here can be verified.");
+    expect(nosite.band).not.toBe("VERIFIED");
   });
 
   it("evidence pack: manifest plus face-blurred photos, no originals", async () => {

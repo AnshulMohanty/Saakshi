@@ -17,7 +17,8 @@ import {
   type Transform,
 } from "../../media/transform";
 import { phash } from "../../phash";
-import { maskTransform, type MaskOptions, type MediaAsset, type MediaProvider, type MetadataTags, type RawUploadInput, type UploadInput, type UrlOptions } from "./index";
+import { compositeTransform } from "../../media/composite";
+import { maskTransform, type CompositeResult, type CompositeSide, type MaskOptions, type MediaAsset, type MediaProvider, type MetadataTags, type RawUploadInput, type UploadInput, type UrlOptions } from "./index";
 import { mockHaystack, MockMediaStore } from "./mock-store";
 import { renderTransform, type Rendered } from "./mock-render";
 
@@ -61,6 +62,7 @@ async function qualityHeuristic(bytes: Buffer, width: number, height: number): P
 
 export class MockMediaProvider implements MediaProvider {
   readonly kind = "mock" as const;
+  readonly evidenceType = "authenticated" as const;
   readonly store: MockMediaStore;
   private readonly logged = new Set<string>();
 
@@ -184,6 +186,12 @@ export class MockMediaProvider implements MediaProvider {
   async extractMask(publicId: string, prompt: string | string[], opts: MaskOptions = {}): Promise<{ maskUrl: string; buffer: Buffer }> {
     const steps = maskTransform(prompt, opts);
     return { maskUrl: this.url(publicId, steps, { signed: true }), buffer: await this.fetchDerived(publicId, steps) };
+  }
+
+  /** Always the layer form: the mock server renders l_authenticated layers with sharp. */
+  async composite(before: CompositeSide, after: CompositeSide): Promise<CompositeResult> {
+    const transforms = compositeTransform(before, after, { layerType: this.evidenceType });
+    return { url: this.url(before.publicId, transforms, { signed: true }), publicId: before.publicId, transforms, mode: "layer" };
   }
 
   /** Text the deterministic analysis/AI mocks key on. */

@@ -11,6 +11,7 @@ import { demoProjectId } from "@/lib/demo/common";
 import { importDemo, type DemoDeps } from "@/lib/demo/import";
 import { pickPlantInputs, plantDemo } from "@/lib/demo/plant";
 import { wipeDemo } from "@/lib/demo/reset";
+import { decideReview, DEMO_VISITOR } from "@/lib/review";
 import { createStageProject, STAGE_SPOT_SLUG } from "@/lib/demo/stage";
 import { runPipeline } from "@/lib/pipeline/runner";
 import { HandlerRegistry } from "@/lib/providers/queue";
@@ -178,6 +179,10 @@ describe("demo import → plant → reset (mock providers, in-memory DB)", () =>
   it("reset keeps witness photos and their links, and leaves every other chain intact", async () => {
     const [spotA] = await ctx.db.select().from(spots).where(eq(spots.projectId, ids.A));
     const witness = await addWitness(ids.A, spotA.id);
+    // Demo reviews: one on an archive photo, one on the witness photo.
+    const [archivePhoto] = await ctx.db.select().from(assets).where(eq(assets.source, "archive")).limit(1);
+    await decideReview(ctx.db, ctx.media, { assetId: archivePhoto.id, decision: "reject", note: "demo visitor test", actor: DEMO_VISITOR });
+    await decideReview(ctx.db, ctx.media, { assetId: witness, decision: "approve", note: "demo visitor test", actor: DEMO_VISITOR });
     const witnessChain = await verifyChain(ctx.db, witness);
     expect(witnessChain.intact).toBe(true);
 
@@ -198,7 +203,11 @@ describe("demo import → plant → reset (mock providers, in-memory DB)", () =>
     await queue.drain();
     expect(again.imported).toBeGreaterThan(0);
     const [w] = await ctx.db.select().from(assets).where(eq(assets.id, witness));
-    expect(w).toMatchObject({ projectId: ids.A, spotId: spotA.id });
+    expect(w).toMatchObject({ projectId: ids.A, spotId: spotA.id, status: "approved", review: { actor: DEMO_VISITOR } });
+    // The archive photo's demo decision is gone: it was re-imported fresh.
+    const [again1] = await ctx.db.select().from(assets).where(eq(assets.externalId, archivePhoto.externalId!));
+    expect(again1.review).toBeNull();
+    expect(again1.status).not.toBe("rejected");
     expect((await verifyAllChains(ctx.db)).ok).toBe(true);
   });
 

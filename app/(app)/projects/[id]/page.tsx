@@ -8,6 +8,7 @@ import { desc, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { reports } from "@/lib/db/schema";
 import { projectView } from "@/lib/measure/views";
+import { displayPolicy } from "@/lib/display-policy";
 import { getMediaProvider } from "@/lib/providers/media";
 import { GenerateReportButton } from "./generate-report";
 
@@ -19,7 +20,7 @@ export async function generateMetadata({ params }: PageProps<"/projects/[id]">) 
 
 export default async function ProjectPage({ params }: PageProps<"/projects/[id]">) {
   await connection();
-  const v = await projectView(await getDb(), getMediaProvider(), (await params).id);
+  const v = await projectView(await getDb(), getMediaProvider(), (await params).id, displayPolicy());
   if (!v) notFound();
   const p = v.project;
   const rs = await (await getDb()).select({ id: reports.id, periodFrom: reports.periodFrom, periodTo: reports.periodTo, createdAt: reports.createdAt }).from(reports).where(eq(reports.projectId, p.id)).orderBy(desc(reports.createdAt)).limit(10);

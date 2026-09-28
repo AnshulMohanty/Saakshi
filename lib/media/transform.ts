@@ -77,8 +77,8 @@ export const TextOverlay = z.strictObject({
 
 export const ImageOverlay = z.strictObject({
   publicId: PublicId,
-  /** Delivery type of the layer asset: evidence is "authenticated" (l_authenticated:…). */
-  type: z.literal("authenticated").optional(),
+  /** Delivery type of the layer asset: evidence is "authenticated" (l_authenticated:…), or "private" (CLD_DELIVERY_TYPE=private). */
+  type: z.enum(["authenticated", "private"]).optional(),
   crop: CropMode.optional(),
   /** Crop gravity inside the layer (placement gravity belongs to the overlay step). */
   gravity: Gravity.optional(),
@@ -161,8 +161,10 @@ function compileStep(step: TransformStep): string {
       return `${layer}/${placement(step)}`;
     }
     const id = (o.type ? `${o.type}:` : "") + o.publicId.replaceAll("/", ":");
-    const layer = params([["l", id], ["c", o.crop], ["g", o.gravity], ["w", o.width], ["h", o.height], ["o", o.opacity], ["e", o.effect]]);
-    return `${layer}/${placement(step)}`;
+    const layer = params([["l", id], ["c", o.crop], ["g", o.gravity], ["w", o.width], ["h", o.height], ["o", o.opacity]]);
+    // Effects aren't allowed inside the l_ component: they go in their own chained component,
+    // which applies to the layer because it comes before fl_layer_apply.
+    return [layer, o.effect ? `e_${o.effect}` : null, placement(step)].filter(Boolean).join("/");
   }
   if ("effect" in step) {
     if (step.effect === "extract") {
@@ -240,7 +242,7 @@ function parseComponent(c: string): unknown {
   return step;
 }
 
-function parseOverlay(layer: string, apply: string): unknown {
+function parseOverlay(layer: string, apply: string, layerEffect?: string): unknown {
   const a = splitParams(apply);
   if (!a || a.get("fl") !== "layer_apply" || !onlyKeys(a, ["fl", "g", "x", "y"])) return null;
   const place = {
@@ -268,18 +270,18 @@ function parseOverlay(layer: string, apply: string): unknown {
       ...place,
     };
   }
-  if (!onlyKeys(l, ["l", "c", "g", "w", "h", "o", "e"])) return null;
-  const authenticated = lv.startsWith("authenticated:");
+  if (!onlyKeys(l, ["l", "c", "g", "w", "h", "o"])) return null;
+  const type = /^(authenticated|private):/.exec(lv)?.[1];
   return {
     overlay: {
-      publicId: (authenticated ? lv.slice("authenticated:".length) : lv).replaceAll(":", "/"),
-      ...(authenticated ? { type: "authenticated" } : {}),
+      publicId: (type ? lv.slice(type.length + 1) : lv).replaceAll(":", "/"),
+      ...(type ? { type } : {}),
       ...(l.has("c") ? { crop: l.get("c") } : {}),
       ...(l.has("g") ? { gravity: l.get("g") } : {}),
       ...(l.has("w") ? { width: int(l.get("w")) } : {}),
       ...(l.has("h") ? { height: int(l.get("h")) } : {}),
       ...(l.has("o") ? { opacity: int(l.get("o")) } : {}),
-      ...(l.has("e") ? { effect: l.get("e") } : {}),
+      ...(layerEffect ? { effect: layerEffect } : {}),
     },
     ...place,
   };
@@ -299,6 +301,9 @@ export function parseTransformation(transformation: string): Transform {
     if (c.startsWith("l_") && comps[i + 1]?.startsWith("fl_layer_apply")) {
       candidate = parseOverlay(c, comps[i + 1]);
       if (candidate) i++;
+    } else if (c.startsWith("l_") && !c.startsWith("l_text:") && comps[i + 1] === "e_blur_faces" && comps[i + 2]?.startsWith("fl_layer_apply")) {
+      candidate = parseOverlay(c, comps[i + 2], "blur_faces");
+      if (candidate) i += 2;
     } else {
       candidate = parseComponent(c);
     }
@@ -329,8 +334,8 @@ export interface CloudinaryUrlOptions {
   transforms: Transform;
   /** Present → signed URL. */
   apiSecret?: string;
-  /** "authenticated" assets (Witness uploads) are only deliverable through signed URLs. */
-  deliveryType?: "upload" | "authenticated";
+  /** "authenticated" (or "private") evidence is only deliverable through signed URLs. */
+  deliveryType?: "upload" | "authenticated" | "private";
 }
 
 export function buildCloudinaryUrl({ cloudName, publicId, transforms, apiSecret, deliveryType = "upload" }: CloudinaryUrlOptions): string {

@@ -15,6 +15,17 @@ import { MockMediaProvider } from "../media/mock";
 import { MockAIProvider } from "./mock";
 import { OpenAIProvider } from "./real";
 import { ParsedSearch, PhotoAnalysis } from "./schemas";
+import type { SearchVocabulary } from "../../ai/prompts";
+import { MOCK_MEDIA_PREFIX, parseDeliveryPath } from "../../media/transform";
+
+async function loadMockImage(media: MockMediaProvider, url: string): Promise<{ bytes: Buffer; contentType: string }> {
+  const path = new URL(url, "http://local").pathname.slice(MOCK_MEDIA_PREFIX.length + 1);
+  const parsed = parseDeliveryPath(path);
+  if (!parsed) throw new Error("Not a mock media URL");
+  const r = await media.render(parsed, "image/jpeg");
+  if (r.status !== 200) throw new Error(`Mock media: ${r.error}`);
+  return { bytes: r.rendered.body, contentType: r.rendered.contentType };
+}
 
 export interface ClaimRef {
   id: string;
@@ -23,10 +34,13 @@ export interface ClaimRef {
 
 export interface AIProvider {
   readonly kind: "mock" | "real";
+  /** Model ids, recorded as provenance on everything they produce. */
+  readonly models: { vision: string; text: string; embed: string };
   describePhoto(imageUrl: string): Promise<PhotoAnalysis>;
   /** Prose that references numbers only as {{claim:id}} placeholders. */
   writeWithPlaceholders(instruction: string, claims: ClaimRef[]): Promise<string>;
-  parseSearch(query: string): Promise<ParsedSearch>;
+  /** @param vocabulary the allowed filter values (projects, bands…), so a model can't invent them. */
+  parseSearch(query: string, vocabulary?: SearchVocabulary): Promise<ParsedSearch>;
   /** Unit-length embedding with EMBEDDING_DIMENSIONS (1536) dimensions. */
   embed(text: string): Promise<number[]>;
 }
@@ -34,6 +48,7 @@ export interface AIProvider {
 export function withGuards(inner: AIProvider): AIProvider {
   return {
     kind: inner.kind,
+    models: inner.models,
     async describePhoto(imageUrl) {
       const analysis = PhotoAnalysis.parse(await inner.describePhoto(imageUrl));
       // Captions are generated prose: quantities belong in visibleCounts, not in text.
@@ -45,8 +60,8 @@ export function withGuards(inner: AIProvider): AIProvider {
       validateProse(text, { claimIds: claims.map((c) => c.id) });
       return text;
     },
-    async parseSearch(query) {
-      return ParsedSearch.parse(await inner.parseSearch(query));
+    async parseSearch(query, vocabulary) {
+      return ParsedSearch.parse(await inner.parseSearch(query, vocabulary));
     },
     async embed(text) {
       const v = await inner.embed(text);
@@ -64,7 +79,13 @@ export function getAIProvider(): AIProvider {
   if (!instance) {
     const config = getConfig();
     if (config.providers.ai.mode === "real") {
-      instance = withGuards(new OpenAIProvider(config.openai));
+      const media = getMediaProvider();
+      instance = withGuards(
+        new OpenAIProvider(config.openai, {
+          // Mock media URLs are relative: render them in-process instead of over HTTP.
+          loadImage: media instanceof MockMediaProvider ? (url) => loadMockImage(media, url) : undefined,
+        }),
+      );
     } else {
       const media = getMediaProvider();
       const mock = media instanceof MockMediaProvider ? media : null;

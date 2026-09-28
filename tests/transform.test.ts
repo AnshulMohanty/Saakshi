@@ -123,7 +123,7 @@ describe("parseTransformation", () => {
       "e_extract:prompt_(litter;floating%20waste);multiple_true;mode_mask",
     );
     expect(compileTransform([{ overlay: { publicId: "saakshi/evidence/b", type: "authenticated", crop: "fill", gravity: "auto", width: 8, height: 6, effect: "blur_faces" }, gravity: "east" }])).toBe(
-      "l_authenticated:saakshi:evidence:b,c_fill,g_auto,w_8,h_6,e_blur_faces/fl_layer_apply,g_east",
+      "l_authenticated:saakshi:evidence:b,c_fill,g_auto,w_8,h_6/e_blur_faces/fl_layer_apply,g_east", // effects go in their own component (docs: layers)
     );
   });
 

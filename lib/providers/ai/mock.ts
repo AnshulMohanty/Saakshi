@@ -162,6 +162,7 @@ export function hashEmbedding(text: string, dims = EMBEDDING_DIMENSIONS): number
 
 export class MockAIProvider implements AIProvider {
   readonly kind = "mock" as const;
+  readonly models = { vision: "mock-vision-1", text: "mock-writer-1", embed: "mock-hash-embed-1" };
 
   /**
    * @param describe returns the text to key on for a public id (filename, tags, context).

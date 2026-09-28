@@ -23,6 +23,8 @@ npm-debug.log*
 # env files (.env.example is committed)
 .env*
 !.env.example
+.env.local
+.env.real.local
 
 # vercel
 .vercel
@@ -30,3 +32,8 @@ npm-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# design parity output (regenerate with design:capture / parity:capture / parity:report)
+/design/reference/
+/design/actual/
+/design/parity/

@@ -5,17 +5,18 @@
 import "server-only";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { count, eq, inArray } from "drizzle-orm";
+import { and, count, eq, inArray, ne } from "drizzle-orm";
 import type { ArchiveCandidates } from "../archive/candidates";
 import { CommonsClient, packageRepoUrl } from "../archive/commons";
 import { verifyAllChains } from "../audit";
 import { getConfig } from "../config";
 import { getDb } from "../db/client";
-import { assets, projects, spots } from "../db/schema";
+import { assets, comparisons, measurements, projects, spots, type PipelineStepName } from "../db/schema";
 import { drainQueue, enqueueAsset, getPipelineDeps } from "../pipeline";
-import { runPipeline } from "../pipeline/runner";
+import { resetSteps, runPipeline } from "../pipeline/runner";
 import { rescoreAll, rescoreProject, trustSummary, type TrustSummary } from "../pipeline/score";
-import { autoPairProject, refreshBaseline } from "../measure/measure";
+import { autoPairProject, measureAsset, measureKind, pairPhotoOf, refreshBaseline, remeasure } from "../measure/measure";
+import { exclusionsOf } from "../measure/pairing";
 import { summarisePairing, type PairingSummary } from "../measure/report";
 import { getGeocoder } from "../providers/geocoder";
 import { getMediaProvider } from "../providers/media";
@@ -83,6 +84,7 @@ async function setup(opts: DemoRunOptions): Promise<DemoDeps & { drain: () => Pr
 }
 
 export interface DemoSummary {
+  remeasure?: RemeasureReport;
   wipe?: WipeReport;
   import?: ImportReport;
   planted?: PlantedAsset[];
@@ -146,6 +148,89 @@ export async function runDemoReset(opts: DemoRunOptions = {}): Promise<DemoSumma
     const planted = await plantDemo(deps, report.plan, files, opts.log);
     await deps.drain();
     return { wipe, import: report, planted, ...(await summarise(deps)) };
+  });
+}
+
+export interface RemeasureReport {
+  media: "mock" | "real";
+  ai: "mock" | "real";
+  /** Cached measurements dropped (made by another provider mode, or all with --all). */
+  dropped: number;
+  /** Photos whose provider steps re-ran (--reanalyze). */
+  reanalyzed: number;
+  /** Manual and check-in comparisons measured again. */
+  kept: number;
+  comparisons: Record<string, number>;
+  measurements: Record<string, number>;
+}
+
+/** Steps whose output depends on a provider (media, analysis, AI) or on those outputs, in order. */
+const PROVIDER_STEPS: PipelineStepName[] = ["analyze", "understand", "embed", "assign", "score", "measure", "finalize"];
+
+/**
+ * Measures the demo again with the providers now configured (Phase 10: real e_extract masks).
+ * Drops cached measurements made in another provider mode (all of them with `all`), re-measures
+ * manual and check-in comparisons, re-pairs every demo project and refreshes baselines.
+ * `reanalyze`: also re-runs the provider steps on photos analysed in another mode.
+ * Refuses when the demo photos are not stored with the current media provider.
+ */
+export async function runDemoRemeasure(opts: DemoRunOptions & { all?: boolean; reanalyze?: boolean } = {}): Promise<DemoSummary & { remeasure: RemeasureReport }> {
+  return withDeps({ ...opts, inline: true }, async (deps) => {
+    const { db, media } = deps;
+    const pipelineDeps = await getPipelineDeps();
+    const demo = (await db.select({ id: projects.id }).from(projects).where(eq(projects.source, "demo_archive"))).map((p) => p.id);
+    const photos = demo.length ? await db.select().from(assets).where(inArray(assets.projectId, demo)) : [];
+    const sample = photos.find((p) => p.source === "archive") ?? photos[0];
+    if (sample && !(await media.exists(sample.cldPublicId))) {
+      const where = media.kind === "real" ? "Cloudinary" : "local mock storage";
+      throw new Error(`The demo photos are not stored with the current media provider (${media.kind}). Run "pnpm demo:reset --online" first: it uploads the archive to ${where}.`);
+    }
+
+    let reanalyzed = 0;
+    if (opts.reanalyze) {
+      for (const p of photos) {
+        const current = p.provenance?.analysis?.mode === pipelineDeps.analysis.kind && p.provenance?.ai?.mode === pipelineDeps.ai.kind && p.provenance?.embedding?.mode === pipelineDeps.ai.kind;
+        if (current && !opts.all) continue;
+        await resetSteps(db, p.id, PROVIDER_STEPS, `demo:remeasure (analysis ${pipelineDeps.analysis.kind}, AI ${pipelineDeps.ai.kind})`);
+        await runPipeline(pipelineDeps, p.id);
+        reanalyzed++;
+      }
+      opts.log?.(`Re-ran the provider steps on ${reanalyzed} photo(s).`);
+    }
+
+    const ids = photos.map((p) => p.id);
+    const cached = ids.length ? await db.select({ id: measurements.id, assetId: measurements.assetId, mode: measurements.providerMode }).from(measurements).where(inArray(measurements.assetId, ids)) : [];
+    const dropRows = cached.filter((m) => opts.all || m.mode !== media.kind);
+    const drop = dropRows.map((m) => m.id);
+    if (drop.length) await db.delete(measurements).where(inArray(measurements.id, drop));
+    opts.log?.(`Dropped ${drop.length} of ${cached.length} cached measurement(s).`);
+    // Every eligible spot photo (trends, baselines), as the pipeline's measure step does: cached ones return at once, the cap applies.
+    const deps2 = { db, media, measureMax: getConfig().env.MEASURE_MAX_PER_PROJECT };
+    const types = new Map((await db.select({ id: projects.id, type: projects.type }).from(projects).where(inArray(projects.id, demo.length ? demo : ["00000000-0000-0000-0000-000000000000"]))).map((p) => [p.id, p.type]));
+    for (const p of photos.filter((x) => x.spotId && x.projectId)) {
+      const kind = measureKind(types.get(p.projectId!)!);
+      if (kind && !exclusionsOf(pairPhotoOf(p)).length) await measureAsset(deps2, p, kind);
+    }
+
+    const others = demo.length ? await db.select({ id: comparisons.id }).from(comparisons).where(and(inArray(comparisons.projectId, demo), ne(comparisons.origin, "auto"))) : [];
+    if (others.length) await remeasure(deps2, others.map((c) => c.id));
+
+    const summary = await summarise(deps);
+    const byMode = (rows: Array<{ mode: string | null; n: number }>) => Object.fromEntries(rows.map((r) => [r.mode ?? "unknown", r.n]));
+    const report: RemeasureReport = {
+      media: media.kind,
+      ai: pipelineDeps.ai.kind,
+      dropped: drop.length,
+      reanalyzed,
+      kept: others.length,
+      comparisons: demo.length
+        ? byMode(await db.select({ mode: comparisons.providerMode, n: count() }).from(comparisons).where(inArray(comparisons.projectId, demo)).groupBy(comparisons.providerMode))
+        : {},
+      measurements: ids.length
+        ? byMode(await db.select({ mode: measurements.providerMode, n: count() }).from(measurements).where(inArray(measurements.assetId, ids)).groupBy(measurements.providerMode))
+        : {},
+    };
+    return { ...summary, remeasure: report };
   });
 }
 

@@ -104,10 +104,10 @@ describe("claims ledger, prose and the Impact Report", () => {
 
   it("the section builder: six sections in order, numbers link to their claim, pairs or the trend", () => {
     const base: ReportData = {
-      reportId: "r1", reportUrl: "https://x/r/r1", appUrl: "https://x", generatedAt: "2026-09-28T00:00:00Z",
+      reportId: "r1", reportUrl: "https://x/r/r1", appUrl: "https://x", generatedAt: "2026-09-28T00:00:00Z", policy: { production: false, minConfidence: 0.5 },
       project: { name: "P", type: "cleanup", description: null, place: null, locationApproximate: true },
       period: { from: "2017-09-01", to: "2017-09-30" },
-      claims: [{ id: "photos_verified", label: "Photos verified", value: 2, unit: "photos", method: "measured", asset_ids: ["a", "b"] }],
+      claims: [{ id: "photos_verified", label: "Photos verified", value: 2, unit: "photos", method: "measured", asset_ids: ["a", "b"], provider_mode: "real" }],
       prose: "Text.", notes: ["Archive project: no recent check-ins."],
       pairs: [], trend: { spot: "Bridge", metric: "Litter cover", unit: "%", points: [{ t: 1, value: 4 }, { t: 2, value: 2 }] },
       gallery: [{ id: "a", image: "thumb:a", band: "VERIFIED", caption: null, date: "5 Sep 2017" }],
@@ -126,8 +126,32 @@ describe("claims ledger, prose and the Impact Report", () => {
     expect(s[0]).toMatchObject({ kind: "cover", period: "1 September 2017 to 30 September 2017" });
   });
 
+  it("production mode: no mock-derived number renders in the report, its PDF sections, prose or campaign kit", async () => {
+    const prod = { production: true, minConfidence: 0.5 };
+    const out = await generateReport({ db: ctx.db, media: ctx.media, ai: ctx.deps.ai, appUrl: "https://saakshi.example", policy: prod }, archiveId, { now: NOW });
+    const numbers = out.sections.find((x) => x.kind === "numbers") as Extract<(typeof out.sections)[number], { kind: "numbers" }>;
+    expect(numbers.items.every((i) => i.hidden && !/\d/.test(i.value))).toBe(true);
+    expect(numbers.prose).not.toMatch(/\d/);
+    const pairs = out.sections.find((x) => x.kind === "pairs") as Extract<(typeof out.sections)[number], { kind: "pairs" }>;
+    expect(pairs.items.flatMap((p) => p.metrics).every((m) => m.hidden)).toBe(true);
+    expect(out.sections[0]).toMatchObject({ banner: null });
+    const { reportView } = await import("@/lib/report/view");
+    const v = (await reportView(ctx.db, ctx.media, out.report.id, prod))!;
+    expect(v.claims.every((c) => c.hidden && !/\d/.test(c.formatted))).toBe(true);
+    expect(v.prose.filter((p) => typeof p !== "string").every((p) => typeof p !== "string" && !/\d/.test(p.formatted))).toBe(true);
+    expect(v.campaign?.templates.map((t) => t.id)).not.toContain("stat"); // a stat card is a number
+    expect(v.campaign?.caption).not.toMatch(/\d/);
+    // Development: the same report shows the numbers, tagged, with the banner.
+    const d = (await reportView(ctx.db, ctx.media, out.report.id, { production: false, minConfidence: 0.5 }))!;
+    expect(d.mockShown).toBe(true);
+    expect(d.claims.find((c) => c.id === "photos_verified")).toMatchObject({ hidden: false, mock: true, formatted: "2 photos" });
+    // The 38%-style weak estimate stays hidden even in development.
+    const items = d.claims.find((c) => c.id === "items_visible_change");
+    if (items && (items.confidence ?? 0) < 0.5) expect(items).toMatchObject({ hidden: true, formatted: "Not enough confidence to estimate" });
+  });
+
   it("maps glyphs the PDF fonts can't draw", () => {
-    expect(pdfText("0.1% → 6.0% (≈12, −5.9) साक्षी")).toBe("0.1% -> 6.0% (~12, -5.9) ");
+    expect(pdfText("0.1% → 6.0% (≈12, −5.9) साक्षी")).toBe("0.1% -> 6.0% (~12, −5.9) साक्षी"); // Devanagari now prints (bundled Noto)
   });
 
   it("generates the report: PDF uploaded raw + authenticated, campaign kit, audit row", async () => {
@@ -143,7 +167,7 @@ describe("claims ledger, prose and the Impact Report", () => {
     expect(row.campaign!.alts.stat).toMatch(/Median change in litter cover: -\d+(\.\d+)? points \(Measured on photo pixels\)/);
     expect(() => validateProse(row.campaign!.caption)).not.toThrow();
     const audit = await ctx.db.select().from(auditLog).where(and(isNull(auditLog.assetId), eq(auditLog.action, "report.generated")));
-    expect(audit).toHaveLength(1);
+    expect(audit.filter((a) => (a.detail as { reportId?: string }).reportId === row.id)).toHaveLength(1);
     // The signed raw URL is served; any change to it is refused.
     expect(out.pdfUrl).toMatch(/\/api\/media\/mock\/raw\/authenticated\/s--[A-Za-z0-9_-]{32}--\/v1\/saakshi\/reports\/.+\.pdf$/);
     const path = out.pdfUrl.slice(out.pdfUrl.indexOf("raw/"));

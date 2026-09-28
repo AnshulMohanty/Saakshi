@@ -29,3 +29,31 @@ Five-line checkpoints, newest last.
 - Report: SQL-only claims (archive → "no recent check-ins" note, no number) → placeholder prose → six-section A4 PDF (react-pdf; WinAnsi glyph mapping) uploaded raw+authenticated → `/r/[id]` with evidence per number. Hero PDF: 7 pages, 5 claims (20 verified, 2 flagged test inputs, 1 spot, litter cover +5.9 points, items ≈+19 at 38%). Campaign kit: stat, split and proof templates as 1080×1350 PNG downloads.
 - Phase 7 APIs respond on the dev server: `/api/live` (SSE + `?since=`), `/api/stats`, `/api/assets/[id]/layers`, `/api/demo/tamper` (200 → 401), `/api/demo/try` (24 h sandbox), `/api/evidence/[id]/zip` (4.2 MB for the hero).
 - Tests: 338 passing (claims fixture incl. the archive no-check-ins case, validateProse on generated text, section builder, proof-strip snapshot, filter validation, FTS fallback, tamper 200→401, SSE event on a scored witness photo); lint, typecheck and build clean.
+
+## Phase 7: finish the build
+- Section 2 decisions:
+  - `DEMO_HERO`, plus broader cached discovery (1014 → 1254 candidates);
+  - event window vs monitoring period (Tiruppur window 29 Aug – 12 Sep 2017; its 2020 photos are check-ins);
+  - `captured_at_precision` with interval gaps (`gap_unknown`);
+  - `AI_MIN_CONFIDENCE` 0.5;
+  - demo-mode reviews as "Demo visitor", reverted by reset, never on witness photos;
+  - bundled Noto fonts per script run;
+  - the stage venue as the sandbox site;
+  - Cloudinary fallbacks.
+- `provider_mode` on every derived value. Production hides mock-derived numbers (reports, PDF, claims, Instagram kit, /api/stats, public pages); development tags them.
+- Every provider method is real, on one HTTP layer:
+  - timeouts;
+  - retries honouring Retry-After, none on quota errors;
+  - `provider_usage` with tokens, units, cost and asset.
+  - 23 contract tests; signing matches the SDK. docs/external-apis.md lists 14 UNVERIFIED items with fallbacks.
+- Scripts:
+  - `cld:setup --dry-run` (4 fields + 1 preset);
+  - `pnpm run doctor` (no keys: the missing list);
+  - `verify:env --prod` (10 errors, 2 warnings with no keys);
+  - `demo:remeasure` (116 measurements kept, 6 comparisons);
+  - `check:bundle` (32 browser files, no canary);
+  - `design:capture` (16 exports + fixture), `parity:capture`, `parity:report` (spot page 13.5% / 28%).
+- Demo (`pnpm demo:reset`):
+  - archive photos: VERIFIED 58; planted inputs: REUSED 30, STOCK_SUSPECTED 35, LOCATION_MISMATCH 25, STAMP_MISMATCH 40; 64 chains intact.
+  - Pairs: Tiruppur 1/211, Pimpri-Chinchwad 2/99, Hyderabad 0/23.
+- Tests: 403 passing; lint, typecheck and build clean.

@@ -13,23 +13,58 @@ set. `/dev/status` shows the current selection.
 | queue | Inngest cloud (`INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY`), or the local Inngest Dev Server with `QUEUE=inngest-dev` | Inline runner, concurrency 4 |
 | geocoder | Nominatim, default (no key; `APP_CONTACT_EMAIL` recommended) | Nearest of ~30 Indian cities (`GEOCODER=mock`, and always in tests) |
 
-## Status of real implementations (after Phase 6)
+## Status of real implementations (after Phase 7)
 
-- **Cloudinary media.** Implemented:
-  - `url()`: signed URLs use the `authenticated` delivery type, and are verified against the official SDK.
-  - `fetchDerived()` and `extractMask()` (prompt lists, `multiple_true`, on a shared `frame` crop).
-  - `rawUrl()`: signed `raw/authenticated` delivery for report PDFs.
-  - Direct-upload tickets, and upload-response and webhook signature verification (`lib/ingest/verify.ts`, with known-vector tests).
+Every provider method has a real implementation. No `NotConfiguredError` remains. Request and
+response shapes, and what is still UNVERIFIED, are in [external-apis.md](external-apis.md). The
+contract tests (`tests/contracts.test.ts`) build each outgoing request offline.
 
-  Still `NotConfiguredError` until Phase 8: server-side `upload`, `uploadRaw` (PDFs), `exists` (QR once per asset), `updateMetadata` (with `removeTags`) and `setModeration`. So `demo:import`, reports and evidence pages in real mode wait for Phase 8. To check with keys: overlays of authenticated images as `l_authenticated:<folder>:<id>`, used by the composite, the split template and the proof strip.
-- **Inngest.** Implemented, as `lib/pipeline/inngest.ts` served at `/api/inngest`. It has been verified against the local Dev Server.
-- **Nominatim and Postgres.** Implemented.
-- **Cloudinary analysis and OpenAI.** Stubs that throw `NotConfiguredError`. The search parser prompt is ready (`lib/ai/prompts.ts`).
+- **One HTTP layer** (`lib/providers/http.ts`), used by every real provider:
+  - timeout per call;
+  - up to 3 retries on network errors, 408, 409, 423 and 5xx, with exponential backoff and jitter;
+  - `Retry-After` is honoured;
+  - no retry on errors that need a human (OpenAI `insufficient_quota` and friends).
+  - Every call is logged to `provider_usage`: provider, operation, model, tokens or units, latency, cost where documented (`lib/pricing.ts`), attempts, and the asset it served. The pipeline runner and the report/search routes flush it.
+- **Cloudinary media** (`lib/providers/media/real.ts` on `lib/providers/cloudinary/client.ts`):
+  - signed server upload: full-path `public_id` + `asset_folder`; evidence is `authenticated` with `moderation=manual`; QR codes and logos are `upload`;
+  - `exists` via the Admin API;
+  - metadata write-back: structured fields + context + tags;
+  - `setModeration`;
+  - raw PDFs;
+  - masks, derived fetches (423 retried) and before/after composites.
+- **Cloudinary analysis** (`lib/providers/analysis/real.ts`): Analyze API `ai_vision_tagging` (≤ 10 definitions per call), `ai_vision_moderation` and `watermark_detection`, on a signed, size-limited derivative.
+- **OpenAI** (`lib/providers/ai/real.ts`):
+  - Responses API with a base64 `input_image` (`detail: high`, faces blurred first);
+  - strict `json_schema` built from the zod schemas (`lib/providers/ai/json-schema.ts`);
+  - prose re-asked with the issues when a draft breaks the placeholder rule;
+  - search parsing with the live vocabulary;
+  - embeddings with `dimensions: 1536`.
+- **Inngest:** cloud mode with `checkpointing.maxRuntime = 240s` (Vercel's 300 s limit); `/api/inngest` exports `maxDuration = 300`.
+- **Postgres:** `prepare: false`, `max 5`, short idle and connect timeouts (Supabase transaction pooler).
+
+### Switches for what the docs leave unclear
+
+| Variable | Default | Alternative | When |
+| --- | --- | --- | --- |
+| `CLD_DELIVERY_TYPE` | `authenticated` | `private` | services:check: on-the-fly signed transformations of authenticated assets fail |
+| `CLD_EAGER` | `0` | `1` | pre-generate THUMB, PREVIEW, VIEW at upload |
+| `CLD_EXTRACT_MODE` | `multi` (`e_extract:prompt_(a;b)`) | `union` | one mask per prompt, joined with sharp |
+| `CLD_COMPOSITE_MODE` | `layer` (`l_authenticated`) | `server` | halves joined with sharp and stored as their own asset, labels as eager |
+| `CLD_PDF_DELIVERY` | `signed` | `download` | Download API URL (1 h) if raw authenticated delivery fails |
+| `OPENAI_IMAGE_DETAIL` | `high` | `low` | cheaper vision calls |
+| `OPENAI_REASONING_EFFORT` | `low` | `none`/`medium`/`high`/`omit` | `omit` for models without reasoning |
+
+### Checking with real keys
+
+- `pnpm services:check` (alias `pnpm services:check`) runs a live check of each call.
+- `pnpm cld:setup` creates the metadata fields and the signed preset.
+- `pnpm verify:env --prod` lists what a deployment is missing.
+- `pnpm demo:remeasure` measures the demo again with the configured providers.
 
 ## Browser uploads
 
 `/api/uploads/ticket` returns provider-specific, server-signed parameters, including the capture context:
-- **Cloudinary:** a direct upload with type `authenticated`, folder `saakshi/evidence`, `media_metadata`, `phash`, `quality_analysis`, `faces` and `notification_url`.
+- **Cloudinary:** a direct upload with type `authenticated` (or `CLD_DELIVERY_TYPE`), public id `saakshi/evidence/<id>`, `asset_folder`, `moderation=manual`, `media_metadata`, `phash`, `quality_analysis`, `faces` and `notification_url`.
 - **Mock:** `/api/uploads/mock`, HMAC-signed, answering with a Cloudinary-shaped response.
 
 The browser then posts the provider's response to `/api/uploads/confirm`, which verifies the signature and ingests it. `/api/webhooks/cloudinary` feeds the same idempotent path; it only receives notifications once deployed.

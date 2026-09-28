@@ -15,6 +15,7 @@
  *  6. window = min/max capture date ± padding
  */
 import type { DemoDatasetConfig, ProjectRule, ProjectType } from "../../data/demo-dataset.config";
+import { eventWindow } from "../dates";
 import { haversine, type LatLng } from "../geo";
 import type { Candidate } from "./candidates";
 import { centroid, dbscan, radiusCovering, type GeoCluster } from "./cluster";
@@ -151,12 +152,6 @@ export function clusterPairability(members: Candidate[], cfg: DemoDatasetConfig,
   return summary(planCluster(cluster, cfg, gapHours).pair);
 }
 
-const day = (local: string, deltaDays: number) => {
-  const d = new Date(`${local.slice(0, 10)}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + deltaDays);
-  return d.toISOString().slice(0, 10);
-};
-
 function majorityLabel(files: Candidate[], rule: ProjectRule): string {
   let best = { label: rule.label, n: 0 };
   for (const l of rule.labels) {
@@ -255,8 +250,9 @@ export function buildDemoDataset(all: Candidate[], cfg: DemoDatasetConfig): Data
       label: majorityLabel(selected, rule),
       center: plan.center,
       radiusM: Math.round(plan.radiusM),
-      startDate: dates.length ? day(dates[0], -cfg.datePaddingDays) : null,
-      endDate: dates.length ? day(dates.at(-1)!, cfg.datePaddingDays) : null,
+      // Event window: the densest run of capture days ± padding. Later photos at a spot are check-ins.
+      startDate: eventWindow(dates, { padDays: cfg.datePaddingDays })?.startDate ?? null,
+      endDate: eventWindow(dates, { padDays: cfg.datePaddingDays })?.endDate ?? null,
       minPairGapHours: cfg.minPairGapHours[type],
       sdgs: cfg.sdgs[type],
       clusterSize: plan.cluster.members.length,

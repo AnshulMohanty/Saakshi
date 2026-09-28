@@ -1,13 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { validateProse } from "@/lib/claims";
 import { openPglite } from "@/lib/db/client";
-import { NotConfiguredError } from "@/lib/errors";
 import { buildCloudinaryUrl } from "@/lib/media/transform";
 import { withGuards, type AIProvider } from "@/lib/providers/ai";
 import { hashEmbedding, MockAIProvider, parseSearchQuery, publicIdFromUrl } from "@/lib/providers/ai/mock";
-import { OpenAIProvider } from "@/lib/providers/ai/real";
 import { MockAnalysisProvider } from "@/lib/providers/analysis/mock";
-import { CloudinaryAnalysisProvider } from "@/lib/providers/analysis/real";
 import { withGeocache, type GeocoderProvider } from "@/lib/providers/geocoder";
 import { MockGeocoder } from "@/lib/providers/geocoder/mock";
 import { formatPlace } from "@/lib/providers/geocoder/real";
@@ -96,6 +93,7 @@ describe("MockAIProvider (guarded)", () => {
   it("rejects provider output that breaks the rules", async () => {
     const leaky: AIProvider = {
       kind: "mock",
+      models: { vision: "leaky", text: "leaky", embed: "leaky" },
       describePhoto: async () => ({ ...(await new MockAIProvider(describeAsset).describePhoto("x")), caption: "About 40 bags of litter." }),
       writeWithPlaceholders: async () => "We removed 1,240 bags.",
       parseSearch: async () => ({ semantic: "", filters: {} }) as never,
@@ -232,17 +230,14 @@ describe("queue", () => {
 });
 
 describe("real providers", () => {
-  it("stubs throw NotConfiguredError with a clear message", async () => {
-    const cld = new CloudinaryMediaProvider({ cloudName: "demo", apiKey: "k", apiSecret: "s" });
-    await expect(cld.upload({ folder: "x", file: Buffer.alloc(1) })).rejects.toThrow(NotConfiguredError);
-    await expect(new CloudinaryAnalysisProvider().tag("x", [])).rejects.toThrow(/Unset its env vars/);
-    await expect(new OpenAIProvider({ modelFast: "m", modelSmart: "m", embedModel: "e" }).embed("x")).rejects.toThrow(NotConfiguredError);
-  });
-
-  it("Cloudinary URLs are built by lib/media/transform", () => {
+  it("Cloudinary URLs are built by lib/media/transform; evidence is always signed, QR codes are public", () => {
     const cld = new CloudinaryMediaProvider({ cloudName: "demo", apiKey: "k", apiSecret: "s" });
     const t = [{ width: 400 }, { effect: "blur_faces" as const }];
-    expect(cld.url("saakshi/a", t, { signed: true })).toBe(buildCloudinaryUrl({ cloudName: "demo", publicId: "saakshi/a", transforms: t, apiSecret: "s", deliveryType: "authenticated" }));
-    expect(cld.url("saakshi/a", t)).toBe("https://res.cloudinary.com/demo/image/upload/w_400/e_blur_faces/v1/saakshi/a");
+    const signed = buildCloudinaryUrl({ cloudName: "demo", publicId: "saakshi/a", transforms: t, apiSecret: "s", deliveryType: "authenticated" });
+    expect(cld.url("saakshi/a", t, { signed: true })).toBe(signed);
+    expect(cld.url("saakshi/a", t)).toBe(signed); // an unsigned evidence URL would not be served anyway
+    expect(cld.url("saakshi/qr/a", t)).toBe("https://res.cloudinary.com/demo/image/upload/w_400/e_blur_faces/v1/saakshi/qr/a");
+    const priv = new CloudinaryMediaProvider({ cloudName: "demo", apiKey: "k", apiSecret: "s", deliveryType: "private" });
+    expect(priv.url("saakshi/a", t)).toContain("/image/private/s--");
   });
 });

@@ -5,6 +5,9 @@ import { createPipelineFunctions, inngestEnabled } from "@/lib/pipeline/inngest"
  * Inngest serve endpoint (QUEUE=inngest-dev or Inngest cloud keys). With the inline queue the
  * pipeline runs in-process and this route is a 404.
  */
+/** Vercel: the longest a function may run by default (see INNGEST_MAX_RUNTIME). */
+export const maxDuration = 300;
+
 type Handlers = ReturnType<typeof serve>;
 let handlers: Handlers | null | undefined;
 

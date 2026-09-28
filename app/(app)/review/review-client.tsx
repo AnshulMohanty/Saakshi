@@ -21,7 +21,7 @@ function readReviewer(): string {
   }
 }
 
-export function ReviewClient({ initial, initialReason }: { initial: ReviewQueue; initialReason: string | null }) {
+export function ReviewClient({ initial, initialReason, demo = true }: { initial: ReviewQueue; initialReason: string | null; demo?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const [queue, setQueue] = useState(initial);
@@ -124,6 +124,11 @@ export function ReviewClient({ initial, initialReason }: { initial: ReviewQueue;
 
   return (
     <div className="flex flex-col gap-4">
+      {demo ? (
+        <p className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground" data-testid="demo-banner">
+          Demo: decisions reset with the demo. Anyone can review here; decisions are recorded as “Demo visitor”.
+        </p>
+      ) : null}
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-heading text-2xl font-semibold">Review</h1>
@@ -131,10 +136,12 @@ export function ReviewClient({ initial, initialReason }: { initial: ReviewQueue;
             {queue.total} photo(s) the Trust Engine did not verify, newest first. <kbd>J</kbd>/<kbd>K</kbd> move, <kbd>A</kbd> approve, <kbd>R</kbd> reject; a note is required. A decision never changes the score.
           </p>
         </div>
-        <label className="flex items-center gap-2 text-sm">
-          Reviewer
-          <Input value={reviewer} onChange={(e) => saveReviewer(e.target.value)} placeholder="your name" className="w-40" maxLength={80} />
-        </label>
+        {demo ? null : (
+          <label className="flex items-center gap-2 text-sm">
+            Reviewer
+            <Input value={reviewer} onChange={(e) => saveReviewer(e.target.value)} placeholder="your name" className="w-40" maxLength={80} />
+          </label>
+        )}
       </header>
 
       <div className="flex flex-wrap gap-1" role="toolbar" aria-label="Filter by reason">

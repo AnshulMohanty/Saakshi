@@ -16,6 +16,7 @@ import type { DB } from "../db/client";
 import { assets, comparisons, projects, type Asset, type Project } from "../db/schema";
 import { exclusionsOf } from "../measure/pairing";
 import { pairPhotoOf } from "../measure/measure";
+import { assetMode, combineModes } from "../provenance";
 
 export const RECENT_CHECKIN_DAYS = 90;
 const DAY = 86_400_000;
@@ -63,9 +64,11 @@ export async function buildClaims(db: DB, projectId: string, opts: { from?: stri
   const photos = all.filter((a) => a.source !== "witness" && inPeriod(a));
   const claims: Claim[] = [];
   const notes: string[] = [];
+  // A count rests on the trust bands of every photo it was counted over: mock if any of them is.
+  const photosMode = combineModes(photos.map((a) => assetMode(a.provenance)));
 
   const verified = photos.filter((a) => a.trustBand === "VERIFIED" && a.status !== "rejected");
-  claims.push({ id: "photos_verified", label: "Photos verified", value: verified.length, unit: "photos", method: "measured", asset_ids: verified.map((a) => a.id), detail: { basis: "Trust Engine band VERIFIED, not rejected by a reviewer" } });
+  claims.push({ id: "photos_verified", label: "Photos verified", value: verified.length, unit: "photos", method: "measured", asset_ids: verified.map((a) => a.id), provider_mode: photosMode, detail: { basis: "Trust Engine band VERIFIED, not rejected by a reviewer" } });
 
   const flagged = photos.filter((a) => a.trustBand === "FLAGGED" && a.status !== "approved");
   const codes = new Map<string, number>();
@@ -77,6 +80,7 @@ export async function buildClaims(db: DB, projectId: string, opts: { from?: stri
     unit: "photos",
     method: "measured",
     asset_ids: flagged.map((a) => a.id),
+    provider_mode: photosMode,
     detail: {
       topReasons: [...codes.entries()].sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0])).slice(0, 4).map(([code, n]) => ({ code, n })),
       testInputs: flagged.filter((a) => a.testCase).map((a) => a.testCase!),
@@ -85,7 +89,7 @@ export async function buildClaims(db: DB, projectId: string, opts: { from?: stri
 
   const spotPhotos = verified.filter((a) => a.spotId);
   const spotIds = [...new Set(spotPhotos.map((a) => a.spotId!))];
-  claims.push({ id: "spots_monitored", label: "Spots monitored", value: spotIds.length, unit: "spots", method: "measured", asset_ids: spotPhotos.map((a) => a.id), detail: { basis: "Spots with at least one verified photo" } });
+  claims.push({ id: "spots_monitored", label: "Spots monitored", value: spotIds.length, unit: "spots", method: "measured", asset_ids: spotPhotos.map((a) => a.id), provider_mode: photosMode, detail: { basis: "Spots with at least one verified photo" } });
 
   // Before/after: comparisons whose "before" photo is in the period.
   const inIds = new Set(photos.map((a) => a.id));
@@ -104,6 +108,7 @@ export async function buildClaims(db: DB, projectId: string, opts: { from?: stri
       unit: "points",
       method: "measured",
       asset_ids: [...new Set(rows.flatMap((c) => [c.beforeAssetId, c.afterAssetId]))],
+      provider_mode: combineModes(rows.map((c) => c.providerMode)),
       ...(confs.length ? { confidence: Math.min(...confs) } : {}),
       detail: { pairs: rows.length, basis: "Percentage points of the frame, median over before/after pairs, measured on photo pixels" },
     });
@@ -119,6 +124,7 @@ export async function buildClaims(db: DB, projectId: string, opts: { from?: stri
       method: "ai_estimated",
       confidence: Math.round(Math.min(...confs) * 100) / 100,
       asset_ids: [...new Set(items.flatMap((c) => [c.beforeAssetId, c.afterAssetId]))],
+      provider_mode: combineModes(items.map((c) => c.providerMode)),
       detail: { pairs: items.length, basis: "Counts by the vision model, not measured" },
     });
   }
@@ -128,9 +134,9 @@ export async function buildClaims(db: DB, projectId: string, opts: { from?: stri
   const recent = checkins.filter((a) => now.getTime() - a.capturedAt!.getTime() <= RECENT_CHECKIN_DAYS * DAY);
   if (recent.length) {
     const after = checkins.filter((a) => a.capturedAt!.getTime() >= end - DAY);
-    claims.push({ id: "checkins_after_cleanup", label: "Check-ins after the clean-up", value: after.length, unit: "check-ins", method: "measured", asset_ids: after.map((a) => a.id), detail: { basis: "Attested Witness Capture photos at the project's spots, on or after the last day" } });
+    claims.push({ id: "checkins_after_cleanup", label: "Check-ins after the clean-up", value: after.length, unit: "check-ins", method: "measured", asset_ids: after.map((a) => a.id), provider_mode: combineModes(checkins.map((a) => assetMode(a.provenance))), detail: { basis: "Attested Witness Capture photos at the project's spots, on or after the last day" } });
     const last = checkins.reduce((m, a) => (a.capturedAt!.getTime() > m.capturedAt!.getTime() ? a : m));
-    claims.push({ id: "days_since_last_checkin", label: "Days since the last check-in", value: Math.floor((now.getTime() - last.capturedAt!.getTime()) / DAY), unit: "days", method: "measured", asset_ids: [last.id] });
+    claims.push({ id: "days_since_last_checkin", label: "Days since the last check-in", value: Math.floor((now.getTime() - last.capturedAt!.getTime()) / DAY), unit: "days", method: "measured", asset_ids: [last.id], provider_mode: assetMode(last.provenance) });
   } else {
     notes.push(project.source === "demo_archive" ? "Archive project: no recent check-ins." : "No check-ins in the last three months.");
   }

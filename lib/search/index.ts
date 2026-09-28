@@ -8,6 +8,7 @@ import type { DB } from "../db/client";
 import { projects } from "../db/schema";
 import { searchAssets, type AssetFilters, type SearchMode } from "../db/search";
 import { THUMB } from "../library";
+import type { SearchVocabulary } from "../ai/prompts";
 import type { AIProvider } from "../providers/ai";
 import type { ParsedSearch } from "../providers/ai/schemas";
 import type { MediaProvider } from "../providers/media";
@@ -34,6 +35,18 @@ const BAND_LABEL = { VERIFIED: "Verified", NEEDS_REVIEW: "Needs review", FLAGGED
 const SOURCE_LABEL = { witness: "Witness Capture", upload: "Uploads", archive: "Archive", planted_test: "Test inputs" } as const;
 
 const isDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(`${s}T00:00:00Z`)) && new Date(`${s}T00:00:00Z`).toISOString().startsWith(s);
+
+/** The values a parser may return (the real model gets them in its prompt). */
+export async function searchVocabulary(db: DB, now = new Date()): Promise<SearchVocabulary> {
+  const rows = await db.select({ slug: projects.slug, name: projects.name, id: projects.id }).from(projects).limit(200);
+  return {
+    projects: rows.map((p) => ({ slug: p.slug ?? p.id, name: p.name })),
+    bands: BANDS,
+    sources: SOURCES,
+    activities: ACTIVITIES,
+    today: now.toISOString().slice(0, 10),
+  };
+}
 
 export interface ValidatedFilters {
   filters: AssetFilters;
@@ -124,7 +137,7 @@ export interface SearchResult {
 }
 
 export async function runSearch(deps: { db: DB; ai: AIProvider; media: MediaProvider }, query: string, limit = 24): Promise<SearchResult> {
-  const parsed = await deps.ai.parseSearch(query);
+  const parsed = await deps.ai.parseSearch(query, await searchVocabulary(deps.db));
   const { filters, chips, rejected } = await validateFilters(deps.db, parsed.filters);
   for (const r of parsed.rewrites) chips.unshift({ kind: "rewrite", label: `“${r.from}” → ${r.to}`, value: r.to });
   const semantic = parsed.semantic.trim();

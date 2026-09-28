@@ -2,6 +2,7 @@
  * Applies drizzle/ migrations to the configured database:
  * PGlite at PGLITE_DIR (default ./.data/pglite), or Postgres when DATABASE_URL is set.
  */
+import "./_env";
 import path from "node:path";
 import { sql } from "drizzle-orm";
 import { getConfig } from "../lib/config";

@@ -13,17 +13,16 @@
 import { and, count, countDistinct, eq, inArray } from "drizzle-orm";
 import type { DB } from "../db/client";
 import { assets, comparisons, measurements, projects, spots, type Asset, type Comparison, type ComparisonDetail, type Measurement, type MetricId, type Project, type Spot } from "../db/schema";
-import { compositeTransform, frameOf, shortDate } from "../media/composite";
-import { compileTransform, type Transform } from "../media/transform";
+import { captureDate } from "../media/composite";
+import { FRAME, VIEW } from "../media/derivatives";
+import { compileTransform } from "../media/transform";
 import type { MediaProvider } from "../providers/media";
 import { DISAGREEMENT_POINTS, exgCover, maskCover, MASK_THRESHOLD } from "./cover";
 import { chooseBaseline, evaluatePair, exclusionsOf, findPairs, type PairCandidate, type PairingResult, type PairPhoto, type PairProject, type PairSpot, type Stage } from "./pairing";
 
 export const CAVEAT = "Measured on photo pixels. Camera angle, framing, season and light affect the result.";
-export const FRAME = frameOf(800, 600);
+export { FRAME, VIEW } from "../media/derivatives";
 export const FRAME_KEY = compileTransform(FRAME);
-/** The face-blurred, same-frame view of a photo (what the slider shows, aligned with its mask). */
-export const VIEW: Transform = [...FRAME, { effect: "blur_faces" }, { format: "auto", quality: "auto" }];
 export const LITTER_PROMPTS = ["litter", "garbage", "plastic waste", "floating waste"];
 export const GREEN_PROMPTS = ["trees", "plants", "grass"];
 export const DEFAULT_MEASURE_MAX = 40;
@@ -60,6 +59,7 @@ export function pairPhotoOf(a: Asset): PairPhoto {
     spotId: a.spotId,
     location: fix ? { lat: fix.lat, lng: fix.lng } : a.exifLat !== null && a.exifLng !== null ? { lat: a.exifLat, lng: a.exifLng } : null,
     capturedAt: a.capturedAt?.toISOString() ?? null,
+    capturedAtPrecision: a.capturedAtPrecision,
     band: a.trustBand,
     status: a.status,
     stage: (a.ai?.stage as Stage | undefined) ?? null,
@@ -94,13 +94,17 @@ export async function measureAsset(deps: MeasureDeps, asset: Asset, kind: Measur
   }
 
   const rows: Array<typeof measurements.$inferInsert> = [];
+  // Provenance: masks and derived frames come from the media provider; item counts from the AI.
+  const media = { providerMode: deps.media.kind, provider: deps.media.kind === "real" ? "cloudinary:e_extract" : "mock:colour-index" };
+  const exgProv = { providerMode: deps.media.kind, provider: deps.media.kind === "real" ? "saakshi:exg-on-cloudinary-frame" : "saakshi:exg-on-mock-frame" };
+  const aiProv = { providerMode: (asset.provenance?.ai?.mode ?? "mock") as "mock" | "real", provider: `ai:${asset.ai?.model ?? "unknown"}` };
   if (kind === "litter") {
     const { maskUrl, buffer } = await deps.media.extractMask(asset.cldPublicId, LITTER_PROMPTS, { multiple: true, frame: FRAME });
-    rows.push({ assetId: asset.id, metric: primary, frame: FRAME_KEY, value: await maskCover(buffer), method: "measured", maskUrl, detail: { prompt: LITTER_PROMPTS, threshold: MASK_THRESHOLD } });
+    rows.push({ assetId: asset.id, metric: primary, frame: FRAME_KEY, value: await maskCover(buffer), method: "measured", maskUrl, ...media, detail: { prompt: LITTER_PROMPTS, threshold: MASK_THRESHOLD } });
     const counts = (asset.ai?.visibleCounts ?? []).filter((c) => LITTER_WORDS.test(c.label));
     if (asset.ai && counts.length) {
       const confidence = Math.round(Math.min(asset.ai.confidence, ...counts.map((c) => c.confidence)) * 100) / 100;
-      rows.push({ assetId: asset.id, metric: secondary, frame: FRAME_KEY, value: counts.reduce((s, c) => s + c.count, 0), method: "ai_estimated", confidence, detail: { labels: counts.map((c) => c.label), model: asset.ai.model } });
+      rows.push({ assetId: asset.id, metric: secondary, frame: FRAME_KEY, value: counts.reduce((s, c) => s + c.count, 0), method: "ai_estimated", confidence, ...aiProv, detail: { labels: counts.map((c) => c.label), model: asset.ai.model } });
     }
   } else {
     const { maskUrl, buffer } = await deps.media.extractMask(asset.cldPublicId, GREEN_PROMPTS, { multiple: true, frame: FRAME });
@@ -108,8 +112,8 @@ export async function measureAsset(deps: MeasureDeps, asset: Asset, kind: Measur
     const exgValue = await exgCover(await deps.media.fetchDerived(asset.cldPublicId, [...FRAME, { format: "png" }]));
     const agreement = Math.round(Math.abs(mask - exgValue) * 10) / 10;
     const lowConfidence = agreement > DISAGREEMENT_POINTS;
-    rows.push({ assetId: asset.id, metric: primary, frame: FRAME_KEY, value: mask, method: "measured", confidence: lowConfidence ? 0.4 : 0.9, maskUrl, detail: { prompt: GREEN_PROMPTS, threshold: MASK_THRESHOLD, exg: exgValue, agreement, lowConfidence } });
-    rows.push({ assetId: asset.id, metric: secondary, frame: FRAME_KEY, value: exgValue, method: "measured", detail: { index: "ExG > 0.05 at 256 px" } });
+    rows.push({ assetId: asset.id, metric: primary, frame: FRAME_KEY, value: mask, method: "measured", confidence: lowConfidence ? 0.4 : 0.9, maskUrl, ...media, detail: { prompt: GREEN_PROMPTS, threshold: MASK_THRESHOLD, exg: exgValue, agreement, lowConfidence } });
+    rows.push({ assetId: asset.id, metric: secondary, frame: FRAME_KEY, value: exgValue, method: "measured", ...exgProv, detail: { index: "ExG > 0.05 at 256 px" } });
   }
   await deps.db.insert(measurements).values(rows).onConflictDoNothing();
   return { status: "measured", rows: await deps.db.select().from(measurements).where(and(eq(measurements.assetId, asset.id), eq(measurements.frame, FRAME_KEY))) };
@@ -130,8 +134,7 @@ export async function measurePair(deps: MeasureDeps, project: Project, before: A
   if (!spot && !ctx.candidate) return [];
   const [b, a] = await Promise.all([measureAsset(deps, before, kind, { enforceCap: false }), measureAsset(deps, after, kind, { enforceCap: false })]);
   const candidate = ctx.candidate ?? evaluatePair(pairProjectOf(project), pairSpotOf(spot!), pairPhotoOf(before), pairPhotoOf(after));
-  const transform = compositeTransform({ publicId: before.cldPublicId, label: shortDate(before.capturedAt) }, { publicId: after.cldPublicId, label: shortDate(after.capturedAt) });
-  const compositeUrl = deps.media.url(before.cldPublicId, transform, { signed: true });
+  const composite = await deps.media.composite({ publicId: before.cldPublicId, label: captureDate(before.capturedAt, before.capturedAtPrecision) }, { publicId: after.cldPublicId, label: captureDate(after.capturedAt, after.capturedAtPrecision) });
   const view = { frameBeforeUrl: deps.media.url(before.cldPublicId, VIEW, { signed: true }), frameAfterUrl: deps.media.url(after.cldPublicId, VIEW, { signed: true }) };
   const primaryOf = (rows: Measurement[]) => rows.find((r) => r.metric === METRICS[kind].primary);
   const agreement =
@@ -160,6 +163,7 @@ export async function measurePair(deps: MeasureDeps, project: Project, before: A
       ...view,
       ...(ctx.chosenBy ? { chosenBy: ctx.chosenBy } : {}),
       ...(ctx.note ? { note: ctx.note } : {}),
+      ...(composite.mode === "server" ? { compositePublicId: composite.publicId } : {}),
     };
     const values = {
       projectId: project.id,
@@ -176,9 +180,10 @@ export async function measurePair(deps: MeasureDeps, project: Project, before: A
       confidence,
       maskBeforeUrl: mb.maskUrl,
       maskAfterUrl: ma.maskUrl,
-      compositeUrl,
-      compositeTransforms: transform,
+      compositeUrl: composite.url,
+      compositeTransforms: composite.transforms,
       origin: ctx.origin,
+      providerMode: mb.providerMode === "real" && ma.providerMode === "real" ? ("real" as const) : ("mock" as const),
       detail,
     } as const;
     const [row] = await deps.db

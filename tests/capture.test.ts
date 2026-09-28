@@ -137,7 +137,10 @@ describe("upload verification", () => {
     const t = createCloudinaryTicket({ source: "witness" }, creds, "https://saakshi.example", new Date("2025-01-01T00:00:00Z"));
     const { signature, api_key, ...params } = t.fields;
     expect(api_key).toBe(creds.apiKey);
-    expect(params).toMatchObject({ type: "authenticated", folder: "saakshi/evidence", media_metadata: "true", phash: "true", quality_analysis: "true", faces: "true", tags: "saakshi", notification_url: "https://saakshi.example/api/webhooks/cloudinary" });
+    expect(params).toMatchObject({ type: "authenticated", asset_folder: "saakshi/evidence", media_metadata: "true", phash: "true", quality_analysis: "true", faces: "true", moderation: "manual", tags: "saakshi", notification_url: "https://saakshi.example/api/webhooks/cloudinary" });
+    expect(params.public_id).toMatch(/^saakshi\/evidence\/[a-z0-9]{12,16}$/);
+    expect(t.publicId).toBe(params.public_id);
+    expect(params.folder).toBeUndefined();
     expect(signature).toBe(createHash("sha1").update(`${paramsToSign(params)}abcd`).digest("hex"));
     expect(t.uploadUrl).toBe("https://api.cloudinary.com/v1_1/demo/image/upload");
   });

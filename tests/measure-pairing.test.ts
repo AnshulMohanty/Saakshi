@@ -161,3 +161,29 @@ describe("chooseBaseline: the best 'after' photo", () => {
     expect(chooseBaseline([flaggedAfter])).toBeNull();
   });
 });
+
+describe("date precision", () => {
+  const plantation: PairProject = { minPairGapHours: 336, locationApproximate: false };
+  const cleanup: PairProject = { minPairGapHours: 0.5, locationApproximate: false };
+  const spot: PairSpot = { id: "s1", center: CENTER, radiusM: 30 };
+
+  it("two date-only photos on the same day can't form a pair: the gap is unknown", () => {
+    const a = photo({ capturedAt: "2025-11-02T00:00:00Z", capturedAtPrecision: "day" });
+    const b = photo({ capturedAt: "2025-11-02T00:00:00Z", capturedAtPrecision: "day" });
+    expect(evaluatePair(cleanup, spot, a, b).rejects).toEqual(["gap_unknown"]);
+  });
+
+  it("a date-only photo against an exact one on the same day is also unknown", () => {
+    const a = photo({ capturedAt: "2025-11-02T00:00:00Z", capturedAtPrecision: "day" });
+    const b = photo({ capturedAt: "2025-11-02T18:00:00Z", capturedAtPrecision: "second" });
+    expect(evaluatePair(cleanup, spot, a, b).rejects).toEqual(["gap_unknown"]);
+  });
+
+  it("date-only photos on different days use the smallest possible gap", () => {
+    const a = photo({ capturedAt: "2024-01-01T00:00:00Z", capturedAtPrecision: "day" });
+    const b = photo({ capturedAt: "2024-01-15T00:00:00Z", capturedAtPrecision: "day" }); // 13–15 days apart
+    expect(evaluatePair(plantation, spot, a, b)).toMatchObject({ rejects: ["gap_too_short"], gapHoursMin: 312 });
+    const c = photo({ capturedAt: "2024-01-16T00:00:00Z", capturedAtPrecision: "day" }); // at least 14 days
+    expect(evaluatePair(plantation, spot, a, c).ok).toBe(true);
+  });
+});

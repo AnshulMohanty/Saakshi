@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { BandBadge } from "@/components/trust";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { MockTag } from "@/components/mock-tag";
 import { getDb } from "@/lib/db/client";
 import { getMediaProvider } from "@/lib/providers/media";
 import { reportView } from "@/lib/report/view";
@@ -21,6 +22,11 @@ export default async function ReportPage({ params }: PageProps<"/r/[reportId]">)
   if (!v) notFound();
   return (
     <article className="flex flex-col gap-6" data-testid="report">
+      {v.mockShown ? (
+        <p className="rounded-md border border-amber-500 px-3 py-2 text-sm text-amber-700 dark:text-amber-400" data-testid="mock-banner">
+          Generated with mock providers. These numbers are for development only; in production they are not shown until real providers have re-measured the photos.
+        </p>
+      ) : null}
       <header className="flex flex-col gap-2">
         <p className="text-sm text-muted-foreground">
           {v.project ? (
@@ -66,9 +72,12 @@ export default async function ReportPage({ params }: PageProps<"/r/[reportId]">)
         {v.claims.map((c) => (
           <div key={c.id} id={`claim-${c.id}`} className="flex scroll-mt-6 flex-col gap-2 rounded-lg border p-3" data-testid="claim">
             <div className="flex flex-wrap items-baseline gap-2">
-              <span className="font-heading text-2xl tabular-nums">{c.formatted}</span>
+              <span className={c.hidden ? "text-sm text-muted-foreground" : "font-heading text-2xl tabular-nums"} data-hidden={c.hidden || undefined}>
+                {c.formatted}
+              </span>
               <span className="font-medium">{c.label}</span>
               <Badge variant={c.method === "ai_estimated" ? "outline" : "secondary"}>{c.methodText}</Badge>
+              {c.mock ? <MockTag /> : null}
             </div>
             <p className="text-xs text-muted-foreground">
               From {c.asset_ids.length} photo{c.asset_ids.length === 1 ? "" : "s"}

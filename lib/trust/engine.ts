@@ -3,6 +3,7 @@
  * band and a ledger of reasons. Every point added or removed has a reason; flags are reasons too.
  * Rules and their rationale: docs/trust.md. Numbers: ./config.ts.
  */
+import { dateOnly } from "../dates";
 import { haversine, type LatLng } from "../geo";
 import { similarityPct } from "../hamming";
 import { defaultTrustConfig, type TrustConfig } from "./config";
@@ -59,17 +60,25 @@ export function scoreAsset(
   }
   if (s.uploaderLocation && s.source !== "witness") add("location", "UPLOADER_LOCATION", "info", 0);
 
-  // --- Time (max 20) --------------------------------------------------------------------------
+  // --- Time (max 20): the event window, then the monitoring period at a monitored spot ----------
   if (!project) add("time", "TIME_NO_WINDOW", "points", 0);
   else if (!s.capturedAt) add("time", "TIME_UPLOAD_ONLY", "points", P.timeUploadOnly);
   else {
     const w = inWindow(s.capturedAt, project, cfg.windowSlackHours);
-    const detail = { capturedAt: s.capturedAt, start: project.startDate, end: project.endDate, tzAssumed: s.capturedAtTzAssumed, anchored: s.source === "witness" };
+    const detail = {
+      capturedAt: s.capturedAt,
+      start: project.startDate,
+      end: project.endDate,
+      tzAssumed: s.capturedAtTzAssumed,
+      dateOnly: dateOnly(s.capturedAtPrecision),
+      anchored: s.source === "witness",
+    };
+    const monitoringOver = !!project.monitoringEndsAt && Date.parse(s.capturedAt) > Date.parse(`${project.monitoringEndsAt}T23:59:59.999Z`) + cfg.windowSlackHours * 3_600_000;
     if (w === "none") add("time", "TIME_NO_WINDOW", "points", 0);
     else if (w === "in") add("time", "TIME_IN_WINDOW", "points", P.timeInWindow, detail);
-    // A live, attested check-in after the event is spot monitoring, not an old photo.
-    else if (w === "after" && s.source === "witness" && s.attested && spot) add("time", "TIME_CHECKIN", "points", P.timeInWindow, detail);
-    else add("time", "TIME_OUTSIDE", "points", P.timeOutside, { ...detail, side: w });
+    // After the event, at a monitored spot, while monitoring runs: a check-in, not an old photo.
+    else if (w === "after" && spot && !monitoringOver) add("time", "TIME_CHECKIN", "points", P.timeInWindow, { ...detail, monitoringEndsAt: project.monitoringEndsAt });
+    else add("time", "TIME_OUTSIDE", "points", P.timeOutside, { ...detail, side: w, atSpot: !!spot, monitoringOver });
   }
 
   // --- Uniqueness (max 20) ----------------------------------------------------------------------
@@ -80,8 +89,9 @@ export function scoreAsset(
   const laterCopies = cross.filter((d) => d.otherIsLater);
   const same = dups.filter((d) => d.sameProject);
   const exactSame = same.filter((d) => d.exact);
-  const burst = same.filter((d) => !d.exact && d.gapHours * 60 <= cfg.burstMinutes);
-  const revisit = same.filter((d) => !d.exact && d.sameSpot && d.gapHours >= (project?.minPairGapHours ?? Infinity) && d.gapHours * 60 > cfg.burstMinutes);
+  // Precision-aware: two date-only photos on the same day are neither a burst nor a revisit.
+  const burst = same.filter((d) => !d.exact && d.gapHoursMax * 60 <= cfg.burstMinutes);
+  const revisit = same.filter((d) => !d.exact && d.sameSpot && d.gapHoursMin >= (project?.minPairGapHours ?? Infinity) && d.gapHoursMin * 60 > cfg.burstMinutes);
   const similar = same.filter((d) => !d.exact && !burst.includes(d) && !revisit.includes(d));
 
   if (reusedFrom.length) {

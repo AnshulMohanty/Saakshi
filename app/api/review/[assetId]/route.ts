@@ -2,7 +2,9 @@ import { z } from "zod";
 import { getDb } from "@/lib/db/client";
 import { getMediaProvider } from "@/lib/providers/media";
 import { clientKey, createRateLimiter, tooMany } from "@/lib/ratelimit";
-import { decideReview, ReviewError } from "@/lib/review";
+import { adminAllowed } from "@/lib/admin";
+import { getConfig } from "@/lib/config";
+import { decideReview, DEMO_VISITOR, ReviewError } from "@/lib/review";
 
 const Body = z.object({
   decision: z.enum(["approve", "reject"]),
@@ -15,16 +17,21 @@ const limiter = createRateLimiter({ limit: 60, windowMs: 60_000 });
 /**
  * POST {decision, note, reviewer?}: approve or reject a photo. The note is required. The Trust
  * Engine's score and band never change; status, moderation and the audit trail do.
+ * Demo mode (DEMO_MODE=1, default): anyone may review, rate-limited; the actor is "Demo visitor"
+ * and `pnpm demo:reset` reverts decisions on archive and planted photos. DEMO_MODE=0: production
+ * needs the admin secret.
  */
 export async function POST(request: Request, ctx: RouteContext<"/api/review/[assetId]">) {
   const { assetId } = await ctx.params;
   if (!/^[0-9a-f-]{36}$/i.test(assetId)) return Response.json({ error: "Bad id" }, { status: 400 });
+  const demo = getConfig().env.DEMO_MODE === "1";
+  if (!demo && !adminAllowed(request)) return Response.json({ error: "Forbidden: reviews need x-demo-admin-secret" }, { status: 403 });
   const rl = limiter.hit(clientKey(request));
   if (!rl.ok) return tooMany(rl.retryAfterS);
   const parsed = Body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Expected {decision: approve|reject, note}" }, { status: 400 });
   try {
-    const out = await decideReview(await getDb(), getMediaProvider(), { assetId, ...parsed.data, actor: parsed.data.reviewer?.trim() || "reviewer" });
+    const out = await decideReview(await getDb(), getMediaProvider(), { assetId, ...parsed.data, actor: demo ? DEMO_VISITOR : parsed.data.reviewer?.trim() || "reviewer" });
     return Response.json(out);
   } catch (err) {
     if (err instanceof ReviewError) return Response.json({ error: err.message }, { status: err.status });

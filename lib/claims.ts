@@ -23,6 +23,8 @@ export const ClaimSchema = z
     asset_ids: z.array(z.string()),
     /** 0–1; required when method is ai_estimated. */
     confidence: z.number().min(0).max(1).optional(),
+    /** "mock" when the number rests on a mock provider's output: never shown in production. */
+    provider_mode: z.enum(["mock", "real"]).optional(),
     /** Supporting facts shown next to the number (never used in prose). */
     detail: z
       .object({
@@ -113,6 +115,8 @@ export interface RenderOptions {
   locale?: string;
   /** Wraps each rendered value, e.g. in a link to its source photos. */
   wrap?: (formatted: string, claim: Claim) => string;
+  /** Replaces formatClaimValue, e.g. with the display policy (hidden mock or low-confidence values). */
+  format?: (claim: Claim) => string;
 }
 
 /** "1,240 kg", "38%", "≈12 bags" (≈ marks ai_estimated values), "+5.9 points" for *_change claims. */
@@ -131,13 +135,18 @@ export function renderClaims(text: string, claims: ReadonlyArray<Claim>, opts: R
   return text.replace(PLACEHOLDER_RE, (_match, id: string) => {
     const claim = byId.get(id);
     if (!claim) throw new Error(`Unknown claim "${id}" in text`);
-    const formatted = formatClaimValue(claim, opts.locale);
+    const formatted = opts.format ? opts.format(claim) : formatClaimValue(claim, opts.locale);
     return opts.wrap ? opts.wrap(formatted, claim) : formatted;
   });
 }
 
 /** Splits prose into text and rendered-claim parts (for linking each number to its claim). */
-export function claimParts(text: string, claims: ReadonlyArray<Claim>, locale = "en-IN"): Array<string | { claim: Claim; formatted: string }> {
+export function claimParts(
+  text: string,
+  claims: ReadonlyArray<Claim>,
+  locale = "en-IN",
+  format: (claim: Claim) => string = (c) => formatClaimValue(c, locale),
+): Array<string | { claim: Claim; formatted: string }> {
   const byId = new Map(claims.map((c) => [c.id, c]));
   const out: Array<string | { claim: Claim; formatted: string }> = [];
   let last = 0;
@@ -145,7 +154,7 @@ export function claimParts(text: string, claims: ReadonlyArray<Claim>, locale = 
     const claim = byId.get(m[1]);
     if (!claim) throw new Error(`Unknown claim "${m[1]}" in text`);
     if (m.index > last) out.push(text.slice(last, m.index));
-    out.push({ claim, formatted: formatClaimValue(claim, locale) });
+    out.push({ claim, formatted: format(claim) });
     last = m.index + m[0].length;
   }
   if (last < text.length) out.push(text.slice(last));

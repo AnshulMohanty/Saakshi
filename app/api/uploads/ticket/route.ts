@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   const config = getConfig();
   const ticket =
     config.providers.media.mode === "real"
-      ? createCloudinaryTicket(context, { cloudName: config.cloudinary.cloudName!, apiKey: config.cloudinary.apiKey!, apiSecret: config.cloudinary.apiSecret! }, config.appUrl, issuedAt)
+      ? createCloudinaryTicket(context, { cloudName: config.cloudinary.cloudName!, apiKey: config.cloudinary.apiKey!, apiSecret: config.cloudinary.apiSecret! }, config.appUrl, issuedAt, { deliveryType: config.cloudinary.deliveryType })
       : createMockTicket(context, deriveKey("mock-upload:v1"), issuedAt);
   const db = await getDb();
   await db.insert(uploadTickets).values({ publicId: ticket.publicId, provider: ticket.provider, context, issuedAt });

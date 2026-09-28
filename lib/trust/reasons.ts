@@ -18,11 +18,16 @@ const SENTENCES: Record<ReasonCode, (d: D) => string> = {
   LOCATION_MISMATCH: (d) => `${from(d)[0].toUpperCase()}${from(d).slice(1)} is ${kmText(d.distanceKm)} km from ${v(d, "site")}, outside its ${v(d, "radiusM")} m radius.`,
   LOCATION_CONFLICT: (d) => `The photo's GPS and the live device location are ${kmText(d.distanceKm)} km apart.`,
   UPLOADER_LOCATION: () => "The uploader's browser location was recorded for information; it says nothing about where the photo was taken.",
-  TIME_IN_WINDOW: (d) => `Taken on ${date(d.capturedAt)}, inside the project dates${d.tzAssumed ? " (time zone assumed)" : ""}.`,
-  TIME_CHECKIN: (d) => `A live check-in on ${date(d.capturedAt)}, after the project dates: expected for spot monitoring.`,
+  TIME_IN_WINDOW: (d) => `Taken on ${date(d.capturedAt)}${d.dateOnly ? " (date only)" : ""}, inside the event dates${d.tzAssumed && !d.dateOnly ? " (time zone assumed)" : ""}.`,
+  TIME_CHECKIN: (d) => `Check-in after the activity: taken on ${date(d.capturedAt)}${d.dateOnly ? " (date only)" : ""} at a monitored spot.`,
   TIME_UPLOAD_ONLY: () => "No capture time recorded, so the upload time is used.",
-  TIME_OUTSIDE: (d) => `Taken on ${date(d.capturedAt)}, ${d.side === "before" ? "before" : "after"} the project dates (${v(d, "start")} to ${v(d, "end")}).`,
-  TIME_NO_WINDOW: () => "No project dates to compare the capture time with.",
+  TIME_OUTSIDE: (d) =>
+    d.side === "before"
+      ? `Taken on ${date(d.capturedAt)}, before the event dates (${v(d, "start")} to ${v(d, "end")}).`
+      : d.monitoringOver
+        ? `Taken on ${date(d.capturedAt)}, after monitoring ended.`
+        : `Taken on ${date(d.capturedAt)}, after the event dates (${v(d, "start")} to ${v(d, "end")}) and not at a monitored spot.`,
+  TIME_NO_WINDOW: () => "No event dates to compare the capture time with.",
   UNIQUE: () => "Not a copy of any earlier photo.",
   BURST: (d) => `Part of a burst of ${Number(d.matches) + 1} similar shots taken within minutes.`,
   REVISIT: (d) => `A revisit of the same spot ${v(d, "gapHours")} hours after a similar photo.`,

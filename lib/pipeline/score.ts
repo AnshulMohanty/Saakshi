@@ -36,6 +36,7 @@ export function signalsOf(a: Asset): TrustSignals {
     uploaderLocation: up ? { lat: up.lat, lng: up.lng } : null,
     capturedAt: a.capturedAt?.toISOString() ?? null,
     capturedAtTzAssumed: a.capturedAtTzAssumed,
+    capturedAtPrecision: a.capturedAtPrecision,
     uploadedAt: a.uploadedAt.toISOString(),
     moderation: a.moderation?.answers ?? null,
     watermark: a.watermark,
@@ -55,6 +56,7 @@ export function trustProjectOf(p: Project): TrustProject {
     radiusM: p.radiusM,
     startDate: p.startDate,
     endDate: p.endDate,
+    monitoringEndsAt: p.monitoringEndsAt,
     minPairGapHours: p.minPairGapHours,
   };
 }
@@ -72,7 +74,7 @@ export async function computeTrust(db: DB, asset: Asset): Promise<TrustComputati
     asset.projectId ? db.select().from(projects).where(eq(projects.id, asset.projectId)).limit(1) : Promise.resolve([]),
     asset.spotId ? db.select().from(spots).where(eq(spots.id, asset.spotId)).limit(1) : Promise.resolve([]),
     db
-      .select({ id: assets.id, projectId: assets.projectId, spotId: assets.spotId, phash: assets.phash, etag: assets.etag, capturedAt: assets.capturedAt, uploadedAt: assets.uploadedAt })
+      .select({ id: assets.id, projectId: assets.projectId, spotId: assets.spotId, phash: assets.phash, etag: assets.etag, capturedAt: assets.capturedAt, capturedAtPrecision: assets.capturedAtPrecision, uploadedAt: assets.uploadedAt })
       .from(assets)
       .where(and(ne(assets.id, asset.id), or(isNotNull(assets.phash), isNotNull(assets.etag)))),
     db.select({ id: projects.id, name: projects.name }).from(projects),
@@ -80,7 +82,7 @@ export async function computeTrust(db: DB, asset: Asset): Promise<TrustComputati
   const nameOf = new Map(names.map((p) => [p.id, p.name]));
   const iso = (d: Date | null) => d?.toISOString() ?? null;
   const matches = findMatches(
-    { id: asset.id, projectId: asset.projectId, spotId: asset.spotId, phash: asset.phash, etag: asset.etag, capturedAt: iso(asset.capturedAt), uploadedAt: asset.uploadedAt.toISOString() },
+    { id: asset.id, projectId: asset.projectId, spotId: asset.spotId, phash: asset.phash, etag: asset.etag, capturedAt: iso(asset.capturedAt), capturedAtPrecision: asset.capturedAtPrecision, uploadedAt: asset.uploadedAt.toISOString() },
     candidates.map((c) => ({ ...c, capturedAt: iso(c.capturedAt), uploadedAt: c.uploadedAt.toISOString() })),
     (id) => (id ? (nameOf.get(id) ?? null) : null),
   );

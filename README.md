@@ -13,7 +13,7 @@ No accounts or keys needed. Every external service has a local mock.
 ```bash
 pnpm i
 pnpm db:migrate    # creates ./.data/pglite (Postgres in WASM, with pgvector)
-pnpm demo:import   # ~55 real Wikimedia Commons photos → 3 auto-built projects (a few minutes the first time)
+pnpm demo:import   # 58 real Wikimedia Commons photos → 3 auto-built projects (a few minutes the first time)
 pnpm demo:plant    # 4 labelled test inputs (reused, stock, location mismatch, stamp mismatch)
 pnpm dev           # http://localhost:3000
 ```
@@ -44,6 +44,12 @@ PGlite allows one process at a time, so run the `demo:*` scripts with `pnpm dev`
 | `pnpm measure:pairs [slug]` | Re-pair projects by the rules, measure, and print every candidate with why rejects failed |
 | `pnpm demo:stage` | Create the "Live stage demo" project at `STAGE_LAT`/`STAGE_LNG` (0 h pair gap) |
 | `pnpm tunnel` | HTTPS quick tunnel for phone testing (needs `cloudflared`) |
+| `pnpm demo:remeasure` | Measure the demo again with the configured providers (`--all`, `--reanalyze`) |
+| `pnpm verify:env [--prod]` | What a deployment is missing (production needs every real service) |
+| `pnpm cld:setup [--dry-run]` | Create the Cloudinary metadata fields and the signed upload preset (idempotent) |
+| `pnpm services:check` | Live check of every real call with keys; what's missing without (alias `pnpm run doctor`) |
+| `pnpm check:bundle` | Build with canary secrets and scan the browser bundles for them |
+| `pnpm design:capture` / `pnpm parity:capture <route>` / `pnpm parity:report` | Design parity screenshots and the side-by-side report (design/README.md) |
 
 ## Demo data
 
@@ -91,13 +97,13 @@ QUEUE=inngest-dev pnpm dev
 Rule-based and deterministic (`lib/trust`, pure and browser-safe). Every point is a reason with a
 fixed sentence. Hard flags (reused, stock, location mismatch, stamp mismatch) cap the score at 40.
 Bands: VERIFIED ≥ 75 with no flags, NEEDS_REVIEW 45–74 or any review flag, FLAGGED otherwise.
-Rules, choices and demo results: [docs/trust.md](docs/trust.md). After `pnpm demo:reset`, all 55
+Rules, choices and demo results: [docs/trust.md](docs/trust.md). After `pnpm demo:reset`, all 58
 archive photos are VERIFIED with no hard flag, and each planted input is FLAGGED for its own reason.
 
 ```
 $ pnpm test
- Test Files  27 passed (27)
-      Tests  338 passed (338)
+ Test Files  34 passed (34)
+      Tests  403 passed (403)
 ```
 
 ## Before/after
@@ -126,7 +132,11 @@ locally / Postgres in production · Inngest · Zod · Vitest · sharp · exifr �
 4. Trust Engine + review ✓
 5. Before/after + monitoring ✓
 6. Search + outputs (reports, evidence pages) ✓
-7. Design system + demo mode ← next
-8. Real keys + deploy
+7. Finish the build: real-service code checked against the docs, provenance guard, ops scripts, parity tooling ✓
+8. Build the design exports 1:1 ← next
+9. Accounts, keys, deploy ([docs/MANUAL_STEPS.md](docs/MANUAL_STEPS.md))
+10. Fix whatever breaks on real services (`pnpm services:check`)
 
-Contributor and agent guide: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Providers: [docs/providers.md](docs/providers.md).
+Engineering journal (decisions, issue log, evidence): [ENGINEERING.md](ENGINEERING.md). Every
+external call and its status: [docs/external-apis.md](docs/external-apis.md). Contributor and
+agent guide: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Providers: [docs/providers.md](docs/providers.md).

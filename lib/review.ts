@@ -14,6 +14,8 @@ import type { MediaProvider } from "./providers/media";
 import { describeReason, type ReasonCode, type TrustBand, type TrustReason } from "./trust";
 
 export const MIN_NOTE_LENGTH = 3;
+/** The recorded actor for reviews in demo mode (no accounts). */
+export const DEMO_VISITOR = "Demo visitor";
 
 export interface ReviewItem {
   id: string;

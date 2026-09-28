@@ -1,4 +1,5 @@
 /** `pnpm demo:plant`: adds the 4 labelled planted test inputs (reused, stock, location, stamp). */
+import "./_env";
 import { runDemoPlant } from "../lib/demo/run";
 import { runCli } from "./_demo-cli";
 

@@ -1,4 +1,5 @@
 /** Trust Engine types. Pure data: no I/O, safe to import in the browser. */
+import type { Precision } from "../dates";
 import type { LatLng } from "../geo";
 
 export type TrustBand = "VERIFIED" | "NEEDS_REVIEW" | "FLAGGED";
@@ -56,6 +57,8 @@ export interface TrustSignals {
   /** ISO. For witness photos: the device time, anchored to the server's ticket time. */
   capturedAt: string | null;
   capturedAtTzAssumed: boolean;
+  /** "day" means the source gave only a date. */
+  capturedAtPrecision: Precision | null;
   uploadedAt: string;
   /** Moderation answers (lib/ai/questions.ts ids); null when not checked yet. */
   moderation: Record<string, boolean> | null;
@@ -72,9 +75,11 @@ export interface TrustProject {
   name: string;
   center: LatLng | null;
   radiusM: number | null;
-  /** YYYY-MM-DD, inclusive. */
+  /** Event window, YYYY-MM-DD, inclusive. */
   startDate: string | null;
   endDate: string | null;
+  /** Monitoring period runs from the day after endDate until this date; null = open-ended. */
+  monitoringEndsAt: string | null;
   minPairGapHours: number;
 }
 
@@ -101,6 +106,9 @@ export interface DuplicateMatch {
   sameSpot: boolean;
   /** Hours between the two photos (capture times if both known, else upload times). */
   gapHours: number;
+  /** Smallest and largest possible gap given each capture time's precision (day precision = unknown time of day). */
+  gapHoursMin: number;
+  gapHoursMax: number;
   /** Whether the *other* photo came later (capture time, then upload time, then id). */
   otherIsLater: boolean;
 }

@@ -4,6 +4,7 @@ import { getAIProvider } from "@/lib/providers/ai";
 import { getMediaProvider } from "@/lib/providers/media";
 import { clientKey, createRateLimiter, tooMany } from "@/lib/ratelimit";
 import { runSearch } from "@/lib/search";
+import { flushUsageQuietly } from "@/lib/usage";
 
 const Body = z.object({ q: z.string().trim().min(1).max(200) });
 // Demo mode is public: parsing a query may call a paid model, so keep it modest.
@@ -15,6 +16,8 @@ export async function POST(request: Request) {
   if (!rl.ok) return tooMany(rl.retryAfterS);
   const parsed = Body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Expected {q: string (1–200 chars)}" }, { status: 400 });
-  const result = await runSearch({ db: await getDb(), ai: getAIProvider(), media: getMediaProvider() }, parsed.data.q);
+  const db = await getDb();
+  const result = await runSearch({ db, ai: getAIProvider(), media: getMediaProvider() }, parsed.data.q);
+  await flushUsageQuietly(db);
   return Response.json(result, { headers: { "cache-control": "no-store" } });
 }

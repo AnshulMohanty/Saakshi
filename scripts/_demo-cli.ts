@@ -1,5 +1,6 @@
 /** Shared CLI wrapper for the demo scripts: runs one action, prints the summary, closes the DB. */
-import { closeDb } from "../lib/db/client";
+import { closeDb, getDb } from "../lib/db/client";
+import { heroProject } from "../lib/demo/hero";
 import { DatabaseLockedError } from "../lib/db/lock";
 import { projectTable, type DemoSummary } from "../lib/demo/run";
 
@@ -12,6 +13,8 @@ export async function runCli(name: string, action: () => Promise<DemoSummary>) {
       console.log(`Imported ${s.import.imported}, already present ${s.import.skipped}${s.import.requeued ? `, resumed ${s.import.requeued}` : ""}.`);
     }
     if (s.planted) for (const p of s.planted) console.log(`Planted ${p.testCase.padEnd(18)} ${p.created ? "new" : "exists"}  → ${p.project}`);
+    const hero = await heroProject(await getDb());
+    console.log(`\nHero (DEMO_HERO=${hero.slug}): ${hero.project ? hero.project.name : "NOT FOUND: set DEMO_HERO to an existing project slug"}`);
     console.log("\nProjects:");
     for (const line of await projectTable()) console.log(`  ${line}`);
     const t = s.trust;
@@ -23,6 +26,12 @@ export async function runCli(name: string, action: () => Promise<DemoSummary>) {
     for (const p of s.pairing) {
       const why = (o: Record<string, number>) => Object.entries(o).map(([k, v]) => `${k} ${v}`).join(", ") || "none";
       console.log(`  ${p.project.padEnd(36)} ${p.pairs} pair(s) from ${p.candidates} candidate(s); rejected: ${why(p.rejected)}; photos left out: ${why(p.excluded)}`);
+    }
+    if (s.remeasure) {
+      const r = s.remeasure;
+      const modes = (o: Record<string, number>) => Object.entries(o).map(([k, v]) => `${k} ${v}`).join(", ") || "none";
+      console.log(`\nRemeasure (media ${r.media}, AI ${r.ai}): dropped ${r.dropped} cached measurement(s), re-measured ${r.kept} manual/check-in comparison(s), re-analysed ${r.reanalyzed} photo(s).`);
+      console.log(`  Comparisons by provider mode: ${modes(r.comparisons)}. Measurements by provider mode: ${modes(r.measurements)}.`);
     }
     console.log(`\nAssets by status: ${Object.entries(s.statuses).map(([k, v]) => `${k} ${v}`).join(", ") || "none"}`);
     console.log(

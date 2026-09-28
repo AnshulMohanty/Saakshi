@@ -2,6 +2,7 @@
  * `pnpm measure:pairs [project-slug]`: re-pairs every project (or one) by the rules, measures the
  * pairs, and prints every candidate pair with why each reject failed, then the comparisons.
  */
+import "./_env";
 import { eq } from "drizzle-orm";
 import { getConfig } from "../lib/config";
 import { closeDb, getDb } from "../lib/db/client";

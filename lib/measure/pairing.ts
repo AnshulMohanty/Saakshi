@@ -9,6 +9,7 @@
  * photos, then pHash (the same framing), then embedding similarity. Selection is greedy per spot;
  * a photo is used at most once.
  */
+import { gapBetween, type Precision } from "../dates";
 import { haversine, type LatLng } from "../geo";
 import { hamming, isPhash } from "../hamming";
 
@@ -19,6 +20,8 @@ export interface PairPhoto {
   spotId: string | null;
   location: LatLng | null;
   capturedAt: string | null;
+  /** "day" = the source gave only a date; two such photos on one day have an unknown gap. */
+  capturedAtPrecision?: Precision | null;
   band: "VERIFIED" | "NEEDS_REVIEW" | "FLAGGED" | null;
   status: string;
   stage: Stage | null;
@@ -42,7 +45,7 @@ export const PAIRING_DEFAULTS = { maxRadiusM: 30, approximateMaxRadiusM: 150, pe
 export type PairingOptions = typeof PAIRING_DEFAULTS;
 
 export type PhotoExclusion = "no_spot" | "no_time" | "no_location" | "flagged" | "rejected" | "not_scored";
-export type PairRejection = "outside_spot" | "gap_too_short" | "same_time";
+export type PairRejection = "outside_spot" | "gap_too_short" | "same_time" | "gap_unknown";
 
 export interface PairCandidate {
   beforeId: string;
@@ -53,6 +56,8 @@ export interface PairCandidate {
   /** The spot radius the pair was held to. */
   radiusM: number;
   gapHours: number;
+  /** The smallest the gap can be given both photos' time precision (what the gap rule uses). */
+  gapHoursMin: number;
   stageScore: number;
   hamming: number | null;
   similarity: number | null;
@@ -116,10 +121,12 @@ export function evaluatePair(project: PairProject, spot: PairSpot, before: PairP
   const inside = (p: PairPhoto) => !!p.location && haversine(p.location, spot.center) <= radiusM;
   const distanceM = before.location && after.location ? haversine(before.location, after.location) : Infinity;
   const gap = before.capturedAt && after.capturedAt ? hours(before.capturedAt, after.capturedAt) : 0;
+  const range = before.capturedAt && after.capturedAt ? gapBetween({ at: before.capturedAt, precision: before.capturedAtPrecision ?? null }, { at: after.capturedAt, precision: after.capturedAtPrecision ?? null }) : null;
   const rejects: PairRejection[] = [];
   if (!inside(before) || !inside(after)) rejects.push("outside_spot");
-  if (gap <= 0) rejects.push("same_time");
-  else if (gap < project.minPairGapHours) rejects.push("gap_too_short");
+  if (!range || !range.ordered) rejects.push(range && range.known && gap <= 0 ? "same_time" : range?.known === false ? "gap_unknown" : "same_time");
+  // Sub-day precision: the point gap is exact enough. Day precision or coarser: the smallest possible gap.
+  else if ((range.known ? gap : range.minHours) < project.minPairGapHours) rejects.push("gap_too_short");
   return {
     beforeId: before.id,
     afterId: after.id,
@@ -127,6 +134,7 @@ export function evaluatePair(project: PairProject, spot: PairSpot, before: PairP
     distanceM: Number.isFinite(distanceM) ? Math.round(distanceM * 10) / 10 : distanceM,
     radiusM,
     gapHours: Math.round(gap * 100) / 100,
+    gapHoursMin: range ? Math.round(Math.max(0, range.known ? gap : range.minHours) * 100) / 100 : 0,
     stageScore: stageScore(before.stage, after.stage),
     hamming: isPhash(before.phash) && isPhash(after.phash) ? hamming(before.phash, after.phash) : null,
     similarity: cosine(before.embedding, after.embedding),
@@ -214,6 +222,7 @@ const EXCLUSION_TEXT: Record<PhotoExclusion, string> = {
 const REJECTION_TEXT: Record<PairRejection, string> = {
   outside_spot: "a photo is outside the spot radius",
   gap_too_short: "taken too close together in time",
+  gap_unknown: "only dates are known, so the time between them is unknown",
   same_time: "taken at the same time",
 };
 

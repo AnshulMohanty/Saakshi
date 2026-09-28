@@ -8,8 +8,17 @@ import type { EventName, QueueEvents, QueueProvider } from "./index";
 
 const g = globalThis as typeof globalThis & { __saakshiInngest?: Inngest };
 
+/**
+ * Vercel functions run for at most 300 s by default (Fluid compute, every plan). Inngest docs:
+ * set checkpointing.maxRuntime a little below the platform limit, so a run goes async before the
+ * platform kills it. /api/inngest exports maxDuration = 300 to match.
+ */
+export const INNGEST_MAX_RUNTIME = "240s";
+
 export function getInngestClient(dev: boolean): Inngest {
-  g.__saakshiInngest ??= new Inngest({ id: "saakshi", isDev: dev });
+  // v4 defaults to cloud mode: isDev must be explicit for the local Dev Server. Cloud mode reads
+  // INNGEST_EVENT_KEY / INNGEST_SIGNING_KEY from the environment.
+  g.__saakshiInngest ??= new Inngest({ id: "saakshi", isDev: dev, ...(dev ? {} : { checkpointing: { maxRuntime: INNGEST_MAX_RUNTIME } }) });
   return g.__saakshiInngest;
 }
 

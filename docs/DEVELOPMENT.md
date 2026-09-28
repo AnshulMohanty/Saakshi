@@ -22,7 +22,19 @@ pnpm demo:import  # 3 auto-built projects from the candidates; pipeline runs in-
 pnpm demo:plant   # 4 planted test inputs
 pnpm demo:reset   # wipe demo data and rebuild offline from .data/archive-cache (--online)
 pnpm tunnel       # cloudflared quick tunnel for phone testing
+pnpm measure:pairs [slug]  # re-pair by the rules; every candidate and why it failed
+pnpm demo:remeasure        # measure the demo again with the configured providers
+pnpm verify:env --prod     # what a deployment is missing
+pnpm cld:setup --dry-run   # Cloudinary metadata fields + signed preset (idempotent)
+pnpm services:check        # live checks with keys; what's missing without (alias: pnpm run doctor)
+pnpm check:bundle          # canary-secret build, browser bundles scanned
+pnpm design:capture        # design parity: also parity:capture <route>, parity:report
 ```
+
+**After every phase or fix, append to ENGINEERING.md what changed, why, the evidence (test counts,
+command output) and any new issue found.** Numbers in ENGINEERING.md, README and docs come only
+from real command output. Anything that needs a human (accounts, keys, console settings) goes into
+docs/MANUAL_STEPS.md.
 
 Local PGlite supports **one process at a time**: `db:*` and `demo:*` scripts refuse to run while
 `pnpm dev` holds `.data/pglite.lock`. While dev is running, use "Run demo import" on /dev/status.
@@ -51,13 +63,22 @@ The app also migrates PGlite on first connection.
   synonyms) · `lib/evidence.ts` (/e page model, QR once) · `lib/report/` (SQL claims, sections,
   react-pdf, generate, campaign, view) · `lib/live.ts` (SSE) · `lib/demo-apis.ts` (stats, layers,
   tamper, sandbox) · `lib/evidence-pack.ts` (zip) · `lib/client/` (browser-only helpers).
+- Real services: `lib/providers/http.ts` (the one HTTP layer: timeouts, retries, usage records) ·
+  `lib/providers/cloudinary/` (`client.ts` REST + signing, `setup.ts` cld:setup plan) ·
+  `lib/providers/ai/json-schema.ts` (zod → strict JSON Schema) · `lib/usage.ts` (`provider_usage`) ·
+  `lib/pricing.ts` (documented prices) · `lib/provenance.ts` + `lib/display-policy.ts` (mock
+  numbers tagged in dev, hidden in production) · `lib/verify-env.ts` · `lib/bundle-secrets.ts`.
+  Every external call and its doc status: `docs/external-apis.md`; update it with any new call.
 - Pure, tested modules: `lib/geo.ts`, `lib/phash.ts`, `lib/hashchain.ts`, `lib/claims.ts`,
   `lib/archive/{parse,cluster,build}.ts`, `lib/pipeline/{assign,metadata}.ts`, `lib/capture/token.ts`,
   `lib/trust/*` (browser-safe: a test walks its imports), `lib/measure/{cover,pairing}.ts`,
-  `lib/search/normalize.ts`, `lib/media/{describe,proof,composite}.ts`, `lib/report/sections.ts`. Tests live in `tests/*.test.ts`; fixtures in `tests/fixtures`
+  `lib/search/normalize.ts`, `lib/media/{describe,proof,composite,derivatives}.ts`, `lib/report/sections.ts`,
+  `lib/dates.ts`, `lib/provenance.ts`, `lib/pricing.ts`, `lib/verify-env.ts`. Tests live in `tests/*.test.ts`; fixtures in `tests/fixtures`
   (`tests/fixtures/commons/` are trimmed real API responses). `tests/helpers.ts` builds an
   in-memory PGlite + mock-provider context.
-- `drizzle/` generated SQL migrations (commit them) · `scripts/` CLI scripts (run with tsx) · `docs/`.
+- `drizzle/` generated SQL migrations (commit them) · `scripts/` CLI scripts (run with tsx; each
+  imports `./_env` first so `.env*` files load like `next dev`) · `docs/` · `design/` (exports,
+  handoff notes, parity output; design/README.md).
 - UI: shadcn/ui (base-nova) with defaults only until Phase 7. Colours, radii and fonts are CSS
   variables in `app/globals.css`; never hard-code them.
 
@@ -67,9 +88,13 @@ Every external service (media, analysis, ai, db, queue, geocoder) sits behind an
 mock and a real implementation. `lib/config.ts` selects **real only when all of a provider's env
 vars are set**; otherwise the mock. The app and tests must always run with no `.env`, no accounts
 and no keys. Get providers from the factories (`getMediaProvider()`, `getAIProvider()`, …), never
-by constructing a real class directly. Mocks are deterministic (same input → same output). Real
-methods that aren't built yet throw `NotConfiguredError`. `/dev/status` shows what is active.
-Details and mock limitations: `docs/providers.md`.
+by constructing a real class directly. Mocks are deterministic (same input → same output). Every
+real method is implemented and goes through `lib/providers/http.ts` (never bare `fetch`), and
+every new or changed outgoing request gets a case in `tests/contracts.test.ts` and a row in
+`docs/external-apis.md` (VERIFIED with a doc link, or "UNVERIFIED — confirm in Phase 10" with a
+fallback). Every derived value stores `provider_mode`; production never shows mock-derived
+numbers (`lib/provenance.ts`). `/dev/status` and `pnpm services:check` show what is active.
+Details, mock limitations and the `CLD_*` fallback switches: `docs/providers.md`.
 
 ## Rules
 

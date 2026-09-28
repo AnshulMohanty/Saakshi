@@ -105,7 +105,7 @@ export function AssetDrawer({ id, refreshKey, onClose }: { id: string | null; re
               <Rows
                 rows={[
                   ["Source of metadata", d.exif.source === "commons_api" ? "Wikimedia Commons API (not the file)" : d.exif.source === "file" ? "File EXIF" : "None"],
-                  ["Captured", d.exif.capturedAt ? `${time(d.exif.capturedAt)}${d.exif.tzAssumed ? " (time zone assumed)" : ""}` : "—"],
+                  ["Captured", d.exif.capturedAt ? (d.exif.precision === "day" || d.exif.precision === "month" || d.exif.precision === "year" ? `${new Date(d.exif.capturedAt).toLocaleDateString()} (date only)` : `${time(d.exif.capturedAt)}${d.exif.tzAssumed ? " (time zone assumed)" : ""}`) : "—"],
                   ["GPS", d.exif.lat !== null && d.exif.lng !== null ? `${d.exif.lat.toFixed(5)}, ${d.exif.lng.toFixed(5)}` : "—"],
                   ["Camera", [d.exif.make, d.exif.model].filter(Boolean).join(" ") || "—"],
                   ["Place", d.placeName ?? "—"],

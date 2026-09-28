@@ -15,6 +15,10 @@ const nextConfig: NextConfig = {
     "exifr",
     // (sharp is already on Next's built-in external list.)
   ],
+  // The report PDF reads the bundled Noto fonts from disk at runtime: ship them with that route.
+  outputFileTracingIncludes: {
+    "/api/reports": ["./assets/fonts/**/*"],
+  },
 };
 
 export default nextConfig;

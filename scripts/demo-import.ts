@@ -3,6 +3,7 @@
  * selected Commons thumbnails (cached), uploads them and runs the evidence pipeline in-process.
  * Idempotent on external_id. `--offline` uses only the archive cache.
  */
+import "./_env";
 import { runDemoImport } from "../lib/demo/run";
 import { runCli } from "./_demo-cli";
 

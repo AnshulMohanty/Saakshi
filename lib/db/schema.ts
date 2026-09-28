@@ -71,7 +71,20 @@ export interface ComparisonDetail {
   /** Who chose a manual pair, and why. */
   chosenBy?: string;
   note?: string;
+  /** CLD_COMPOSITE_MODE=server: the composite is its own asset; compositeTransforms apply to it. */
+  compositePublicId?: string;
 }
+
+export type ProviderMode = "mock" | "real";
+
+/** Which provider (mock or real) and which model produced each derived value on an asset. */
+export interface AssetProvenance {
+  analysis?: { mode: ProviderMode; provider: string };
+  ai?: { mode: ProviderMode; model: string };
+  embedding?: { mode: ProviderMode; model: string };
+}
+
+export type CapturePrecision = "second" | "minute" | "hour" | "day" | "month" | "year";
 
 /** Deliberately planted test inputs (source = planted_test). */
 export type TestCase = "reused" | "stock" | "location_mismatch" | "stamp_mismatch";
@@ -162,6 +175,7 @@ export interface ReportClaim {
   method: ClaimMethod;
   asset_ids: string[];
   confidence?: number;
+  provider_mode?: ProviderMode;
   /** Supporting facts shown next to the number (never used in prose). */
   detail?: { topReasons?: Array<{ code: string; n: number }>; testInputs?: string[]; pairs?: number; basis?: string };
 }
@@ -187,8 +201,11 @@ export const projects = pgTable("projects", {
   centerLat: doublePrecision("center_lat"),
   centerLng: doublePrecision("center_lng"),
   radiusM: doublePrecision("radius_m"),
+  /** The event window: the activity itself (for demo projects, the densest run of capture dates ± 7 days). */
   startDate: date("start_date"),
   endDate: date("end_date"),
+  /** Monitoring period: from the day after endDate until this date (null = open-ended). */
+  monitoringEndsAt: date("monitoring_ends_at"),
   sdgs: integer("sdgs").array().notNull().default(sql`'{}'::integer[]`),
   /** Minimum hours between a before and an after photo: cleanup/water 0.5, plantation 336, school 168, other 24. */
   minPairGapHours: doublePrecision("min_pair_gap_hours").notNull().default(24),
@@ -236,6 +253,8 @@ export const assets = pgTable(
     height: integer("height"),
 
     capturedAt: timestamp("captured_at", { withTimezone: true }),
+    /** How precise captured_at is, from the source: a day-precision time is only a date. */
+    capturedAtPrecision: text("captured_at_precision").$type<CapturePrecision>(),
     uploadedAt: timestamp("uploaded_at", { withTimezone: true }).notNull().defaultNow(),
     exifLat: doublePrecision("exif_lat"),
     exifLng: doublePrecision("exif_lng"),
@@ -255,6 +274,8 @@ export const assets = pgTable(
     watermark: boolean("watermark"),
     caption: text("caption"),
     embedding: vector("embedding", { dimensions: EMBEDDING_DIMENSIONS }),
+    /** Mock vs real provider (and model) behind analysis, AI and embedding; mock-derived numbers never ship. */
+    provenance: jsonb("provenance").$type<AssetProvenance>().notNull().default({}),
     attribution: jsonb("attribution").$type<Attribution>(),
 
     trustScore: integer("trust_score"),
@@ -342,6 +363,8 @@ export const comparisons = pgTable(
     compositeTransforms: jsonb("composite_transforms").$type<TransformStep[]>(),
     /** auto (pairing), manual (a person chose the pair) or checkin (baseline → Witness check-in). */
     origin: text("origin").$type<ComparisonOrigin>().notNull().default("auto"),
+    /** "mock" if either photo's measurement came from a mock provider. */
+    providerMode: text("provider_mode").$type<ProviderMode>().notNull().default("mock"),
     detail: jsonb("detail").$type<ComparisonDetail>(),
     ...timestamps(),
   },
@@ -369,6 +392,9 @@ export const measurements = pgTable(
     method: measureMethod("method").notNull(),
     confidence: real("confidence"),
     maskUrl: text("mask_url"),
+    providerMode: text("provider_mode").$type<ProviderMode>().notNull().default("mock"),
+    /** e.g. "cloudinary:e_extract" or "mock:colour-index". */
+    provider: text("provider").notNull().default("mock:colour-index"),
     detail: jsonb("detail").$type<Record<string, unknown>>(),
     ...timestamps(),
   },
@@ -393,10 +419,40 @@ export const reports = pgTable(
     /** Statements without numbers, e.g. "Archive project: no recent check-ins". */
     notes: jsonb("notes").$type<string[]>().notNull().default([]),
     campaign: jsonb("campaign").$type<CampaignKit>(),
+    /** "mock" if any claim rests on a mock-derived value. */
+    providerMode: text("provider_mode").$type<ProviderMode>().notNull().default("mock"),
     pdfPublicId: text("pdf_public_id"),
     ...timestamps(),
   },
   (t) => [index("reports_project_idx").on(t.projectId)],
+);
+
+/**
+ * Every call to a real external provider (Cloudinary, OpenAI): what it was, how much it used, how
+ * long it took, what it cost where pricing is documented. Answers "cost per 1,000 photos" from logs.
+ */
+export const providerUsage = pgTable(
+  "provider_usage",
+  {
+    id: id(),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+    provider: text("provider").notNull(),
+    /** e.g. "upload", "analyze:ai_vision_tagging", "responses", "embeddings", "derived:e_extract". */
+    operation: text("operation").notNull(),
+    model: text("model"),
+    mode: text("mode").$type<ProviderMode>().notNull(),
+    /** Tokens, transformations, credits: whatever the provider reports. */
+    units: jsonb("units").$type<Record<string, number>>().notNull().default({}),
+    latencyMs: integer("latency_ms").notNull(),
+    costUsd: doublePrecision("cost_usd"),
+    ok: boolean("ok").notNull(),
+    status: integer("status"),
+    attempts: integer("attempts").notNull().default(1),
+    /** Not a foreign key: usage outlives deleted assets. */
+    assetId: uuid("asset_id"),
+    error: text("error"),
+  },
+  (t) => [index("provider_usage_at_idx").on(t.at), index("provider_usage_provider_idx").on(t.provider, t.operation)],
 );
 
 /** Append-only, hash-chained (see lib/hashchain.ts and lib/audit.ts). Never update or delete rows. */
@@ -471,6 +527,7 @@ export const geocache = pgTable(
 );
 
 export type Project = typeof projects.$inferSelect;
+export type ProviderUsage = typeof providerUsage.$inferSelect;
 export type Comparison = typeof comparisons.$inferSelect;
 export type Report = typeof reports.$inferSelect;
 export type Measurement = typeof measurements.$inferSelect;

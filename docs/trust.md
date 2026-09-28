@@ -25,10 +25,10 @@ English sentence; no LLM writes any of it. All numbers live in `lib/trust/config
 | | Outside the site (and outside its spot) | **hard** | `LOCATION_MISMATCH` |
 | | EXIF and witness fix more than 1 km apart | review | `LOCATION_CONFLICT` |
 | | Gallery uploader's browser location | info only | `UPLOADER_LOCATION` |
-| Time (max 20) | Capture time inside the project dates (±14 h, any timezone) | +20 | `TIME_IN_WINDOW` |
-| | Attested check-in at a spot after the dates | +20 | `TIME_CHECKIN` |
+| Time (max 20) | Capture time inside the **event window** (±14 h, any timezone) | +20 | `TIME_IN_WINDOW` |
+| | After the event window, **during the monitoring period and at a monitored spot**: "Check-in after the activity" | +20 | `TIME_CHECKIN` |
 | | No capture time (upload time used) | +5 | `TIME_UPLOAD_ONLY` |
-| | Outside the dates | −20 | `TIME_OUTSIDE` |
+| | Before the window; after it but not at a spot; or after monitoring ended | −20 | `TIME_OUTSIDE` |
 | Uniqueness (max 20) | No earlier copy anywhere | +20 | `UNIQUE` |
 | | Same project, within 10 min: a burst | +10 | `BURST` |
 | | Same spot, gap ≥ `min_pair_gap_hours`: a revisit | +20 | `REVISIT` |
@@ -49,6 +49,33 @@ English sentence; no LLM writes any of it. All numbers live in `lib/trust/config
 negative points so the ledger still adds up. **VERIFIED** is ≥ 75 with no flags.
 **NEEDS_REVIEW** is 45–74, or any review flag. **FLAGGED** is below 45, or any hard flag.
 Tests pin the boundaries at 44/45 and 74/75.
+
+## Event window, monitoring period, date precision
+
+A project has two periods:
+
+- The **event window** (`start_date`–`end_date`) is when the activity happened. For archive
+  projects it is the densest run of capture dates, with gaps of at most 7 days, padded by 7 days
+  on each side (`lib/dates.ts eventWindow`, pure and tested). One stray photo years later no
+  longer stretches the window.
+- The **monitoring period** runs from the end of the window until `monitoring_ends_at`, or
+  open-ended when that is null. It exists because spots are revisited: a photo in it, taken at a
+  monitored spot, is a check-in (+20). The same photo away from any spot is outside (−20).
+
+Assignment (`lib/pipeline/assign.ts`) tries the event window first and then the monitoring
+period, and records which one matched (`detail.period`).
+
+**Date precision.** `captured_at_precision` is `second | minute | hour | day | month | year`,
+set by parseMetadata from the source: EXIF seconds, a Commons "date only" value, and so on. A
+capture time is really an interval, and `gapBetween(a, b)` returns the smallest and largest
+possible gap:
+
+- **Bursts** need the largest possible gap to be ≤ 10 min.
+- **Revisits** need the smallest possible gap to be ≥ `min_pair_gap_hours`.
+- Two day-precision photos on the same day have an unknown gap. They are neither a burst nor a
+  revisit, and they can't pair (`gap_unknown`).
+- When both times are sub-day, the point gap is used, so an exact 14-day gap still counts.
+- Reasons say "(date only)" when precision is a day or coarser.
 
 ## Duplicates
 
@@ -100,29 +127,39 @@ location, the stamp is checked against the site centre. The tests cover 12+ form
    pair gap has passed. It's not suspicious, but it's not new evidence either.
 3. **`POSSIBLE_DUPLICATE` (review) for an identical file already in the same project.** It's not
    reuse across projects, but a person should see it.
-4. **`TIME_CHECKIN` +20.** An attested Witness check-in at a spot after the project ended is
-   monitoring, which is the point of spots, not an old photo.
+4. **`TIME_CHECKIN` +20.** A photo taken at a monitored spot after the event window, while
+   monitoring runs, is a check-in, which is the point of spots. It is not an old photo. This
+   applies to archive revisits as well as Witness check-ins. Location still has to be inside
+   the spot's site, which the location rule checks separately.
 5. **Burst beats revisit** when a photo has both kinds of match (the conservative reading).
-6. **±14 h slack on project dates.** Dates have no timezone, so any timezone is allowed at
-   either end.
+6. **±14 h slack on the window and monitoring dates.** Dates have no timezone, so any
+   timezone is allowed at either end.
 7. **The stamp check falls back to the site centre** when a photo has no capture location.
 8. **The planted "reused" crop is 2% per side** (it was 4%). On smooth scenes a 4% crop drifted up
    to 14 bits, past the match threshold of 8; 2% stays within 8 while still being a different,
    re-encoded file.
 
-## Demo results (`pnpm demo:reset`, mock AI, real Commons photos)
+## Demo results (`pnpm demo:reset`, 2026-09-28, mock AI and analysis, real Commons photos)
 
 ```
-Trust (archive photos): VERIFIED 55, NEEDS_REVIEW 0, FLAGGED 0
-  Top reasons: PROVENANCE_NONE 15, COPY_LATER_SUBMITTED 1
+Hero (DEMO_HERO=demo-hero-cleanup): River clean-up, Tiruppur North
+  River clean-up, Tiruppur North       cleanup     26 photos  r=300 m  2017-08-29 → 2017-09-12
+  Tree planting, Pimpri-Chinchwad      plantation  20 photos  r=1126 m  2020-11-13 → 2020-11-29
+  Lake clean-up, Hyderabad             water       16 photos  r=1365 m  2025-10-25 → 2025-11-09
+Trust (archive photos): VERIFIED 58, NEEDS_REVIEW 0, FLAGGED 0
+  Top reasons: PROVENANCE_NONE 23, COPY_LATER_SUBMITTED 1
   Archive photos with a hard flag: none
-  Planted location_mismatch  FLAGGED  score 25  LOCATION_MISMATCH   (716 km from the Tiruppur site)
-  Planted reused             FLAGGED  score 30  REUSED              (94% match of a Tiruppur photo)
-  Planted stamp_mismatch     FLAGGED  score 40  STAMP_MISMATCH      (stamp says Delhi, 1947 km away)
-  Planted stock              FLAGGED  score 35  STOCK_SUSPECTED
-Audit: all chains intact
+  Planted location_mismatch  FLAGGED      score 25  LOCATION_MISMATCH
+  Planted reused             FLAGGED      score 30  REUSED
+  Planted stamp_mismatch     FLAGGED      score 40  STAMP_MISMATCH
+  Planted stock              FLAGGED      score 35  STOCK_SUSPECTED
+Audit: all chains intact (64 chains, 589 rows)
 ```
 
-With real Cloudinary moderation and a real vision model, the authenticity and stamp signals come
-from real answers instead of the deterministic mocks, so the archive histogram will likely
+The Tiruppur event window is now 29 Aug – 12 Sep 2017 (the clean-up), not 2017–2020. Its 2020
+photos are scored as check-ins at the spot (`TIME_CHECKIN`), not as photos inside a 2.5-year
+"event".
+
+With real Cloudinary moderation and a real vision model, the authenticity and stamp signals will
+come from real answers instead of the deterministic mocks, so the archive histogram will likely
 spread out. The engine and its thresholds stay the same.

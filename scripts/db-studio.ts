@@ -5,6 +5,7 @@
  *   pglite-socket, and points Studio at that (drizzle.studio.config.ts).
  * Stop `pnpm dev` first: PGlite supports one process at a time.
  */
+import "./_env";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import path from "node:path";

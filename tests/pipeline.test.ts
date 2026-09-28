@@ -45,6 +45,16 @@ describe("assign", () => {
     expect(assign({ ...base, capturedAt: "2025-03-31T23:00:00Z" }, [P1], [], opts).method).toBe("geo_time");
   });
 
+  it("after the event, a photo inside the site joins the project as a check-in (monitoring period)", () => {
+    const later = { ...base, capturedAt: "2026-02-01T00:00:00Z" };
+    expect(assign(later, [P1], [S1], opts)).toMatchObject({ projectId: "p1", spotId: "s1", method: "geo_time", detail: { period: "monitoring" } });
+    // An event window beats another project's open-ended monitoring.
+    const P3: AssignProject = { ...P1, id: "p3", startDate: "2026-01-25", endDate: "2026-02-05" };
+    expect(assign(later, [P1, P3], [], opts)).toMatchObject({ projectId: "p3", detail: { period: "event" } });
+    // Monitoring can end.
+    expect(assign(later, [{ ...P1, monitoringEndsAt: "2025-12-31" }], [], opts).method).not.toBe("geo_time");
+  });
+
   it("falls back to similarity above the threshold, else none", () => {
     const far = { lat: 20, lng: 80 };
     expect(assign({ location: far, capturedAt: base.capturedAt, embedding: hashEmbedding("plastic garbage by the lake, clean-up") }, [P1, P2], [], opts)).toMatchObject({
@@ -204,6 +214,7 @@ describe("evidence pipeline", () => {
     let calls = 0;
     const flaky: AnalysisProvider = {
       kind: "mock",
+      id: "mock-flaky",
       tag: async (id, t) => {
         calls++;
         if (calls === 1) throw new Error("analysis service down");

@@ -2,6 +2,7 @@
  * `pnpm demo:stage`: creates (or updates) the "Live stage demo" project at the venue.
  *   STAGE_LAT=12.97 STAGE_LNG=77.59 pnpm demo:stage     or     pnpm demo:stage --lat 12.97 --lng 77.59
  */
+import "./_env";
 import { closeDb, getDb } from "../lib/db/client";
 import { DatabaseLockedError } from "../lib/db/lock";
 import { createStageProject } from "../lib/demo/stage";

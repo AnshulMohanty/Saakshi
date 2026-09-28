@@ -5,13 +5,13 @@
 import { and, asc, count, desc, eq, isNotNull, type SQL } from "drizzle-orm";
 import type { DB } from "./db/client";
 import { assets, auditLog, duplicates, projects, spots, type Asset } from "./db/schema";
-import type { Transform } from "./media/transform";
 import { STEP_ORDER } from "./pipeline/steps";
 import { MODERATION_QUESTIONS } from "./ai/questions";
 import type { MediaProvider } from "./providers/media";
 
-export const THUMB: Transform = [{ crop: "fill", gravity: "auto", width: 480, height: 360 }, { effect: "blur_faces" }, { format: "auto", quality: "auto" }];
-export const PREVIEW: Transform = [{ width: 1280, crop: "limit" }, { effect: "blur_faces" }, { format: "auto", quality: "auto" }];
+import { PREVIEW, THUMB } from "./media/derivatives";
+
+export { PREVIEW, THUMB };
 
 export const SOURCES = ["witness", "upload", "archive", "planted_test"] as const;
 export const STATUSES = ["processing", "ready", "flagged", "approved", "rejected"] as const;
@@ -120,6 +120,7 @@ export async function assetDetail(db: DB, media: MediaProvider, id: string) {
     exif: {
       source: a.exifSource,
       capturedAt: a.capturedAt?.toISOString() ?? null,
+      precision: a.capturedAtPrecision,
       tzAssumed: a.capturedAtTzAssumed,
       lat: a.exifLat,
       lng: a.exifLng,

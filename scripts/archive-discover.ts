@@ -4,6 +4,7 @@
  * data/archive-candidates.json. API responses are cached, so re-runs are offline.
  *   --offline   use only the cache
  */
+import "./_env";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { DEMO_DATASET, DISCOVERY_QUERIES } from "../data/demo-dataset.config";

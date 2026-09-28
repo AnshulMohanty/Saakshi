@@ -8,7 +8,7 @@ import { getConfig, getMockMediaSigningKey } from "../../config";
 import type { ExifSummary } from "../../media/exif";
 import type { Transform } from "../../media/transform";
 import { MockMediaProvider } from "./mock";
-import { CloudinaryMediaProvider } from "./real";
+import { CloudinaryMediaProvider, type CloudinaryOptions } from "./real";
 
 export interface UploadInput {
   file?: Buffer;
@@ -19,6 +19,11 @@ export interface UploadInput {
   tags?: string[];
   /** Cloudinary contextual metadata (string key/values), e.g. { filename, project }. */
   context?: Record<string, string>;
+  /**
+   * "evidence" (default): delivery type authenticated (or private), signed URLs only, manual
+   * moderation. "public": delivery type upload, for QR codes and logos (nothing personal).
+   */
+  access?: "evidence" | "public";
 }
 
 /** A non-image file (report PDFs), stored as raw + authenticated. Public ids keep the extension. */
@@ -61,6 +66,20 @@ export function maskTransform(prompt: string | string[], { multiple, frame = [] 
   return [...frame, { effect: "extract", prompt, ...(multiple ? { multiple: true } : {}), mode: "mask" }, { format: "png" }];
 }
 
+export interface CompositeSide {
+  publicId: string;
+  /** Date label, e.g. "5 Sep 2017". */
+  label: string;
+}
+
+/** A before/after side-by-side: the asset and transform it is delivered from, and the signed URL. */
+export interface CompositeResult {
+  url: string;
+  publicId: string;
+  transforms: Transform;
+  mode: "layer" | "server";
+}
+
 export interface MetadataTags {
   tags?: string[];
   removeTags?: string[];
@@ -68,6 +87,8 @@ export interface MetadataTags {
 
 export interface MediaProvider {
   readonly kind: "mock" | "real";
+  /** Delivery type of evidence uploads (and of their layers in composites). */
+  readonly evidenceType: "authenticated" | "private";
   upload(input: UploadInput): Promise<MediaAsset>;
   /** Stores a raw file with delivery type authenticated (real: resource_type raw, type authenticated). */
   uploadRaw(input: RawUploadInput): Promise<{ publicId: string; bytes: number }>;
@@ -86,6 +107,12 @@ export interface MediaProvider {
   extractMask(publicId: string, prompt: string | string[], opts?: MaskOptions): Promise<{ maskUrl: string; buffer: Buffer }>;
   /** Bytes of a derived image (server-side; e.g. to re-upload a watermarked variant). */
   fetchDerived(publicId: string, transforms: Transform): Promise<Buffer>;
+  /**
+   * Before/after side-by-side. "layer" (default): one signed URL on the before photo with the
+   * after photo as an l_authenticated layer. "server" (CLD_COMPOSITE_MODE=server): halves joined
+   * with sharp and stored as their own evidence asset, labels drawn by Cloudinary.
+   */
+  composite(before: CompositeSide, after: CompositeSide): Promise<CompositeResult>;
 }
 
 let instance: MediaProvider | undefined;
@@ -95,7 +122,7 @@ export function getMediaProvider(): MediaProvider {
     const config = getConfig();
     instance =
       config.providers.media.mode === "real"
-        ? new CloudinaryMediaProvider(config.cloudinary as Required<typeof config.cloudinary>)
+        ? new CloudinaryMediaProvider(config.cloudinary as CloudinaryOptions, { exifDefaultOffset: config.env.EXIF_DEFAULT_UTC_OFFSET })
         : new MockMediaProvider({
             dir: path.resolve(config.env.MEDIA_MOCK_DIR),
             // Relative URLs: they work on any host (localhost, LAN IP, HTTPS tunnel to a phone).
