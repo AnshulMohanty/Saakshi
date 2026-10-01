@@ -187,6 +187,8 @@ export async function landingFixture(): Promise<LandingData> {
       { name: "Provenance", what: "Pins each photo to a version and a signature, so a report always opens the exact file it counted.", code: "/s--tQ3v9XkP--/\n  v1727000000/evidence/vsv-0142.jpg", preview: { kind: "glyph", bits: LOGO_BITS, variant: "plain" }, caption: "Versioned, signed asset", alt: "Saakshi glyph" },
     ],
     dust: P.filter((p) => p.hash).map((p) => p.hash),
+    // A photo the export does not carry comes back as its bare path: no thumbnail for it.
+    dustThumbs: P.filter((p) => p.hash).map((p) => src(`photos/${p.id}.jpg`)).map((u) => (u.startsWith("/") ? u : "")),
     credits,
     footer: {
       repoUrl: "https://github.com/",

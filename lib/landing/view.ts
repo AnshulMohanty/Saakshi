@@ -254,6 +254,7 @@ export async function landingView(db: DB, media: MediaProvider, o: LandingOption
     witness: { url: `${o.appUrl}/capture`, label: `${o.appUrl.replace(/^https?:\/\//, "")}/capture`, spots: projectsView.map((p) => ({ lat: p.lat, lng: p.lng, city: p.city || p.name })), live: true },
     nodes,
     dust: all.filter((a) => a.phash).map((a) => hexToBits(a.phash!)),
+    dustThumbs: all.filter((a) => a.phash).map((a) => signed(a, THUMB)),
     credits,
     footer: {
       repoUrl,

@@ -78,6 +78,7 @@ export async function ingestUpload(deps: IngestDeps, response: UploadResponse, r
       fixTimestamp: ctx.fix_timestamp,
       accuracyM: deviceFix?.accuracyM ?? null,
       hint: urlHint,
+      takenOffline: ctx.taken_offline === "1",
     });
     attested = check.attested;
     reasons = check.reasons;

@@ -127,6 +127,14 @@ describe("capture → ticket → upload → confirm → pipeline (mock provider,
     expect(a.assignmentMethod).toBe("capture_hint"); // ?project= on the capture page
   });
 
+  it("stores a photo queued offline as a witness capture that is never attested (B5.12)", async () => {
+    const at = new Date().toISOString();
+    const q = await upload({ source: "witness", token, client_captured_at: at, fix_timestamp: at, device_lat: "17.4642", device_lng: "78.3736", device_accuracy_m: "8", taken_offline: "1" });
+    const r = await (await routes.confirm(json({ provider: "mock", response: q.response }))).json();
+    expect(r).toMatchObject({ source: "witness", attested: false });
+    expect(r.reasons[0]).toEqual({ code: "taken_offline", message: "Taken offline: time from your phone." });
+  });
+
   it("rejects tampered tickets and forged upload responses", async () => {
     const ticket = await (await routes.ticket(json({ context: { source: "witness" } }))).json();
     const form = new FormData();

@@ -42,9 +42,9 @@ The app also migrates PGlite on first connection.
 
 ## Folder conventions
 
-- `app/(marketing)` landing, how it works, demo · `app/(app)` product pages (library, capture, …) ·
-  `app/(designed)` shareable pages ported from the design, each with its own header (`/e/[assetId]`,
-  `/spots/[slug]`, `/r/[reportId]`) · `app/(stage)` the Witness Wall · `app/(print)` chrome-free print pages (`/spots/[slug]/poster`, one A4 sheet) ·
+- `app/(marketing)` landing, how it works, demo · `app/(app)` product pages (library, review, …) ·
+  `app/(designed)` pages ported from the design, each with its own chrome (`/e/[assetId]`,
+  `/spots/[slug]`, `/r/[reportId]`, `/capture` full-bleed; `?state=` review states in dev only) · `app/(stage)` the Witness Wall · `app/(print)` chrome-free print pages (`/spots/[slug]/poster`, one A4 sheet) ·
   `app/s/[code]` poster short links (`lib/short-link.ts`) → the spot page ·
   `app/dev/*` dev tools (404 in production unless `DEV_TOOLS=1`) · `app/api/*` routes.
 - `lib/providers/<name>/`: `index.ts` (interface + factory), `mock.ts`, `real.ts`.
@@ -63,16 +63,20 @@ The app also migrates PGlite on first connection.
   `describe.ts` (Transforms in words) · `lib/search/` (parse → validate → rank, Hinglish/typos,
   synonyms) · `lib/evidence.ts` (/e page model, QR once) · `lib/report/` (SQL claims, sections,
   react-pdf, generate, campaign, view) · `lib/live.ts` (SSE) · `lib/demo-apis.ts` (stats, layers,
-  tamper, sandbox) · `lib/evidence-pack.ts` (zip) · `lib/client/` (browser-only helpers).
+  tamper, sandbox) · `lib/evidence-pack.ts` (zip) · `lib/client/` (browser-only helpers: upload, pHash
+  preview, offline queue) · `lib/app/` (the app shell's data: `view.ts` from the DB, `fixture.ts` for
+  parity, pure `chips.ts` and `map.ts`) with `components/app/` (shell, screens, drawer) ·
+  `lib/capture/` (`token.ts`, pure `hud.ts`, `screen-data.ts`) with `components/capture/`.
 - Real services: `lib/providers/http.ts` (the one HTTP layer: timeouts, retries, usage records) ·
   `lib/providers/cloudinary/` (`client.ts` REST + signing, `setup.ts` cld:setup plan) ·
   `lib/providers/ai/json-schema.ts` (zod → strict JSON Schema) · `lib/usage.ts` (`provider_usage`) ·
   `lib/pricing.ts` (documented prices) · `lib/provenance.ts` + `lib/display-policy.ts` (mock
   numbers tagged in dev, hidden in production) · `lib/verify-env.ts` · `lib/bundle-secrets.ts`.
   Every external call and its doc status: `docs/external-apis.md`; update it with any new call.
-- Pure, tested modules: `lib/geo.ts`, `lib/phash.ts`, `lib/hashchain.ts`, `lib/claims.ts`,
-  `lib/archive/{parse,cluster,build}.ts`, `lib/pipeline/{assign,metadata}.ts`, `lib/capture/token.ts`,
-  `lib/trust/*` (browser-safe: a test walks its imports), `lib/measure/{cover,pairing}.ts`,
+- Pure, tested modules: `lib/geo.ts`, `lib/phash-core.ts` (browser-safe; `lib/phash.ts` adds sharp), `lib/hashchain.ts`, `lib/claims.ts`,
+  `lib/archive/{parse,cluster,build}.ts`, `lib/pipeline/{assign,metadata}.ts`, `lib/capture/{token,hud}.ts`,
+  `lib/trust/*` (browser-safe: a test walks its imports), `lib/measure/{cover,pairing,timeline}.ts`,
+  `lib/charts/{time-axis,trend-svg}.ts`, `lib/report/numbers.ts`, `lib/short-link.ts`, `lib/app/{chips,map}.ts`,
   `lib/search/normalize.ts`, `lib/media/{describe,proof,composite,derivatives}.ts`, `lib/report/sections.ts`,
   `lib/dates.ts`, `lib/provenance.ts`, `lib/pricing.ts`, `lib/verify-env.ts`. Tests live in `tests/*.test.ts`; fixtures in `tests/fixtures`
   (`tests/fixtures/commons/` are trimmed real API responses). `tests/helpers.ts` builds an

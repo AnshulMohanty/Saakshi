@@ -16,6 +16,7 @@ import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { capturePage, launchBrowser, pageSlug, VIEWPORTS, type Variant } from "./_capture";
+import { captureStateVariants } from "./_capture-states";
 
 const props = (p: Record<string, unknown>) => `window.__dcSetProps && window.__dcSetProps(window.__dcRootName(), ${JSON.stringify(p)});`;
 const wait = (ms: number) => `await new Promise((r) => setTimeout(r, ${ms}));`;
@@ -58,13 +59,8 @@ function variantsFor(slug: string): Variant[] | undefined {
       out.push({ id: "palette", mode: "single", prepare: `(async () => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, ctrlKey: true })); ${wait(600)} })()` });
       return out;
     }
-    case "capture": {
-      const states = ["Live flow", "Permission prompt", "Location denied", "Low accuracy", "Offline", "Done"];
-      const out: Variant[] = states.map((s) => ({ id: pageSlug(s), label: s, mode: "single", prepare: `(async () => { ${clickText('[role="radiogroup"] button', s)} ${wait(s === "Done" ? 2200 : 900)} })()` }));
-      out.push(...states.map((s) => ({ id: `${pageSlug(s)}-screen`, label: `${s}, phone screen only`, mode: "single" as const, element: "#cam", prepare: `(async () => { ${clickText('[role="radiogroup"] button', s)} ${wait(s === "Done" ? 2200 : 900)} })()` })));
-      out.push({ id: "shutter", label: "shutter sequence on the fake clock", viewports: [VIEWPORTS[0]], mode: "timeline", element: "#cam", timeline: { ready: "!!window.gsap && !!document.querySelector('#cam')", trigger: "document.querySelector('button[aria-label=\"Take photo\"]').click()", at: [0, 0.1, 0.35, 0.8, 1.05, 1.65, 1.9, 2.35, 2.8, 3.3, 4.1, 4.6] } });
-      return out;
-    }
+    case "capture":
+      return captureStateVariants("!!window.gsap && !!window.SK && !!window.SAAKSHI_ARCHIVE && !!document.querySelector('#cam')", VIEWPORTS[0]);
     case "spot-page":
       return [{ id: "default", label: "showSample=false", prepare: props({ showSample: false }) }];
     case "evidence-page":
@@ -82,6 +78,8 @@ function variantsFor(slug: string): Variant[] | undefined {
       return [
         { id: "default" },
         { id: "loops", label: "loops on the fake clock", viewports: [VIEWPORTS[0]], mode: "timeline", timeline: { ready: "!!window.gsap", trigger: "0", at: [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5] } },
+        // The prototype scatters the manager loop with Math.random (DE:471): reduced motion rests every loop at 70%, a still both pages reach deterministically.
+        { id: "reduced", label: "reduced motion: loops at rest", reducedMotion: "reduce" },
       ];
     case "report-page":
       return [

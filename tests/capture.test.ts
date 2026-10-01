@@ -47,6 +47,13 @@ describe("capture tokens", () => {
     expect(validateCapture(ok)).toMatchObject({ attested: true, reasons: [] });
   });
 
+  it("never attests a photo queued offline, and says why first (B5.12)", () => {
+    const r = validateCapture({ ...ok, takenOffline: true });
+    expect(r.attested).toBe(false);
+    expect(r.reasons[0]).toEqual({ code: "taken_offline", message: "Taken offline: time from your phone." });
+    expect(codes({ ...ok, takenOffline: false })).toEqual([]);
+  });
+
   it("rejects missing, forged and unknown tokens", () => {
     expect(codes({ ...ok, token: null })).toContain("no_token");
     expect(codes({ ...ok, token: token.slice(0, -2) + "xx" })).toContain("bad_token");

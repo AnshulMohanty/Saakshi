@@ -22,8 +22,15 @@ export interface AssetStatus {
   steps: Array<{ name: string; status: string; error?: string }>;
   failed: boolean;
   scored: boolean;
+  /** Null until scored, or when the display policy hides a mock-derived score (then `scoreHidden` says why). */
   trustScore: number | null;
   trustBand: "VERIFIED" | "NEEDS_REVIEW" | "FLAGGED" | null;
+  scoreHidden: string | null;
+  scoreMock: boolean;
+  chips: Array<{ code: string; text: string; tone: "good" | "neutral" | "warn" | "bad" }>;
+  /** The reason that decided a Needs review or Flagged band, in words. */
+  decisive: string | null;
+  phash: string | null;
   attested: boolean;
   reasons: UploadReason[];
   projectId: string | null;

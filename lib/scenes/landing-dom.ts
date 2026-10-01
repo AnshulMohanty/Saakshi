@@ -18,6 +18,7 @@ import { oklchCssToHex } from "../color/oklch";
 import { defaultTrustConfig } from "../trust/config";
 import type { TrustBand } from "../trust/types";
 import type { LiveEvent } from "../live";
+import { DUST_REVEAL, glyphOrigin, glyphPhoto, nearestGlyph } from "../landing/dust";
 import { drawLayers, loadImage } from "./layers";
 import type { Stage, StageFrame } from "./landing-stage";
 
@@ -111,18 +112,58 @@ export function setupLanding(root: HTMLElement, d: LandingData, opts: { mode: Mo
     qa("[data-night]").forEach((el) => ScrollTrigger.create({ trigger: el, start: NAV.start, end: NAV.end, onToggle: (s) => set(s.isActive) }));
   }
 
+  // D-0029: one tile of glyphs (each a demo photo's pHash) behind the night stickies.
+  const dustSet = d.dust.map((bits, i) => ({ bits, thumb: d.dustThumbs[i] ?? "" })).filter((g) => /^[01]{64}$/.test(g.bits));
   function dust() {
-    const bits = d.dust.filter((b) => /^[01]{64}$/.test(b));
-    if (!bits.length) return;
+    if (!dustSet.length) return;
     let s = `<svg xmlns="http://www.w3.org/2000/svg" width="${DUST.width}" height="${DUST.height}" viewBox="0 0 ${DUST.width} ${DUST.height}">`;
     for (let i = 0; i < DUST.glyphs; i++) {
-      const p = bits[(i * 7) % bits.length];
-      const ox = (i % DUST.cols) * DUST.colStep + DUST.x0 + (Math.floor(i / DUST.cols) % 2) * DUST.rowShift;
-      const oy = Math.floor(i / DUST.cols) * DUST.rowStep + DUST.y0;
-      for (let k = 0; k < 64; k++) if (p[k] === "1") s += `<rect x="${ox + (k % 8) * DUST.cell}" y="${oy + Math.floor(k / 8) * DUST.cell}" width="${DUST.size}" height="${DUST.size}" rx="${DUST.radius}" fill="${COLORS.dust}" fill-opacity="${DUST.alpha}"/>`;
+      const p = dustSet[glyphPhoto(i, dustSet.length)].bits;
+      const o = glyphOrigin(i);
+      for (let k = 0; k < 64; k++) if (p[k] === "1") s += `<rect x="${o.x + (k % 8) * DUST.cell}" y="${o.y + Math.floor(k / 8) * DUST.cell}" width="${DUST.size}" height="${DUST.size}" rx="${DUST.radius}" fill="${COLORS.dust}" fill-opacity="${DUST.alpha}"/>`;
     }
     const url = `url("data:image/svg+xml,${encodeURIComponent(s + "</svg>")}")`;
     qa("[data-dust]").forEach((el) => (el.style.backgroundImage = url));
+  }
+
+  // D-0088 (C26): near the cursor, the nearest glyph resolves into the photo it fingerprints. A
+  // mouse only, never under reduced motion; the thumbnail sits in the dust layer, under the
+  // chapter's content.
+  function dustReveal() {
+    if (reduced || !dustSet.some((g) => g.thumb) || !matchMedia("(pointer: fine)").matches) return;
+    for (const el of qa("[data-dust]")) {
+      const img = document.createElement("img");
+      img.alt = "";
+      img.decoding = "async";
+      img.setAttribute("aria-hidden", "true");
+      img.dataset.dustThumb = "";
+      Object.assign(img.style, { position: "absolute", left: "0", top: "0", zIndex: "0", width: `${DUST_REVEAL.side}px`, height: `${DUST_REVEAL.side}px`, objectFit: "cover", borderRadius: "4px", outline: "1px solid var(--n-border)", pointerEvents: "none", opacity: "0", transition: `opacity ${DUST_REVEAL.fadeMs}ms ease-out` });
+      el.prepend(img);
+      cleanups.push(() => img.remove());
+      let at = -1;
+      const hide = () => {
+        at = -1;
+        img.style.opacity = "0";
+      };
+      on(img, "load", () => {
+        if (at >= 0) img.style.opacity = "1";
+      });
+      on(el, "pointermove", (e) => {
+        const ev = e as PointerEvent;
+        if (ev.pointerType !== "mouse") return;
+        const r = el.getBoundingClientRect();
+        const g = nearestGlyph(ev.clientX - r.left, ev.clientY - r.top, DUST_REVEAL.reach);
+        const thumb = g ? dustSet[glyphPhoto(g.i, dustSet.length)].thumb : "";
+        if (!g || !thumb) return hide();
+        img.style.transform = `translate(${g.x - DUST_REVEAL.side / 2}px, ${g.y - DUST_REVEAL.side / 2}px)`;
+        if (g.i === at) return;
+        at = g.i;
+        img.style.opacity = "0";
+        if (img.getAttribute("src") === thumb && img.complete) img.style.opacity = "1";
+        else img.src = thumb;
+      });
+      on(el, "pointerleave", hide);
+    }
   }
 
   function mapInit() {
@@ -452,6 +493,7 @@ export function setupLanding(root: HTMLElement, d: LandingData, opts: { mode: Mo
   // ---------- setup (L:1234-1377)
   async function setup() {
     dust();
+    dustReveal();
     mapInit();
     const staticHeroMode = mode !== "full" || !d.hero;
     if (staticHeroMode) await staticHero();

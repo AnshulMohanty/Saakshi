@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
-import { dctLowFrequencies, hamming, phash, phashFromPixels } from "@/lib/phash";
+import { dctLowFrequencies, grayscale32, hamming, phash, phashFromPixels } from "@/lib/phash";
 
 const fixture = (name: string) => readFileSync(path.join(__dirname, "fixtures", name));
 
@@ -70,5 +70,34 @@ describe("hamming", () => {
   it("rejects malformed hashes", () => {
     expect(() => hamming("abc", "0000000000000000")).toThrow(TypeError);
     expect(() => hamming("zzzzzzzzzzzzzzzz", "0000000000000000")).toThrow(TypeError);
+  });
+});
+
+describe("grayscale32 (the browser's preview path, B5.2)", () => {
+  it("lands within a few bits of the server hash for the same image", async () => {
+    for (const name of ["scene-a.png", "scene-b.png", "geotagged.jpg"]) {
+      const { data, info } = await sharp(fixture(name)).rotate().resize(256, 256, { fit: "inside" }).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+      const preview = phashFromPixels(grayscale32(data, info.width, info.height));
+      expect(hamming(preview, await phash(fixture(name))), name).toBeLessThanOrEqual(6);
+    }
+  });
+
+  it("averages areas, flattens transparency on white and weights channels by Rec. 709", () => {
+    const flat = (r: number, g: number, b: number, a = 255) => grayscale32(new Uint8Array(Array.from({ length: 64 * 64 }, () => [r, g, b, a]).flat()), 64, 64);
+    expect(flat(0, 0, 0, 0)[0]).toBeCloseTo(255, 6);
+    expect(flat(255, 0, 0)[100]).toBeCloseTo(0.2126 * 255, 6);
+    expect(flat(0, 255, 0)[1023]).toBeCloseTo(0.7152 * 255, 6);
+    // 3 × 3 source onto 32 × 32: every cell gets a value, from the pixels it overlaps.
+    const tiny = grayscale32(new Uint8Array(Array.from({ length: 9 }, (_, i) => [i * 20, i * 20, i * 20, 255]).flat()), 3, 3);
+    expect(tiny.every((v) => v >= 0 && v <= 160)).toBe(true);
+    expect(() => grayscale32(new Uint8Array(4), 2, 2)).toThrow(RangeError);
+  });
+});
+
+describe("lib/phash-core is browser-safe", () => {
+  it("imports nothing (no sharp, no node:)", () => {
+    const src = readFileSync(path.join(__dirname, "..", "lib", "phash-core.ts"), "utf8");
+    expect(src.match(/^\s*import\s/m)).toBeNull();
+    expect(readFileSync(path.join(__dirname, "..", "lib", "client", "phash.ts"), "utf8").match(/from\s+"([^"]+)"/g)).toEqual(['from "../phash-core"']);
   });
 });

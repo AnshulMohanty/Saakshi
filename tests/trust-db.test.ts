@@ -144,6 +144,22 @@ describe("Trust Engine against the database", () => {
     expect((await verifyAllChains(ctx.db)).ok).toBe(true);
   });
 
+  it("send to review: any scored photo joins the queue, unchanged, until a reviewer decides", async () => {
+    const { requestReview } = await import("@/lib/review");
+    const o = await load(original.id);
+    expect(o.trustBand).toBe("VERIFIED");
+    expect((await listReviewQueue(ctx.db, ctx.media)).items.map((i) => i.id)).not.toContain(original.id);
+    expect(await requestReview(ctx.db, [original.id, original.id, "00000000-0000-4000-8000-000000000000"], { actor: "asha" })).toBe(1);
+    const queued = (await listReviewQueue(ctx.db, ctx.media)).items.find((i) => i.id === original.id);
+    expect(queued).toMatchObject({ band: "VERIFIED", score: o.trustScore });
+    const [row] = await ctx.db.select().from(auditLog).where(and(eq(auditLog.assetId, original.id), eq(auditLog.action, "review.requested")));
+    expect(row).toMatchObject({ actor: "reviewer:asha" });
+    await decideReview(ctx.db, ctx.media, { assetId: original.id, decision: "approve", note: "Checked the GPS against the site" });
+    expect((await load(original.id)).reviewRequestedAt).toBeNull();
+    expect((await listReviewQueue(ctx.db, ctx.media)).items.map((i) => i.id)).not.toContain(original.id);
+    expect((await verifyAllChains(ctx.db)).ok).toBe(true);
+  });
+
   it("statusFor keeps reviewer decisions", () => {
     expect(statusFor("VERIFIED", "processing")).toBe("ready");
     expect(statusFor("NEEDS_REVIEW", "ready")).toBe("flagged");

@@ -1,11 +1,9 @@
-import { Placeholder } from "@/components/placeholder";
+import { connection } from "next/server";
+import { AppRoute } from "@/components/app/app-route";
 
 export const metadata = { title: "Studio" };
 
-export default function StudioPage() {
-  return (
-    <Placeholder title="Studio" phase="Phase 6">
-      Impact and campaign reports where every number links to its source photo.
-    </Placeholder>
-  );
+export default async function StudioPage({ searchParams }: PageProps<"/studio">) {
+  await connection();
+  return <AppRoute screen="studio" project={null} sp={await searchParams} />;
 }

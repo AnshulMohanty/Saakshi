@@ -11,6 +11,7 @@
 import "./_env";
 import path from "node:path";
 import { capturePage, launchBrowser, pageSlug, VIEWPORTS, type Variant } from "./_capture";
+import { captureStateVariants } from "./_capture-states";
 
 const arg = (flag: string) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : undefined);
 const WALL = { width: 1920, height: 1080, mobile: false } as const;
@@ -39,19 +40,34 @@ export function preset(page: string, fixture: boolean): { route: string; variant
         ],
       };
     case "saakshi-app": {
-      const screens: Record<string, string> = { library: "/library", review: "/review", projects: "/projects", studio: "/studio" };
+      // The design capture sets demoState and theme, then clicks the rail (one page). The fixture
+      // takes ?state= and ?theme= and is driven the same way; the product has a route per screen.
+      const wait = (ms: number) => `await new Promise((r) => setTimeout(r, ${ms}));`;
+      const rail = (label: string) => `[...document.querySelectorAll('nav[aria-label="Main"] button')].find((b) => (b.title || b.textContent || "").trim().startsWith(${JSON.stringify(label)}))?.click();`;
+      const routes: Record<string, string> = { library: "/library", review: "/review", projects: "/projects/demo-hero-cleanup", studio: "/studio" };
       const out: Variant[] = [];
       for (const state of ["normal", "loading", "empty", "error", "offline"])
         for (const theme of ["light", "dark"])
-          for (const [screen, route] of Object.entries(screens))
-            out.push({ id: `${state}-${theme}-${screen}`, mode: state === "normal" && theme === "light" ? "scroll" : "single", url: q(at(route), { state, theme }) });
-      out.push({ id: "palette", mode: "single", url: q(at("/library"), { state: "normal", theme: "light" }), prepare: "window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, ctrlKey: true }))" });
+          for (const screen of ["Library", "Review", "Projects", "Studio"]) {
+            const k = screen.toLowerCase();
+            out.push({
+              id: `${state}-${theme}-${k}`,
+              mode: state === "normal" && theme === "light" ? "scroll" : "single",
+              url: q(fixture ? at("/library") : routes[k], { state, theme }),
+              ...(fixture ? { prepare: `(async () => { ${wait(300)} ${rail(screen)} ${wait(900)} })()` } : {}),
+            });
+          }
+      const lib = q(fixture ? at("/library") : "/library", { state: "normal", theme: "light" });
+      out.push({ id: "drawer", mode: "single", url: lib, prepare: `(async () => { document.querySelector('#lib-grid button')?.click(); ${wait(1200)} })()` });
+      out.push({ id: "drawer-exploded", mode: "single", url: lib, prepare: `(async () => { document.querySelector('#lib-grid button')?.click(); ${wait(900)} [...document.querySelectorAll("aside button")].find((b) => (b.textContent || "").trim().startsWith("Take it apart"))?.click(); ${wait(1400)} })()` });
+      out.push({ id: "palette", mode: "single", url: lib, prepare: `(async () => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, ctrlKey: true })); ${wait(600)} })()` });
       return { route: at("/library"), variants: out };
     }
-    case "capture": {
-      const states = ["live-flow", "permission-prompt", "location-denied", "low-accuracy", "offline", "done"];
-      return { route: at("/capture"), variants: states.map((s) => ({ id: s, mode: "single" as const, url: q(at("/capture"), { state: s }) })) };
-    }
+    case "capture":
+      // Fixture: the harness, as the design capture drives it. App: the phone screen on the dev states (?state=, B5.11).
+      return fixture
+        ? { route: at("/capture"), variants: captureStateVariants("!!document.querySelector('#cam')", VIEWPORTS[0]) }
+        : { route: "/capture", variants: ["live-flow", "permission-prompt", "location-denied", "low-accuracy", "offline", "done"].map((s) => ({ id: `${s}-screen`, mode: "single" as const, element: "#cam", url: q("/capture", { state: s }) })) };
     case "how-it-works": {
       // The same clicks as design-capture: a preset, then the simulator in view.
       const pick = (label: string) => `(async () => { [...document.querySelectorAll("#sim button")].find((b) => (b.textContent || "").trim().startsWith(${JSON.stringify(label)}))?.click(); await new Promise((r) => setTimeout(r, 900)); document.querySelector('#sim').scrollIntoView(); await new Promise((r) => setTimeout(r, 300)); })()`;
@@ -83,6 +99,7 @@ export function preset(page: string, fixture: boolean): { route: string; variant
         variants: [
           { id: "default" },
           { id: "loops", viewports: [VIEWPORTS[0]], mode: "timeline", timeline: { ready: "!!document.querySelector('[data-loops-ready]')", trigger: "0", at: [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5] } },
+          { id: "reduced", reducedMotion: "reduce" },
         ],
       };
     default:
@@ -107,8 +124,8 @@ async function main() {
   if (!(res instanceof Response)) throw new Error(`${url} is not reachable (${res instanceof Error ? res.message : res}). Start the app with \`pnpm dev\`, or pass --base.`);
   if (!res.ok) console.warn(`${url} answered HTTP ${res.status}; capturing anyway.`);
 
-  // --variant full,reduced and --width 1440 narrow a preset while iterating (the manifest then
-  // holds only those; a full run restores everything).
+  // --variant full,reduced and --width 1440 narrow a preset while iterating: those are re-captured
+  // and merged into the existing manifest (everything else is kept).
   const only = arg("--variant")?.split(",");
   const width = arg("--width") ? Number(arg("--width")) : null;
   const variants = p?.variants
@@ -117,7 +134,7 @@ async function main() {
   const browser = await launchBrowser();
   try {
     console.log(`${url} → design/actual/${name}/`);
-    await capturePage(browser, { name, url, outDir: path.join(process.cwd(), "design", "actual"), video: !process.argv.includes("--no-video"), variants, log: console.log });
+    await capturePage(browser, { name, url, outDir: path.join(process.cwd(), "design", "actual"), video: !process.argv.includes("--no-video"), variants, merge: !!(only || width), log: console.log });
   } finally {
     await browser.close();
   }

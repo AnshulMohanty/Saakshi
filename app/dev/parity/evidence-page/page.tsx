@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
 import type { Metadata } from "next";
 import { EvidencePage } from "@/components/evidence/evidence-page";
-import { fullDateTime } from "@/lib/charts/time-axis";
 import { bitsToHex, diffCells } from "@/lib/glyph";
 import { designArchive } from "@/lib/parity/archive";
+import { heroLayer, heroWhen } from "@/lib/parity/hero";
 import { skScore } from "@/lib/parity/sk";
 
 export const metadata: Metadata = { title: "Parity: evidence page", robots: { index: false } };
@@ -27,14 +27,7 @@ export default async function EvidenceParity() {
     prev = createHash("sha256").update(`${prev}|${e.what}|${e.when}`).digest("hex");
     return { label: e.what, when: e.when, hash: `${prev.slice(0, 16)}…` };
   });
-  const when = fullDateTime(Date.parse(D.hero.taken), "second", 330, { seconds: true });
-  const boxes: Array<[string, number, number, number, number]> = [
-    ["tractor", 140, 510, 510, 750],
-    ["debris", 580, 470, 880, 680],
-    ["horse cart", 700, 500, 1300, 960],
-    ["horse", 1265, 575, 1490, 765],
-    ["person, face blurred", 1462, 555, 1565, 772],
-  ];
+  const when = heroWhen(D);
   const tone = (x: (typeof r.rows)[number]) => (x.pts === x.max ? "good" : x.pts ? "warn" : "neutral") as "good" | "warn" | "neutral";
   return (
     <EvidencePage
@@ -46,7 +39,7 @@ export default async function EvidenceParity() {
         trust: { score: r.score, band: r.band, hiddenText: null, mock: false },
         viewer: {
           photo: { src: src(D.hero.src), alt: "Versova beach during a clean-up: a tractor loads debris, a horse cart waits. Faces blurred." },
-          layer: { bits: D.hero.hash, lat: D.hero.lat, lng: D.hero.lng, when, extra: `altitude ${D.hero.alt} m`, aiBoxes: boxes.map(([label, a, b, c, d]) => ({ label, x0: a / 1920, y0: b / 1440, x1: c / 1920, y1: d / 1440 })), aiTags: [] },
+          layer: heroLayer(D),
           mask: src(D.hero.mask),
           layers: [
             { name: "The photo", color: "var(--foreground)", detail: "The file as taken, 1600 × 1200 here. Faces blurred on every public copy." },

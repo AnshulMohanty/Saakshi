@@ -21,6 +21,7 @@ const ACTION: Record<string, string> = {
   "trust.rescore": "Re-scored after a related photo changed",
   "pipeline.reset": "Checks re-run",
   "review.approve": "Approved by a reviewer",
+  "review.requested": "Sent to review for a second look",
   "review.reject": "Rejected by a reviewer",
   "project.updated": "Its project was edited",
   "report.generated": "Counted in a report",

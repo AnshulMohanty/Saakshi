@@ -656,3 +656,104 @@ Newest last. After every phase or fix: what changed, why, the evidence, any new 
     - The poster sets the shell's defaults and resets those inherited properties. The other ported pages set tabular-nums themselves, as their designs do.
   - **Parity** on `/dev/parity/qr-poster`: 0% at 1440 and 0.1% at 390. The 390 remainder is the logo: the prototype's own 390 capture shows a broken image there. Boxes `--text`: 15 compared at each width, 0 over tolerance.
   - Tests: `tests/short-link.test.ts` (2) and a poster model test in `tests/measure-db.test.ts`. `pnpm test`: 501 passing in 49 files; lint and typecheck clean.
+
+- **2026-10-02, Phase 8 Part C: capture screen** (`/capture`, moved to `app/(designed)`, full-bleed).
+  - Port of the phone screen only (CA:333-422; D-1188), as `components/capture/capture-screen.tsx`. It is presentational and driven by one of two controllers.
+  - **Live controller** (`use-live-capture.ts`):
+    - Rear camera, `watchPosition` (ring, accuracy, mini-map from `lib/capture/hud.ts`), DeviceOrientation for the horizon (iOS asks from the first-run button), and the capture token.
+    - First run: the design's permission screen, skipped when the browser already granted both permissions. Then the location-off screen ("I've turned it on" / "Continue without location").
+    - If the camera fails, a screen says why, with the phone's own camera app as a fallback (saved as an upload). The tray opens the gallery.
+    - Each photo: an on-device fingerprint (B5.2), the shutter sequence (D-1189), then the real pipeline in the sheet.
+      - The sheet's steps come from `/api/assets/[id]/status`: Uploading, Reading, Checking, Scored.
+      - The score counts up to the real Trust Engine score. The band, the rule chips and the decisive reason come from the same API, which now also returns them and the server pHash. A mock-derived score is hidden in production.
+      - "See it" opens the evidence page.
+    - Offline (B5.12): photos queue in IndexedDB (`lib/client/offline-queue.ts`) with device time and fix. They upload oldest first when back online, as `taken_offline=1`, and the server never attests them (`validateCapture`: "Taken offline: time from your phone.").
+    - Checked in Chromium with a fake camera: Verified 85 with real chips; offline, 1 queued, uploaded on reconnect, queue empty; no console errors.
+  - **Simulation controller** (`use-sim-capture.ts`): the prototype's logic (CA:428-517).
+    - Used by the parity fixture, on the prototype's photo and rules (bands 80/40), inside its review harness (`components/capture/design.tsx`).
+    - Also by the dev-only review states `/capture?state=<id>` (B5.11), on our hero photo with lib/trust's simulator (bands 75/45).
+  - **B5.2:** `lib/phash-core.ts` is the pure pHash core (DCT, hash, an area-average grayscale resize), shared by sharp and the browser (`lib/client/phash.ts`). On the three test fixtures the browser path is within 6 of 64 bits of the server hash (test).
+  - **New issue G9 (found and fixed):** a constant `Math.random` from document start, used to make the prototype's GPS noise deterministic, broke our page. React keys its DOM internals by `Math.random()` at load, so the app's React and the Next dev overlay's React got the same keys, and the app's event listeners never attached. The stub now runs at the trigger, after load.
+  - **Issue G5, root cause found and fixed:** `page.clock.install()` alone leaves Playwright's clock flowing in real time; only `pauseAt` stops it. Every timeline capture so far let each screenshot's real duration leak into the next frame, which is the "frame-phase jitter" on the Witness Wall's arrival. `scripts/_capture.ts` now pauses the clock after install. Timeline references need recapturing; the capture ones are done.
+  - **Parity** on `/dev/parity/capture`, with the design capture and ours sharing `scripts/_capture-states.ts`:
+    - on the fake clock, now paused;
+    - the feed's drift frozen at rest;
+    - noise-free GPS samples, captured once settled.
+    - Results: the six states 0–0.1% at 1440 and 390; the phone screens 0% in five states and 0.3% for "Done"; the shutter sequence (12 frames) 0% mean, worst 0.3%.
+  - Tests:
+    - `tests/capture-hud.test.ts` (9), `tests/offline-queue.test.ts` (3) and `tests/motion-capture.test.ts` (3, constants pinned to the source);
+    - the pHash browser path and its browser-safety (3, in `tests/phash.test.ts`);
+    - `taken_offline` in `tests/capture.test.ts` and `tests/upload-flow.test.ts`.
+    - `pnpm test`: 521 passing in 52 files; lint and typecheck clean.
+
+- **2026-10-02, Phase 8 Part C: the app** (`/library`, `/review`, `/projects/[id]`, `/studio`; Saakshi_App, AP:415-1179).
+  - **Shell** (`components/app/app-shell.tsx`):
+    - the demo bar with Reset demo, and the offline notice (`navigator.onLine`);
+    - the rail: 220 px, or 60 px collapsed, collapsed on phones; Capture; the Review count; the theme toggle (stored per viewer) and collapse;
+    - the top bar with ⌘K;
+    - five states per screen with the prototype's copy;
+    - the evidence drawer, the command palette (with the handoff's 160 ms rise) and 2.6 s toasts.
+  - Each screen is a route rendering the shell (`components/app/app-route.tsx`):
+    - **empty** when nothing is scored yet;
+    - **error** with what failed and a request id, also logged server-side;
+    - in development only, `?state=` and `?theme=` force a state or theme for review (B5.11).
+  - **Library:**
+    - search chips (`lib/app/chips.ts`, pure: band, project by name, city or alias, no location, year, text; Hinglish and typos via `lib/search/normalize.ts`). Text chips use the hybrid search (`/api/search`).
+    - The band filter.
+    - The map (`lib/app/map.ts`, pure): the B5.10 dot field with the prototype's perspective, clusters with a band bar, per-photo pins by band shape when zoomed, and a stable scatter for photos without GPS.
+    - The grid: band mark and score, fingerprint on hover, select.
+    - The bulk bar:
+      - **Send to review** is real (`requestReview`, new column `review_requested_at`, migration `0013`, `POST /api/review/request`; it joins the queue until a decision clears it, and each request is an audit row).
+      - **Add to report** opens Studio for the selection's project, because reports count every verified photo of a project.
+    - Live import and the empty state's "Import the demo photos" start the real demo job (`/api/demo/reset`) and refresh as photos arrive.
+  - **Review:**
+    - the real queue, flagged first;
+    - the closest near-duplicate side by side, with both fingerprints and their difference;
+    - the ledger strip;
+    - a required note, A/R/J/K and ⌘Enter;
+    - the seal and reject animations. Decisions go to `POST /api/review/[assetId]` (audit chain).
+  - **Project overview:**
+    - KPI cards threaded to the photos counted: SQL counts, the best measured pair's before and after (`rankPairs`), check-ins;
+    - the pair with its mask sweep, the flagged list, and each spot's real trend as a sparkline with its last check-in.
+  - **Studio:**
+    - the latest report's claims on the A4 with threads to their photos, and its Method from our config;
+    - posts from our data;
+    - the caption from the report;
+    - Export gives the campaign kit's real download (`/api/campaign/<report>/<template>`);
+    - "Generate the report" when there is none.
+    - Paper and posts keep light colours in dark mode (fixed `--l-*` and `--n-*` aliases where the template wrote literal colours).
+  - **Drawer:** the photo and its layer art (`lib/scenes/layers.ts`, now for every photo with a fingerprint), taken apart in 3-D, the loupe, and Trust, Facts, History (from the audit log), Duplicates (nearest fingerprint among the photos) and Credits.
+  - **Parity** on `/dev/parity/saakshi-app`. It is the prototype's archive in `lib/app/fixture.ts`; the rail switches screens in place, as in the prototype.
+    - All 86 runs: five states × two themes × four screens, plus the drawer, the exploded drawer and the palette, each at 1440 and 390.
+    - Pixelmatch is 0% in 84 runs and 0.1% in two (dark library at 390, normal and offline).
+    - **New issue G10 (found and fixed):** the prototype's runtime wraps each `{{ }}` in an element. Inside a flex chip, "label, points" are three flex items with the gap before the comma, and our merged text wrapped differently: 2.5% mean at 390. The port now wraps the two values.
+  - Checked in Chromium on the dev DB:
+    - Approve without a note shows the audit prompt;
+    - Reject with a note posts and the queue drops from 5 to 4;
+    - Send to review queues the photo;
+    - ⌘K "go to stu" Enter opens /studio;
+    - no page errors.
+  - Tests: `tests/app-chips.test.ts` (6), `tests/app-map.test.ts` (6), `tests/app-view.test.ts` (3, against PGlite) and a review-request test in `tests/trust-db.test.ts`. `pnpm test`: 537 passing in 55 files; lint and typecheck clean.
+- **Phase 8, part C: the P1 landing touches, the desktop loupe, and the parity record** (2 Oct)
+  - **C24, ink-drop intro** (`components/landing/ink-intro.tsx`):
+    - on a first visit only, a violet drop spreads and the logo's lit cells settle in (1.2 s), then the page shows;
+    - a key or pointer press skips it;
+    - an inline head script (`lib/landing/intro.ts`) hides it before paint when the visit is not the first or motion is reduced, so it never flashes.
+  - **C26, fingerprint dust reveal** (`lib/landing/dust.ts`, pure, 6 tests in `tests/landing-dust.test.ts`): near a mouse pointer, the nearest glyph in the night stickies' dust tile resolves into a 40 px thumbnail of the photo it fingerprints.
+    - The landing data gains `dustThumbs`: signed THUMB URLs, parallel to the dust's pHashes, so each thumbnail is the exact photo behind its glyph.
+    - The thumbnail sits in the dust layer, under the chapter's content.
+    - Mouse only, never under reduced motion.
+    - Checked in Chromium on the dev DB: it appears over bare background with a signed URL and stays hidden under the photo grid.
+  - **C25, the drawer's loupe:**
+    - shows only with a fine pointer and full motion (`lib/client/media-query.ts`);
+    - its label drops the design's "P1" review mark (B5.11).
+  - `tests/page-views.test.ts` (4): How it works, Demo entry, the evidence page and the QR poster from PGlite rows. These are the four page models that had no direct test. Production hides the mock-derived counts.
+  - Parity tooling:
+    - `--variant`/`--width` re-captures now merge into the existing manifest instead of replacing it;
+    - the demo entry gained the `reduced` variant (deterministic, 0%);
+    - `pnpm parity:summary` writes `design/PARITY.md` from the last report and box runs.
+  - **Parity record** (`design/PARITY.md`):
+    - **144 runs on 10 pages; 142 are within the 1.5% gate, and 0 are unexplained.** The landing re-captured after C26 is still 0% mean in all six runs.
+    - The two runs over the gate are the demo entry's `default` (6.3% at 1440, 2.2% at 390). That is **G6, now explained and closed:** the prototype scatters the manager loop's tiles with `Math.random` (DE:471), and `default` is a real-time scroll capture. The deterministic `reduced` (0%) and fake-clock `loops` (≤ 1.5%) runs are the comparable ones.
+    - The drawer at 390 is 0.6% because the loupe button is gone on touch.
+  - `pnpm test`: 547 passing in 57 files; lint and typecheck clean.

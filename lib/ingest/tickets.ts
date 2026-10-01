@@ -12,7 +12,7 @@ export const MOCK_UPLOAD_PATH = "/api/uploads/mock";
 /** Keys the browser may put in an upload's context; values are truncated strings. */
 export const CONTEXT_KEYS = [
   "source", "token", "client_captured_at", "device_lat", "device_lng", "device_accuracy_m", "fix_timestamp",
-  "low_accuracy", "project", "spot", "uploader_lat", "uploader_lng", "uploader_accuracy_m", "filename",
+  "low_accuracy", "project", "spot", "uploader_lat", "uploader_lng", "uploader_accuracy_m", "filename", "taken_offline",
 ] as const;
 
 export function sanitizeContext(input: unknown): Record<string, string> {

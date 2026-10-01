@@ -40,7 +40,8 @@
     "land:dots": "tsx --conditions=react-server scripts/land-dots.ts",
     "parity:boxes": "tsx --conditions=react-server scripts/parity-boxes.ts",
     "parity:inspect": "tsx scripts/parity-inspect.ts",
-    "parity:motion": "tsx --conditions=react-server scripts/parity-motion.ts"
+    "parity:motion": "tsx --conditions=react-server scripts/parity-motion.ts",
+    "parity:summary": "tsx scripts/parity-summary.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

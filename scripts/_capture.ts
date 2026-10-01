@@ -11,7 +11,7 @@
  * Output: <outDir>/<page>/<width>/<step>.png, <outDir>/<page>/manifest.json, and a short video
  * per page at desktop width (<outDir>/<page>/video.webm; needs `npx playwright install ffmpeg`).
  */
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { chromium, type Browser, type Page } from "playwright";
 
@@ -217,7 +217,10 @@ async function captureVariant(browser: Browser, o: { name: string; url: string; 
     };
     let scrollHeight = vp.height;
     if (v.mode === "timeline" && v.timeline) {
+      // Installed, Playwright's clock still flows in real time; paused, only runFor moves it, so
+      // the time a screenshot takes can't leak into the next frame (issue G5).
       await page.clock.install({ time: new Date("2026-09-28T10:00:00+05:30") });
+      await page.clock.pauseAt(new Date("2026-09-28T10:00:01+05:30"));
       await page.goto(v.url ?? o.url, { waitUntil: "load", timeout: 120_000 });
       // Advance the fake clock until the page is ready (its own polling timers need ticks).
       let ticks = 0;
@@ -279,11 +282,17 @@ async function captureVariant(browser: Browser, o: { name: string; url: string; 
   return out;
 }
 
-export async function capturePage(browser: Browser, o: { name: string; url: string; outDir: string; video?: boolean; variants?: Variant[]; log?: (m: string) => void }): Promise<CaptureManifestV2> {
+/**
+ * `merge`: re-capture only the given variants (and their viewports) into the existing manifest,
+ * keeping every other variant and width as it was (a narrowed `--variant`/`--width` run).
+ */
+export async function capturePage(browser: Browser, o: { name: string; url: string; outDir: string; video?: boolean; variants?: Variant[]; merge?: boolean; log?: (m: string) => void }): Promise<CaptureManifestV2> {
   const dir = path.join(o.outDir, o.name);
-  await rm(dir, { recursive: true, force: true });
+  const previous = o.merge ? ((await readFile(path.join(dir, "manifest.json"), "utf8").then((t) => JSON.parse(t) as CaptureManifestV2, () => null)) ?? null) : null;
+  if (previous) for (const v of o.variants ?? []) for (const vp of v.viewports ?? VIEWPORTS) await rm(path.join(dir, v.id, String(vp.width)), { recursive: true, force: true });
+  else await rm(dir, { recursive: true, force: true });
   await mkdir(dir, { recursive: true });
-  const manifest: CaptureManifestV2 = { page: o.name, source: o.url, capturedAt: new Date().toISOString(), variants: [], video: null, notes: [] };
+  const manifest: CaptureManifestV2 = { page: o.name, source: o.url, capturedAt: new Date().toISOString(), variants: [], video: previous?.video ?? null, notes: [] };
   // One variant at a time, one browser context at a time (low-memory machine).
   for (const v of o.variants?.length ? o.variants : [DEFAULT_VARIANT]) {
     try {
@@ -326,6 +335,19 @@ export async function capturePage(browser: Browser, o: { name: string; url: stri
       o.log?.(`  ${o.name}: ${manifest.notes.at(-1)}`);
     }
     await rm(path.join(dir, ".video"), { recursive: true, force: true });
+  }
+  if (previous) {
+    // New viewports replace the same widths; everything else is kept, in the old order.
+    const fresh = new Map(manifest.variants.map((v) => [v.id, v]));
+    const merged = previous.variants.map((old) => {
+      const n = fresh.get(old.id);
+      if (!n) return old;
+      fresh.delete(old.id);
+      const widths = new Set(n.viewports.map((vp) => vp.width));
+      return { ...n, viewports: [...old.viewports.filter((vp) => !widths.has(vp.width)), ...n.viewports].sort((a, b) => b.width - a.width) };
+    });
+    manifest.variants = [...merged, ...fresh.values()];
+    manifest.notes = [...previous.notes.filter((t) => !manifest.variants.some((v) => t.startsWith(`Variant ${v.id} failed`))), ...manifest.notes];
   }
   await writeFile(path.join(dir, "manifest.json"), JSON.stringify(manifest, null, 2));
   return manifest;

@@ -285,6 +285,8 @@ export const assets = pgTable(
     trustReasons: jsonb("trust_reasons").$type<TrustReason[]>(),
     scoredAt: timestamp("scored_at", { withTimezone: true }),
     review: jsonb("review").$type<ReviewDecision>(),
+    /** A person asked for a second look ("Send to review" in the library); the decision clears it. */
+    reviewRequestedAt: timestamp("review_requested_at", { withTimezone: true }),
     status: assetStatus("status").notNull().default("processing"),
     transforms: jsonb("transforms").$type<TransformEdit[]>().notNull().default([]),
 

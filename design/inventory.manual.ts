@@ -234,7 +234,7 @@ MANUAL.push(
   EV("Evidence page", "state", "'History intact' / 'History broken' / 'Checking history' badge; each entry's hash shown (16 chars)", "EV:440-452,479-486", "components/audit-timeline.tsx", { binding: "B5.9: GET /api/audit/chain?assetId= + browser Web Crypto SHA-256 recompute with lib/hashchain.ts's canonical format; server chain authoritative" }),
   EV("Evidence page", "interaction", "Copy link → 'Link copied' 1.6 s", "EV:355,556-557", "components/evidence/evidence-page.tsx"),
   EV("Evidence page", "state", "Reduced motion: explode switches without transition", "P2 Evidence/Fallback", "components/evidence-viewer.tsx", { checklist: ["C03"] }),
-  EV("Evidence page", "effect", "Evidence loupe on desktop (150 px lens with the fingerprint or measured layer; follows the pointer; hidden on touch and reduced motion)", "DH scenes 'Evidence loupe'; AP:997-1006", "components/evidence-loupe.tsx", { priority: "P1", checklist: ["C25"] }),
+  EV("Evidence page", "effect", "Evidence loupe on desktop (150 px lens with the fingerprint or measured layer; follows the pointer; hidden on touch and reduced motion)", "DH scenes 'Evidence loupe'; AP:997-1006", "components/app/evidence-drawer.tsx", { priority: "P1", checklist: ["C25"] }),
 
   // ------------------------------------------------------------------------- spot page
   SP("Spot page", "layout", "Header (logo, 'Spot', QR poster link); title (project, h1 spot name clamp(34px,5.4vw,64px), mono coords + radius); three counters; photo + scrubber + mask toggle | trend card; Latest check-ins grid; fixed bottom CTA 'Add a check-in photo'", "SP:319-387", "app/(designed)/spots/[slug]/page.tsx", { checklist: ["C14"] }),
@@ -310,7 +310,7 @@ MANUAL.push(
   { page: "all", section: "Metrics", type: "data", what: "Only allowed metrics; samples removed or marked", source: "DH checklist", priority: "P0", route: "all", component: "lib/provenance.ts", binding: "B5.4 + B5.11: no sample values ship; missing data → designed empty state", checklist: ["C18"] },
   { page: "all", section: "Performance", type: "effect", what: "60 fps desktop, 30+ fps mid-range Android", source: "DH checklist; LS Budget", priority: "P0", route: "/, /witness", component: "scripts/quality-gates.ts", checklist: ["C21"] },
   { page: "saakshi-landing", section: "Intro", type: "effect", what: "Ink-drop intro, 1.2 s, first visit, skippable", source: "DH checklist P1", priority: "P1", route: "/", component: "components/landing/ink-intro.tsx", checklist: ["C24"] },
-  { page: "saakshi-landing", section: "Dust", type: "effect", what: "Fingerprint dust resolving into thumbnails near the cursor", source: "DH checklist P1", priority: "P1", route: "/", component: "components/landing/dust-reveal.tsx", checklist: ["C26"] },
+  { page: "saakshi-landing", section: "Dust", type: "effect", what: "Fingerprint dust resolving into thumbnails near the cursor", source: "DH checklist P1", priority: "P1", route: "/", component: "lib/landing/dust.ts", checklist: ["C26"] },
 );
 
 /** Developer_Handoff ship checklist (DH:460-461): 21 P0, 7 P1. */

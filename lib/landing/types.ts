@@ -208,6 +208,8 @@ export interface LandingData {
   nodes: PipelineNode[];
   /** Dust glyphs on night stickies (D-0029): pHash bits of archive photos. */
   dust: string[];
+  /** Signed thumbnails parallel to `dust` (the cursor reveal, D-0088). */
+  dustThumbs: string[];
   credits: Credit[];
   footer: { repoUrl: string | null; built: string; disclaimer: string };
   /** Dev only: numbers here rest on mock providers. */

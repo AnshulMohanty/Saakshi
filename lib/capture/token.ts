@@ -70,11 +70,13 @@ export interface CaptureCheckInput {
   accuracyM: number | null | undefined;
   /** Project/spot the upload says it is for (from the capture page URL). */
   hint?: { projectId?: string | null; spotId?: string | null } | null;
+  /** Queued on the phone while offline and uploaded later (B5.12): the time is the phone's own. */
+  takenOffline?: boolean;
 }
 
 export type CaptureReasonCode =
   | "no_token" | "bad_token" | "unknown_token" | "no_ticket" | "expired" | "outside_window" | "clock_skew"
-  | "no_client_time" | "stale_fix" | "late_upload" | "wrong_project" | "no_location" | "low_accuracy";
+  | "no_client_time" | "stale_fix" | "late_upload" | "wrong_project" | "no_location" | "low_accuracy" | "taken_offline";
 
 export interface CaptureReason {
   code: CaptureReasonCode;
@@ -95,11 +97,12 @@ export const MAX_UPLOAD_MS = 30 * 60 * 1000;
 /**
  * Attested = a valid, unexpired capture token, and at the shutter (anchored to the server's
  * ticket time): device clock within 2 min of the server, GPS fix at most 60 s old and ≤ 100 m,
- * and the upload confirmed within 30 min of the ticket.
+ * and the upload confirmed within 30 min of the ticket. A photo queued offline is never attested.
  */
 export function validateCapture(input: CaptureCheckInput): CaptureCheck {
   const reasons: CaptureReason[] = [];
   const add = (code: CaptureReasonCode, message: string) => reasons.push({ code, message });
+  if (input.takenOffline) add("taken_offline", "Taken offline: time from your phone.");
 
   let claims: TokenClaims | null = null;
   if (!input.token) add("no_token", "No capture token: not taken with Witness Capture.");

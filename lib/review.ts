@@ -2,9 +2,10 @@
  * Review queue: photos the Trust Engine did not verify, for a person to approve or reject.
  * A decision never changes the score or band (the engine's reading stays on record); it sets the
  * asset's status and moderation, Cloudinary's moderation status, and appends an audit row with
- * the reviewer's note.
+ * the reviewer's note. A person can also ask for a second look at any scored photo (requestReview):
+ * it joins the queue until someone decides.
  */
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, ne, or } from "drizzle-orm";
 import { appendAudit } from "./audit";
 import type { DB } from "./db/client";
 import { assets, duplicates, projects, type ReviewDecision } from "./db/schema";
@@ -42,7 +43,7 @@ export async function listReviewQueue(db: DB, media: MediaProvider, { reason, li
   const rows = await db
     .select()
     .from(assets)
-    .where(and(eq(assets.status, "flagged"), inArray(assets.trustBand, ["NEEDS_REVIEW", "FLAGGED"])))
+    .where(or(and(eq(assets.status, "flagged"), inArray(assets.trustBand, ["NEEDS_REVIEW", "FLAGGED"])), and(isNotNull(assets.reviewRequestedAt), isNotNull(assets.trustScore))))
     .orderBy(desc(assets.uploadedAt), assets.id)
     .limit(1000);
   const names = new Map((await db.select({ id: projects.id, name: projects.name }).from(projects)).map((p) => [p.id, p.name]));
@@ -126,7 +127,7 @@ export async function decideReview(
   await db.transaction(async (tx) => {
     await tx
       .update(assets)
-      .set({ status, review, moderation: { ...(a.moderation ?? {}), status, checkedAt: review.at } })
+      .set({ status, review, reviewRequestedAt: null, moderation: { ...(a.moderation ?? {}), status, checkedAt: review.at } })
       .where(eq(assets.id, a.id));
     await appendAudit(tx as unknown as DB, {
       assetId: a.id,
@@ -136,4 +137,23 @@ export async function decideReview(
     });
   });
   return { id: a.id, status, review, score: a.trustScore, band: a.trustBand };
+}
+
+/**
+ * "Send to review": asks for a second look at scored photos. They join the queue (the score and
+ * band are unchanged) until a reviewer decides; each request is an audit row. Photos not scored
+ * yet are skipped. Returns how many were queued.
+ */
+export async function requestReview(db: DB, ids: string[], { actor = "reviewer" }: { actor?: string } = {}): Promise<number> {
+  const unique = [...new Set(ids)].slice(0, 500);
+  if (!unique.length) return 0;
+  const rows = await db.select({ id: assets.id }).from(assets).where(and(inArray(assets.id, unique), isNotNull(assets.trustScore), ne(assets.status, "processing")));
+  const at = new Date();
+  for (const r of rows) {
+    await db.transaction(async (tx) => {
+      await tx.update(assets).set({ reviewRequestedAt: at }).where(eq(assets.id, r.id));
+      await appendAudit(tx as unknown as DB, { assetId: r.id, actor: `reviewer:${actor.slice(0, 80)}`, action: "review.requested", detail: {} });
+    });
+  }
+  return rows.length;
 }

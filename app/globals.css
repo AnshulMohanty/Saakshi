@@ -95,6 +95,10 @@
   --logo-off: #786ea0; /* unlit cells of the logo glyph (at 18%) */
   --chart-axis: #b9bed3; /* landing chapter 7 baseline */
   --desk: #f5f5f4; /* the print shell's desk behind the poster sheet (the prototype's doc-page) */
+  --map-dot: rgba(110, 100, 160, 0.34); /* app library map: land dots (canvas, AP:964) */
+  --map-dot-dark: rgba(170, 160, 220, 0.32);
+  --map-site: rgba(27, 122, 75, 0.5); /* the zoomed site's dashed ellipse (AP:966) */
+  --map-site-dark: rgba(79, 203, 138, 0.6);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -175,6 +179,29 @@
   .design-root button {
     font: inherit;
   }
+  /* The app prototype's own globals (AP:407-409): controls inherit colour and font. */
+  .app-root button,
+  .app-root input,
+  .app-root textarea,
+  .app-root select {
+    font: inherit;
+    color: inherit;
+  }
+  /* AP:543: a tile shows its fingerprint on hover (and on keyboard focus). */
+  .app-tile button:hover .app-tile-glyph,
+  .app-tile button:focus-visible .app-tile-glyph {
+    opacity: 1 !important;
+  }
+}
+
+@keyframes skpulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 /* Loading skeletons: opacity pulse, no shimmer (Developer Handoff, States). */
@@ -192,4 +219,88 @@
 .leaflet-container img {
   max-width: none;
   height: auto;
+}
+
+/* D-1331: the command palette fades in and rises 4 px over 160 ms (the handoff; the prototype is instant). */
+@keyframes app-palette-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 4px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+.app-palette {
+  animation: app-palette-in 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-palette {
+    animation: none;
+  }
+}
+
+/* D-0087: the ink-drop intro (components/landing/ink-intro.tsx), 1.2 s, first visit only. */
+.ink-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--n-background);
+  animation: ink-out 400ms cubic-bezier(0.65, 0, 0.35, 1) 800ms forwards;
+}
+.ink-drop {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: var(--n-primary);
+  transform: scale(0);
+  animation: ink-drop 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.ink-mark {
+  position: relative;
+  width: 96px;
+  height: 96px;
+}
+.ink-mark rect {
+  fill: var(--n-foreground);
+  opacity: 0;
+  animation: ink-cell 240ms ease-out forwards;
+}
+@keyframes ink-drop {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  45% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.35);
+    opacity: 0;
+  }
+}
+@keyframes ink-cell {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes ink-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+html[data-intro="off"] .ink-intro {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ink-intro {
+    display: none;
+  }
 }
