@@ -35,3 +35,16 @@ describe("/api/demo/tamper in mock mode", () => {
     expect(await tamperDemo(media, up.publicId, "sepia", status)).toMatchObject({ error: expect.stringContaining("No \"sepia\" step") });
   });
 });
+
+describe("/api/demo/tamper chips (B5.6)", () => {
+  it("removing any chip, or several, is refused (401); removing none serves (200)", async () => {
+    const { tamperChips } = await import("@/lib/demo-apis");
+    const up = await media.upload({ file: await readFile(path.join(__dirname, "fixtures", "scene-a.png")), folder: "saakshi/test", context: { filename: "volunteers-at-cleanup.jpg" } });
+    const status = async (u: string) => (await GET(new Request(new URL(u, "http://localhost:3000")))).status;
+    for (const k of ["sig", "crop", "blur", "fmt"]) expect(await tamperChips(media, up.publicId, [k], status), k).toMatchObject({ originalStatus: 200, status: 401, removed: [k] });
+    expect(await tamperChips(media, up.publicId, ["blur", "fmt"], status)).toMatchObject({ status: 401, removed: ["blur", "fmt"] });
+    expect(await tamperChips(media, up.publicId, [], status)).toMatchObject({ status: 200, removed: [], chips: ["sig", "crop", "blur", "fmt", "asset"] });
+    // The photo chip and unknown keys are ignored.
+    expect(await tamperChips(media, up.publicId, ["asset", "nope"], status)).toMatchObject({ status: 200, removed: [] });
+  });
+});

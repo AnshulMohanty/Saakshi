@@ -220,14 +220,29 @@ async function captureVariant(browser: Browser, o: { name: string; url: string; 
       await page.clock.install({ time: new Date("2026-09-28T10:00:00+05:30") });
       await page.goto(v.url ?? o.url, { waitUntil: "load", timeout: 120_000 });
       // Advance the fake clock until the page is ready (its own polling timers need ticks).
-      for (let i = 0; i < 200 && !(await page.evaluate(v.timeline.ready).catch(() => false)); i++) await page.clock.runFor(100);
+      let ticks = 0;
+      for (let i = 0; i < 200 && !(await page.evaluate(v.timeline.ready).catch(() => false)); i++) {
+        await page.clock.runFor(100);
+        ticks += 100;
+      }
       if (v.prepare) await page.evaluate(v.prepare);
       await page.clock.runFor(500);
+      ticks += 500;
+      // Trigger on an animation-frame boundary (the fake clock runs frames every 16 ms from
+      // install), so two pages that became ready after different waits share the same frame phase.
+      await page.clock.runFor((16 - (ticks % 16)) % 16);
       await page.evaluate(v.timeline.trigger);
       let t = 0;
       for (const [i, at] of v.timeline.at.entries()) {
         await page.clock.runFor(Math.max(0, Math.round((at - t) * 1000)));
         t = at;
+        // Let queued work finish without moving any clock: React commits through MessageChannel
+        // (not on the fake clock; two round trips run what was queued before them), then images
+        // decode. A real-time wait would let a page's own real-time work drift.
+        await page.evaluate(`(async () => {
+          for (let i = 0; i < 2; i++) await new Promise((r) => { const c = new MessageChannel(); c.port1.onmessage = () => r(0); c.port2.postMessage(0); });
+          await Promise.all([...document.images].map((im) => (im.complete ? 0 : im.decode().catch(() => 0))));
+        })()`);
         await shoot(i, 0, "step", `t=${at}s`);
       }
     } else {

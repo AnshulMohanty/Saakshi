@@ -58,7 +58,7 @@ export interface AxisOptions {
 /** Wall-clock parts in the display offset. */
 function parts(t: number, off: number) {
   const d = new Date(t + off * MIN);
-  return { y: d.getUTCFullYear(), mo: d.getUTCMonth(), d: d.getUTCDate(), h: d.getUTCHours(), mi: d.getUTCMinutes() };
+  return { y: d.getUTCFullYear(), mo: d.getUTCMonth(), d: d.getUTCDate(), h: d.getUTCHours(), mi: d.getUTCMinutes(), s: d.getUTCSeconds() };
 }
 /** Epoch ms of a wall-clock time in the display offset. */
 const at = (off: number, y: number, mo = 0, d = 1, h = 0, mi = 0) => Date.UTC(y, mo, d, h, mi) - off * MIN;
@@ -77,12 +77,13 @@ export const dayLabel = (t: number, off = 330) => {
 export const zoneLabel = (off = 330) => (off === 330 ? "IST" : `UTC${off < 0 ? "−" : "+"}${pad(Math.floor(Math.abs(off) / 60))}:${pad(Math.abs(off) % 60)}`);
 
 /** Full date and time for a tooltip, honest about precision: "5 Sep 2017, 18:15 IST", "5 Sep 2017 (date only)". */
-export function fullDateTime(t: number, precision: CapturePrecision | null | undefined = "second", off = 330): string {
+/** "5 Sep 2017, 18:15 IST"; with `seconds` and second precision, "5 Sep 2017, 18:15:10 IST". */
+export function fullDateTime(t: number, precision: CapturePrecision | null | undefined = "second", off = 330, { seconds = false } = {}): string {
   const p = parts(t, off);
   if (precision === "year") return `${p.y} (year only)`;
   if (precision === "month") return `${MONTHS[p.mo]} ${p.y} (month only)`;
   if (precision === "day") return `${dayLabel(t, off)} (date only)`;
-  return `${dayLabel(t, off)}, ${pad(p.h)}:${pad(p.mi)} ${zoneLabel(off)}`;
+  return `${dayLabel(t, off)}, ${pad(p.h)}:${pad(p.mi)}${seconds && (precision ?? "second") === "second" ? `:${pad(p.s)}` : ""} ${zoneLabel(off)}`;
 }
 
 /** "5 days later", "9 months later", "2.6 years later" (never rounded up past the truth by much). */

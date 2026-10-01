@@ -81,6 +81,31 @@ describe("APIs for Phase 7", () => {
     expect(await liveSince(ctx.db, ctx.media, new Date(r.cursor))).toMatchObject({ events: [] });
   });
 
+  it("live events carry the place and the arrival's first reason once scored", async () => {
+    const r = await liveSince(ctx.db, ctx.media, new Date(Date.now() - 60_000));
+    const e = r.events.find((x) => x.band);
+    expect(e?.reason).toMatch(/\w/);
+    expect(e && "place" in e).toBe(true);
+  });
+
+  it("Witness Wall: counters from SQL, latest arrivals, operator rehearsals only when allowed (B5.8)", async () => {
+    const { wallCounters, wallView } = await import("@/lib/wall/view");
+    expect(await wallCounters(ctx.db, { production: false, minConfidence: 0.5 })).toEqual({ total: 1, verified: 1, flagged: 0 });
+    // Production: a mock-scored photo counts as a photo, never as verified.
+    expect(await wallCounters(ctx.db, { production: true, minConfidence: 0.5 })).toEqual({ total: 1, verified: 0, flagged: 0 });
+    // Yesterday's photos are not today's.
+    expect(await wallCounters(ctx.db, { production: false, minConfidence: 0.5 }, new Date(Date.now() + 2 * 86_400_000))).toEqual({ total: 0, verified: 0, flagged: 0 });
+    const w = await wallView(ctx.db, ctx.media, { appUrl: "https://s.example", policy: { production: false, minConfidence: 0.5 }, operator: false });
+    expect(w.arrivals).toHaveLength(1);
+    expect(w.arrivals[0]).toMatchObject({ place: "Ghat", band: "VERIFIED" });
+    expect(w.arrivals[0].src).toContain("e_blur_faces");
+    expect(w.qr.url).toBe("https://s.example/capture");
+    expect(w).toMatchObject({ operator: false, rehearsals: [], counting: "db", live: true });
+    const { operatorAllowed } = await import("@/lib/admin");
+    expect(operatorAllowed(null)).toBe(false);
+    expect(operatorAllowed("1")).toBe(true); // development
+  });
+
   it("stats: counters from SQL", async () => {
     const s = await stats(ctx.db);
     expect(s).toMatchObject({ photos: 1, verified: 1, flagged: 0, spots: 1, witnessToday: 1, projects: 1 });

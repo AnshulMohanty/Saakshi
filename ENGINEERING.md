@@ -550,3 +550,43 @@ Newest last. After every phase or fix: what changed, why, the evidence, any new 
     - With today's mock data that is Pimpri-Chinchwad's green-cover pair (−44.5 points, confidence 0.4). The hero's +3.6 is under 5.
   - **Playwright browsers:** Chromium 153, Firefox 155 and WebKit 26.6 launch; ffmpeg-1011 is installed.
   - Tests: 416 passing.
+
+- **2026-09-28, Phase 8 Part B (inventory) and Part C, first page (landing).**
+  - **Inventory** (`2586eef`): `design/INVENTORY.md` has 1,859 items (181 hand-checked, 1,678 extracted). Counts per type, P0/P1:
+    layout 147/5, copy 566/13, token 16/0, effect 232/6, interaction 128/6, state 65/0, asset 96/0, data 578/1.
+    Ids are now stable (`design/inventory.ids.json`), because code comments cite them.
+  - **Reference capture (B3):** `pnpm design:capture --no-video` captured 16 pages in 154 variant×width runs and 804 frames, in 772.7 s, with no failed variant. The runs cover every demo state, theme and screen of the app, every capture state, the Witness Wall arrival on the fake clock (1920×1080 too), and the landing's full, low-power and reduced modes.
+  - **Tokens and fonts** (`ad9218a`, `9e4e0ea`):
+    - `app/tokens.css` is generated from the handoff's `SK.tokens` (`pnpm design:tokens`), with `--l-*`, `--d-*` and `--n-*` aliases for one mode's colour used inside another.
+    - Colour reconciliation keeps a prototype colour exact when ΔE ≥ 2.3 from every token, or when it is a tint (chroma ≥ 0.012) that a token would shift by more than 45° in hue. The rule is in `lib/color/oklch.ts reconcile`, with tests.
+    - Of 46 hex colours, 29 become tokens and 17 extra variables. Canvas and GL colours live in the scene constants.
+    - 46 @font-face rules and 34 OFL woff2 files are self-hosted (wdth axis kept; B5.14).
+  - **Port tooling:**
+    - `pnpm design:port` converts a template to JSX, mapping each colour, font and radius to a variable.
+    - `parity:capture --preset <page> [--fixture]` captures the design's states on our routes.
+    - `parity:report` gives pixelmatch per step with diff images; the gate is 1.5%.
+    - `parity:boxes` compares bounding boxes with the export (±2 px at 1440, ±1 px at 390).
+    - `parity:inspect` looks into a report.
+    - Design resources are served only by `/dev/parity/asset/*`. `tests/design-boundary.test.ts` fails if anything outside `app/dev` imports a fixture (B5.3).
+  - **Landing** (`7179cdf`):
+    - The markup was ported through `design:port`.
+    - `landing_gl.js` became `lib/scenes/landing-stage.ts` (three 0.168.0, near-verbatim, the prototype's seeds). `drawLayers` became `lib/scenes/layers.ts`, and `setup()` became `lib/scenes/landing-dom.ts` (GSAP 3.12.5, ScrollTrigger scrub, Lenis 1.1.14, `gsap.context` cleanup). The constants are in `lib/motion/scenes/landing.ts`, one comment per inventory id.
+    - Data comes from `lib/landing/view.ts`:
+      - the hero photo is the hero project's best verified, located, measured photo;
+      - chapter 3 shows the four planted fakes, titled by the rule that caught them;
+      - chapter 4 shows the showcase pair, and chapter 5 the hero project's SQL counts;
+      - chapter 6 shows the real signed link as chips, with every removal checked server-side (`/api/demo/tamper?chips=`, B5.6);
+      - chapter 8 runs `/api/demo/try` (B5.7), and chapter 9 shows `/api/live` arrivals (B5.8);
+      - chapter 10 shows our own compiled transforms (B5.5);
+      - the credits cover every photo on the page (C17).
+    - Production withholds mock-derived numbers. `DEMO_PREVIEW=1` shows them, badged "Prototype measurement".
+    - **Parity on `/dev/parity/saakshi-landing`** (the design's own sample data):
+      - pixelmatch mean 0.0% in all six variant×width runs (full, low-power, reduced × 1440, 390);
+      - worst step 0.1% (full at 1440), 0.6% (full at 390), 0.1% and 0.6% (low-power), 0.0% (reduced);
+      - bounding boxes: 144 compared at each width, 0 over tolerance.
+  - **New issue G1 (found and fixed):** Tailwind's preflight changed the prototypes' layout.
+    - The prototypes run on browser defaults, where `max-width` bounds the content box, and they inherit `line-height: normal`.
+    - Under preflight the hero headline wrapped and chapters 3–5 were offset by 13 px, giving 4.4% mean and 12.3% worst at 1440.
+    - `.design-root` in `app/globals.css` now reverts every element inside a ported page to the browser's styles. SVG is excluded, so its presentation attributes survive, apart from `display`. The design's own globals are then re-applied.
+  - **New issue G2 (found and fixed):** the stage's first frame projected points before `renderer.render` had set the camera's world-inverse matrix. SVG leader lines got `Infinity`, 20 console errors. The prototype has the same first-frame error; `cam.updateMatrixWorld()` after positioning fixes it.
+  - Tests: 462 passing in 43 files; lint and typecheck clean.

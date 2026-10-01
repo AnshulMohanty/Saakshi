@@ -33,7 +33,8 @@ function variantsFor(slug: string): Variant[] | undefined {
       ];
     case "witness-wall":
       return [
-        { id: "idle", viewports: [...VIEWPORTS, WALL], mode: "single", prepare: `(async () => { ${wait(1500)} })()` },
+        // Idle on the fake clock: the prototype starts a simulated arrival 4 s after setup (autoSimulate).
+        { id: "idle", viewports: [...VIEWPORTS, WALL], mode: "timeline", timeline: { ready: "!!window.gsap && !!document.querySelector('#ww-qr svg')", trigger: "0", at: [0] } },
         {
           id: "arrival",
           label: "press A, frames at the sequence's key times",

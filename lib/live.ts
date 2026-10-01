@@ -6,6 +6,7 @@
 import { and, asc, eq, gt } from "drizzle-orm";
 import type { DB } from "./db/client";
 import { assets, type Asset } from "./db/schema";
+import { arrivalReason, placeShort } from "./landing/copy";
 import { THUMB } from "./library";
 import type { MediaProvider } from "./providers/media";
 
@@ -22,6 +23,10 @@ export interface LiveEvent {
   capturedAt: string | null;
   updatedAt: string;
   thumbUrl: string;
+  /** "Palayakkadu, TiruppurNorth" (reverse-geocoded), when known. */
+  place: string | null;
+  /** Its flag, else its first scoring reason, once scored (lib/landing/copy.ts arrivalReason). */
+  reason: string | null;
 }
 
 function toEvent(media: MediaProvider, a: Asset, kind: LiveEvent["kind"]): LiveEvent {
@@ -39,6 +44,8 @@ function toEvent(media: MediaProvider, a: Asset, kind: LiveEvent["kind"]): LiveE
     capturedAt: a.capturedAt?.toISOString() ?? null,
     updatedAt: a.updatedAt.toISOString(),
     thumbUrl: media.url(a.cldPublicId, THUMB, { signed: true }),
+    place: placeShort(a.placeName),
+    reason: a.trustBand ? arrivalReason(a.trustReasons) : null,
   };
 }
 

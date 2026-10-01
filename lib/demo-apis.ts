@@ -13,6 +13,7 @@ import { ensureQr, locationOf } from "./evidence";
 import { PREVIEW } from "./library";
 import { captureDate, shortDate } from "./media/composite";
 import { proofStripTransform } from "./media/proof";
+import { linkChips, withoutChips } from "./media/link-chips";
 import { compileTransform, type Transform, type TransformStep } from "./media/transform";
 import type { PipelineDeps } from "./pipeline/steps";
 import { runPipeline } from "./pipeline/runner";
@@ -138,6 +139,22 @@ export async function tamperDemo(media: MediaProvider, publicId: string, remove:
   return { originalStatus, tamperedStatus, removed: remove, urls: { original, tampered } } as const;
 }
 
+/**
+ * B5.6: the landing's link with any chips removed (signature, crop, blur faces, format; the
+ * photo stays), the original signature kept unless it is the chip removed. Both links are
+ * requested server-side and the real statuses returned.
+ */
+export async function tamperChips(media: MediaProvider, publicId: string, remove: string[], fetchStatus: (url: string) => Promise<number>, transform: Transform = PREVIEW) {
+  const original = media.url(publicId, transform, { signed: true });
+  const parsed = linkChips(original);
+  if (!parsed) return { error: "Unexpected URL shape" } as const;
+  const known = new Set(parsed.chips.filter((c) => c.removable).map((c) => c.k));
+  const removed = remove.filter((k) => known.has(k));
+  const edited = withoutChips(original, removed);
+  const [originalStatus, status] = await Promise.all([fetchStatus(original), removed.length ? fetchStatus(edited) : null]);
+  return { originalStatus, status: status ?? originalStatus, removed, chips: parsed.chips.map((c) => c.k) } as const;
+}
+
 // --- /api/demo/try (P1) -----------------------------------------------------------------------------
 
 export const SANDBOX_SLUG = "try-to-fool-it";
@@ -222,7 +239,8 @@ export async function tryToFoolIt(deps: PipelineDeps, file: Buffer, filename: st
     id: a.id,
     score: a.trustScore,
     band: a.trustBand,
-    reasons: (a.trustReasons ?? []).map((r) => ({ code: r.code, kind: r.kind, points: r.points, sentence: describeReason(r) })),
+    reasons: (a.trustReasons ?? []).map((r) => ({ code: r.code, signal: r.signal, kind: r.kind, points: r.points, sentence: describeReason(r) })),
+    phash: a.phash,
     evidenceUrl: `${appUrl}/e/${a.id}`,
     note: opts.venue
       ? "The sandbox site is the stage venue (300 m, today ± 1 day). A genuine photo taken here with camera GPS can reach Verified; an internet image cannot."

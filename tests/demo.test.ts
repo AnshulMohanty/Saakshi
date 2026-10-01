@@ -170,6 +170,44 @@ describe("demo import → plant → reset (mock providers, in-memory DB)", () =>
     expect((await verifyAllChains(ctx.db)).ok).toBe(true);
   });
 
+  it("binds every landing chapter to the demo data, never the design's samples (B5.3, B5.4)", async () => {
+    const { landingView } = await import("@/lib/landing/view");
+    const dev = await landingView(ctx.db, ctx.media, { appUrl: "http://localhost:3000", policy: { production: false, minConfidence: 0.5 } });
+    // The hero: a verified, located, fingerprinted photo of the hero project, with its real ledger.
+    expect(dev.hero).not.toBeNull();
+    const [heroRow] = await ctx.db.select().from(assets).where(eq(assets.id, dev.hero!.assetId!));
+    expect(heroRow).toMatchObject({ projectId: ids.A, trustBand: "VERIFIED" });
+    expect(dev.hero!.hex).toBe(heroRow.phash);
+    expect(dev.hero!.trust?.score).toBe(heroRow.trustScore);
+    expect(dev.hero!.trust?.chips.length).toBeGreaterThan(2);
+    expect(dev.projects.find((p) => p.isHero)).toMatchObject({ stackDir: -1, labelBelow: true });
+    expect(dev.stormCount).toBe(dev.storm.length + 1);
+    // Chapter 3: the four planted fakes, each titled by the rule that caught it.
+    expect(dev.flags.map((f) => f.reason)).toEqual([expect.stringMatching(/^Same photo already used in /), "Stock-site watermark", expect.stringMatching(/^Taken [\d,.]+ km from the site$/), expect.stringMatching(/^The stamp /)]);
+    expect(dev.flags[0].diff?.text).toMatch(/^\d+ of 64 cells differ\. Same photo\.$/);
+    expect(dev.grid.filter((t) => t.hole !== "")).toHaveLength(4);
+    // Chapter 6: the real signed link, as chips.
+    expect(dev.tamper?.chips.map((c) => c.k)).toEqual(["sig", "crop", "blur", "fmt", "asset"]);
+    // Credits for every demo photo on the page (C17), and no sample name anywhere.
+    const credited = new Set(dev.credits.map((c) => c.page));
+    for (const a of await ctx.db.select().from(assets).where(inArray(assets.id, dev.storm.map((s) => s.id)))) if (a.attribution) expect(credited.has(a.attribution.source_url), a.id).toBe(true);
+    expect(dev.credits.every((c) => !/\.(jpe?g|png)$/i.test(c.title))).toBe(true);
+    const text = JSON.stringify(dev);
+    for (const sample of ["Versova", "Mumbai", "Pashan", "Shishirdasika", "saakshi.app/witness", "/dev/parity"]) expect(text, sample).not.toContain(sample);
+    expect(dev.mock).toBe(true);
+
+    // Production: every mock-derived number is withheld (the trust score and cover rest on mock providers).
+    const prod = await landingView(ctx.db, ctx.media, { appUrl: "http://localhost:3000", policy: { production: true, minConfidence: 0.5 } });
+    expect(prod.hero?.trust).toBeNull();
+    expect(prod.hero?.cover?.value ?? null).toBeNull();
+    expect(prod.report?.verified.value).toBe(0);
+    expect(prod.mock).toBe(false);
+    // The preview video's display shows them, badged.
+    const preview = await landingView(ctx.db, ctx.media, { appUrl: "http://localhost:3000", policy: { production: true, minConfidence: 0.5 }, preview: true });
+    expect(preview.mockTag).toBe("Prototype measurement");
+    expect(preview.hero?.trust?.score).toBe(heroRow.trustScore);
+  });
+
   it("prefers a spare photo from another demo project for the location mismatch", () => {
     const cfg2 = { ...DEMO_DATASET, projects: DEMO_DATASET.projects.map((p) => ({ ...p, target: p.key === "C" ? 4 : 8 })) };
     const picks = pickPlantInputs(buildDemoDataset(candidates, cfg2), candidates);

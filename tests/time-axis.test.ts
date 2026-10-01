@@ -70,6 +70,8 @@ describe("labels", () => {
     expect(fullDateTime(T("2017-09-05T12:45:10Z"))).toBe("5 Sep 2017, 18:15 IST");
     expect(fullDateTime(T("2017-09-05T00:00:00Z"), "day")).toBe("5 Sep 2017 (date only)");
     expect(fullDateTime(T("2017-09-05T12:45:10Z"), "second", 0)).toBe("5 Sep 2017, 12:45 UTC+00:00");
+    expect(fullDateTime(T("2017-09-05T12:45:10Z"), "second", 330, { seconds: true })).toBe("5 Sep 2017, 18:15:10 IST");
+    expect(fullDateTime(T("2017-09-05T12:45:10Z"), "minute", 330, { seconds: true })).toBe("5 Sep 2017, 18:15 IST");
   });
 
   it("gap labels", () => {

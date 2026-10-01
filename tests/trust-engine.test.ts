@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { defaultTrustConfig, describeReason, findMatches, isLater, REASON_CODES, scoreAsset, type DupCandidate, type DuplicateMatch, type TrustConfig, type TrustProject, type TrustSignals, type TrustSpot } from "@/lib/trust";
+import { defaultTrustConfig, describeReason, findMatches, isLater, reasonLabel, REASON_CODES, ruleChips, scoreAsset, signalMax, type DupCandidate, type DuplicateMatch, type TrustConfig, type TrustProject, type TrustSignals, type TrustSpot } from "@/lib/trust";
 
 // Tiruppur, a 500 m site, a three-day event.
 const SITE = { lat: 11.1085, lng: 77.3411 };
@@ -427,5 +427,68 @@ describe("lib/trust is browser-safe", () => {
     visit(path.join(root, "lib/trust/index.ts"));
     const files = [...seen].map((f) => path.relative(root, f).replaceAll("\\", "/")).sort();
     expect(files.every((f) => f.startsWith("lib/trust/") || ["lib/geo.ts", "lib/hamming.ts", "lib/dates.ts"].includes(f)), files.join(", ")).toBe(true);
+  });
+});
+
+describe("rule chips (TrustMeter)", () => {
+  it("labels every reason code", () => {
+    for (const code of REASON_CODES) expect(reasonLabel(code).length, code).toBeGreaterThan(3);
+  });
+
+  it("reads a perfect Witness Capture as five scoring chips with its points", () => {
+    const r = scoreAsset(witness({ qualityScore: 0.9, cameraMake: "Pixel", cameraModel: "7", moderation: {}, watermark: false }), project, spot, []);
+    const chips = ruleChips(r.reasons);
+    expect(chips.filter((c) => c.tone === "good").map((c) => c.text)).toEqual(
+      expect.arrayContaining(["Taken in the Saakshi app, inside the site, 30", "Time recorded, 20", "Fingerprint is new, 20"]),
+    );
+    expect(chips.every((c) => !/undefined|NaN/.test(c.text))).toBe(true);
+  });
+
+  it("shows a missing signal as 0 of its most, and flags as bare labels", () => {
+    const chips = ruleChips([
+      { code: "LOCATION_NONE", signal: "location", kind: "points", points: 0 },
+      { code: "TIME_OUTSIDE", signal: "time", kind: "points", points: -20 },
+      { code: "REUSED", signal: "uniqueness", kind: "hard", points: 0 },
+      { code: "LOCATION_CONFLICT", signal: "location", kind: "review", points: 0 },
+      { code: "UPLOADER_LOCATION", signal: "location", kind: "info", points: 0 },
+      { code: "HARD_FLAG_CAP", signal: "score", kind: "points", points: -12 },
+    ]);
+    expect(chips).toEqual([
+      { code: "LOCATION_NONE", text: "No location recorded, 0 of 30", tone: "neutral" },
+      { code: "TIME_OUTSIDE", text: "Taken outside the event dates, −20", tone: "bad" },
+      { code: "REUSED", text: "Same photo used in another project", tone: "bad" },
+      { code: "LOCATION_CONFLICT", text: "Two locations disagree", tone: "warn" },
+    ]);
+  });
+
+  it("takes each signal's maximum from the config", () => {
+    expect(signalMax("location")).toBe(defaultTrustConfig.points.locationWitness);
+    expect(signalMax("time")).toBe(defaultTrustConfig.points.timeInWindow);
+    expect(signalMax("score")).toBeNull();
+  });
+});
+
+describe("trust simulator (How it works) runs the real engine (B5.1)", () => {
+  it("scores the three presets with our rules and bands", async () => {
+    const { simulate, SIM_PRESETS } = await import("@/lib/trust");
+    const w = simulate(SIM_PRESETS.witness);
+    expect(w).toMatchObject({ score: 100, band: "VERIFIED" });
+    expect(w.reasons.map((r) => r.code)).toEqual(expect.arrayContaining(["LOCATION_WITNESS", "TIME_IN_WINDOW", "UNIQUE", "AUTH_CLEAR", "QUALITY_OK", "PROVENANCE_CAMERA"]));
+    const g = simulate(SIM_PRESETS.google);
+    expect(g.reasons.map((r) => r.code)).toEqual(expect.arrayContaining(["LOCATION_NONE", "TIME_UPLOAD_ONLY", "PROVENANCE_NONE"]));
+    expect(g).toMatchObject({ score: 50, band: "NEEDS_REVIEW" }); // 0 + 5 + 20 + 15 + 10 + 0
+    const r = simulate(SIM_PRESETS.reused);
+    expect(r).toMatchObject({ band: "FLAGGED", hardFlags: ["REUSED"] });
+    expect(r.score).toBeLessThanOrEqual(defaultTrustConfig.hardFlagCap);
+  });
+  it("follows each fact: outside the site is a hard flag, a screen photo needs review, a burst counts once", async () => {
+    const { simulate, SIM_PRESETS } = await import("@/lib/trust");
+    expect(simulate({ ...SIM_PRESETS.witness, inside: false }).hardFlags).toEqual(["LOCATION_MISMATCH"]);
+    expect(simulate({ ...SIM_PRESETS.witness, screen: true }).reviewFlags).toEqual(["SCREEN_OR_PRINT"]);
+    expect(simulate({ ...SIM_PRESETS.witness, dup: "burst" }).reasons.find((x) => x.signal === "uniqueness")?.code).toBe("BURST");
+    expect(simulate({ ...SIM_PRESETS.witness, dup: "revisit" }).reasons.find((x) => x.signal === "uniqueness")?.code).toBe("REVISIT");
+    expect(simulate({ ...SIM_PRESETS.witness, watermark: true }).hardFlags).toEqual(["STOCK_SUSPECTED"]);
+    expect(simulate({ ...SIM_PRESETS.witness, quality: "poor" }).reasons.find((x) => x.signal === "quality")?.code).toBe("QUALITY_LOW");
+    expect(simulate({ ...SIM_PRESETS.witness, inWindow: false }).reasons.find((x) => x.signal === "time")?.code).toBe("TIME_OUTSIDE");
   });
 });

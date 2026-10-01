@@ -34,7 +34,7 @@ export function preset(page: string, fixture: boolean): { route: string; variant
       return {
         route: at("/witness"),
         variants: [
-          { id: "idle", viewports: [...VIEWPORTS, WALL], mode: "single" },
+          { id: "idle", viewports: [...VIEWPORTS, WALL], mode: "timeline", timeline: { ready: "!!document.querySelector('[data-wall-ready]')", trigger: "0", at: [0] } },
           { id: "arrival", viewports: [WALL], mode: "timeline", url: q(at("/witness"), { operator: "rehearsal" }), timeline: { ready: "!!document.querySelector('[data-wall-ready]')", trigger: "window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }))", at: [0, 0.1, 1.5, 2.3, 2.9, 3.6, 4.4, 7.4, 8.0] } },
         ],
       };
@@ -52,10 +52,22 @@ export function preset(page: string, fixture: boolean): { route: string; variant
       const states = ["live-flow", "permission-prompt", "location-denied", "low-accuracy", "offline", "done"];
       return { route: at("/capture"), variants: states.map((s) => ({ id: s, mode: "single" as const, url: q(at("/capture"), { state: s }) })) };
     }
-    case "how-it-works":
-      return { route: at("/how-it-works") };
+    case "how-it-works": {
+      // The same clicks as design-capture: a preset, then the simulator in view.
+      const pick = (label: string) => `(async () => { [...document.querySelectorAll("#sim button")].find((b) => (b.textContent || "").trim().startsWith(${JSON.stringify(label)}))?.click(); await new Promise((r) => setTimeout(r, 900)); document.querySelector('#sim').scrollIntoView(); await new Promise((r) => setTimeout(r, 300)); })()`;
+      return {
+        route: at("/how-it-works"),
+        variants: [{ id: "default" }, { id: "preset-google", mode: "single", prepare: pick("Google image") }, { id: "preset-reused", mode: "single", prepare: pick("Reused photo") }],
+      };
+    }
     case "demo-entry":
-      return { route: at("/demo") };
+      return {
+        route: at("/demo"),
+        variants: [
+          { id: "default" },
+          { id: "loops", viewports: [VIEWPORTS[0]], mode: "timeline", timeline: { ready: "!!document.querySelector('[data-loops-ready]')", trigger: "0", at: [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5] } },
+        ],
+      };
     default:
       return null;
   }

@@ -75,6 +75,12 @@ export const EnvSchema = z.object({
   DEMO_HERO: stringWithDefault("demo-hero-cleanup"),
   /** "1" (default): public demo; anyone may review (rate-limited, actor "Demo visitor"). "0": reviews need the admin secret in production. */
   DEMO_MODE: z.preprocess(blankToUndefined, z.enum(["0", "1"]).default("1")),
+  /**
+   * "1": the preview-video display (Phase 8 Part D). Measured values computed on this machine are
+   * shown even in a production build, badged "Prototype measurement"; AI readings from the mock
+   * say "AI reading pending". Never set on a public deployment.
+   */
+  DEMO_PREVIEW: z.preprocess(blankToUndefined, z.enum(["0", "1"]).default("0")),
   /** AI-estimated values below this confidence show "Not enough confidence to estimate" instead of a number. */
   AI_MIN_CONFIDENCE: z.preprocess(blankToUndefined, z.coerce.number().min(0).max(1).default(0.5)),
 });
