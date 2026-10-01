@@ -156,6 +156,55 @@ describe("measurement against the database (mock masks)", () => {
     expect(await spotView(ctx.db, ctx.media, "nope")).toBeNull();
   });
 
+  it("spot page model: labels from stored facts, SQL counters, same-frame views with masks, framing (B5.13), mock numbers hidden in production", async () => {
+    const { spotPageData, FRAMING_FALLBACK } = await import("@/lib/spot-page");
+    const now = Date.parse("2017-09-22T09:00:00+05:30");
+    const dev = (await spotPageData(ctx.db, ctx.media, "noyyal-bridge", { policy: { production: false, minConfidence: 0.5 }, now }))!;
+    // The baseline is the morning photo here (set by the check-in test), so the rest of the day comes "Later".
+    expect(dev.points.map((p) => p.label)).toEqual(["Baseline", "Later 1", "Later 2", "Check-in 1"]);
+    expect(dev.points[0].date).toBe("5 Sep 2017, the baseline");
+    expect(dev.points[3].when).toBe("20 Sep 2017, 09:00 IST, witness check-in");
+    expect(dev.counters).toEqual({ checkins: "1", daysSince: "2", change: `${dev.points[0].v}% to ${dev.points[3].v}%` });
+    expect(dev.points.every((p) => p.photo?.src.includes("s--") && p.mask)).toBe(true);
+    expect(dev.mock).toBe(true);
+    expect(dev.latestTitle).toBe("Latest check-ins");
+    expect(dev.latest).toHaveLength(1);
+    expect(dev.latest[0]).toMatchObject({ who: "Witness check-in", band: "VERIFIED", v: dev.points[3].v, href: `/e/${dev.points[3].key}` });
+    expect(dev.framing).toMatchObject({ note: FRAMING_FALLBACK });
+    expect(dev.framing?.thumb).toContain("s--");
+    expect(dev.checkinHref).toBe("/capture?spot=noyyal-bridge");
+    expect(dev.posterHref).toBe("/spots/noyyal-bridge/poster");
+
+    await ctx.db.update(spots).set({ framingNote: "From the bridge rail, facing downstream" }).where(eq(spots.id, spotId));
+    const prod = (await spotPageData(ctx.db, ctx.media, "noyyal-bridge", { policy: { production: true, minConfidence: 0.5 }, now }))!;
+    expect(prod.framing).toEqual({ note: "From the bridge rail, facing downstream", thumb: null });
+    expect(prod.points).toEqual([]);
+    expect(prod.hidden).toBeTruthy();
+    expect(prod.counters.change).toBe("–");
+    expect(prod.latest[0].v).toBeNull();
+    await ctx.db.update(spots).set({ framingNote: null }).where(eq(spots.id, spotId));
+  });
+
+  it("poster model: a level-Q QR of the short link, step 2 from the framing note or the baseline (B5.13)", async () => {
+    const { posterData, POSTER_FALLBACK } = await import("@/lib/poster");
+    const p = (await posterData(ctx.db, ctx.media, "noyyal-bridge", "https://saakshi.example/"))!;
+    const code = spotId.replace(/-/g, "").slice(0, 8);
+    expect(p.spot).toMatchObject({ name: "Bridge", short: `saakshi.example/s/${code}` });
+    expect(p.project).toEqual({ name: "Noyyal cleanup", city: "" });
+    expect(p.qrSvg).toMatch(/^<svg width="100%" height="100%" aria-hidden="true"/);
+    expect(p.qrSvg).toContain("stroke:var(--foreground)");
+    expect(p.steps.map((s) => s.title)).toEqual(["1. Scan", "2. Photograph the spot", "3. Watch it count"]);
+    expect(p.steps[1].body.startsWith(`${POSTER_FALLBACK}, so every check-in matches.`)).toBe(true);
+    expect(p.steps[1].thumb?.src).toContain("s--");
+    expect(p.steps[2].body).toContain("stays clean");
+
+    await ctx.db.update(spots).set({ framingNote: "From the bridge rail, facing downstream." }).where(eq(spots.id, spotId));
+    const q = (await posterData(ctx.db, ctx.media, "noyyal-bridge", "https://saakshi.example"))!;
+    expect(q.steps[1]).toMatchObject({ body: "From the bridge rail, facing downstream, so every check-in matches. उसी जगह से फ़ोटो लें।", thumb: null });
+    await ctx.db.update(spots).set({ framingNote: null }).where(eq(spots.id, spotId));
+    expect(await posterData(ctx.db, ctx.media, "nope", "https://saakshi.example")).toBeNull();
+  });
+
   it("MEASURE_MAX_PER_PROJECT caps single-photo measurement (pairs still measure)", async () => {
     const deps = { ...ctx.deps, measureMax: 1 };
     const up = await ctx.media.upload({ file: await litterScene(0.3, 6), folder: "saakshi/test", context: { filename: "capped.jpg" } });

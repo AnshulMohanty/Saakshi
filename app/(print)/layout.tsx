@@ -1,4 +1,4 @@
-/** Print pages (posters): no app chrome, so what you see is exactly what prints. */
+/** Print pages (posters): no app chrome; each page brings its own desk and print rules. */
 export default function PrintLayout({ children }: LayoutProps<"/">) {
-  return <div className="flex flex-1 flex-col items-center bg-muted/40 py-8 print:bg-white print:py-0">{children}</div>;
+  return children;
 }

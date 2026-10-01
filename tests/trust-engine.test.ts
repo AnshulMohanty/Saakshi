@@ -492,3 +492,14 @@ describe("trust simulator (How it works) runs the real engine (B5.1)", () => {
     expect(simulate({ ...SIM_PRESETS.witness, inWindow: false }).reasons.find((x) => x.signal === "time")?.code).toBe("TIME_OUTSIDE");
   });
 });
+
+describe("ledger rows (evidence page, How it works)", () => {
+  it("one row per scoring signal, the deciding reason's words, points of the most", async () => {
+    const { ledgerRows, simulate, SIM_PRESETS } = await import("@/lib/trust");
+    const rows = ledgerRows(simulate({ ...SIM_PRESETS.witness, dup: "other" }).reasons, describeReason);
+    expect(rows.map((r) => r.signal)).toEqual(["location", "time", "uniqueness", "authenticity", "quality", "provenance"]);
+    expect(rows.find((r) => r.signal === "uniqueness")).toMatchObject({ label: "Same photo used in another project", pts: 0, max: 20, tone: "bad" });
+    expect(rows.find((r) => r.signal === "location")).toMatchObject({ pts: 30, max: 30, tone: "good" });
+    expect(rows.every((r) => r.note.length > 5)).toBe(true);
+  });
+});

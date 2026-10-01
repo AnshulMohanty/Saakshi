@@ -175,4 +175,38 @@ describe("claims ledger, prose and the Impact Report", () => {
     expect((await ctx.media.renderRaw(path.replace(/s--(.)/, (_m, c) => `s--${c === "A" ? "B" : "A"}`))).status).toBe(401);
     expect((await ctx.media.renderRaw(path.replace(".pdf", "x.pdf"))).status).toBe(401);
   });
+
+  it("report page model: number cards keyed by claim, tiles threaded to their claims, flags with the rule that caught them", async () => {
+    const { reportPageData } = await import("@/lib/report-page");
+    const out = await generateReport({ db: ctx.db, media: ctx.media, ai: ctx.deps.ai, appUrl: "https://saakshi.example" }, archiveId, { now: NOW });
+    const dev = (await reportPageData(ctx.db, ctx.media, out.report.id, { production: false, minConfidence: 0.5 }))!;
+    expect(dev.kicker).toBe("Demo archive report, 1 to 30 Sep 2017");
+    expect(dev.title).toBe("River clean-up, Tiruppur");
+    expect(dev.numbers.slice(0, 3).map((n) => [n.key, n.value, n.label])).toEqual([
+      ["photos_verified", "2", "photos verified"],
+      ["photos_flagged", "1", "photo flagged, with reasons"],
+      ["litter_cover_change", expect.stringMatching(/^−\d/), "points, median change in litter cover, Measured, with mask"],
+    ]);
+    expect(dev.numbers.find((n) => n.key === "photos_verified")).toMatchObject({ tag: "Mock output", basis: "Trust Engine band VERIFIED, not rejected by a reviewer" });
+    // Every tile is a photo behind a shown number, and says which numbers it supports.
+    const claims = out.report.claims;
+    for (const t of dev.tiles) {
+      expect(t.keys.length).toBeGreaterThan(0);
+      for (const k of t.keys) expect(claims.find((c) => c.id === k)?.asset_ids).toContain(t.key);
+      expect(t.src).toContain("s--");
+      expect(t.href).toBe(`/e/${t.key}`);
+    }
+    expect(dev.tiles.filter((t) => t.keys.includes("photos_verified"))).toHaveLength(2);
+    expect(dev.flags).toEqual([expect.objectContaining({ reason: "Stock-site watermark" })]);
+    expect(dev.method[2]).toBe("Photos: Wikimedia Commons, credited on each evidence page, faces blurred. One fake was planted to show the checks.");
+    expect(dev.pdfHref).toBe(`/api/reports/${out.report.id}/pdf`);
+    expect(dev.banner).toBeTruthy();
+    expect(dev.summary?.parts.some((p) => typeof p !== "string" && p.claim === "photos_verified")).toBe(true);
+
+    const prod = (await reportPageData(ctx.db, ctx.media, out.report.id, { production: true, minConfidence: 0.5 }))!;
+    expect(prod.banner).toBeNull();
+    expect(prod.numbers.every((n) => n.hidden && n.value === "–")).toBe(true);
+    expect(prod.summary?.parts.filter((p) => typeof p !== "string").every((p) => typeof p !== "string" && !/\d/.test(p.text))).toBe(true);
+    expect(await reportPageData(ctx.db, ctx.media, "00000000-0000-4000-8000-000000000000", { production: false, minConfidence: 0.5 })).toBeNull();
+  });
 });

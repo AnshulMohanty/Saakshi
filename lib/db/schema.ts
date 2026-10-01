@@ -232,6 +232,8 @@ export const spots = pgTable(
     baselineAssetId: uuid("baseline_asset_id").references((): AnyPgColumn => assets.id, { onDelete: "set null" }),
     slug: text("slug").unique(),
     createdFrom: spotOrigin("created_from").notNull().default("manual"),
+    /** Where to stand for a check-in ("from this pole, facing the sea"); null → "Stand where this photo was taken" with the baseline (B5.13). */
+    framingNote: text("framing_note"),
     ...timestamps(),
   },
   (t) => [index("spots_project_idx").on(t.projectId)],

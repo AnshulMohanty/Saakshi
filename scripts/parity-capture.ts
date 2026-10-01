@@ -60,6 +60,23 @@ export function preset(page: string, fixture: boolean): { route: string; variant
         variants: [{ id: "default" }, { id: "preset-google", mode: "single", prepare: pick("Google image") }, { id: "preset-reused", mode: "single", prepare: pick("Reused photo") }],
       };
     }
+    case "evidence-page":
+      return {
+        route: at("/e/<asset id>"),
+        variants: [{ id: "default" }, { id: "exploded", mode: "single", prepare: "(async () => { document.querySelector('button[aria-pressed]')?.click(); await new Promise((r) => setTimeout(r, 1200)); })()" }],
+      };
+    case "report-page": {
+      // The fixture keeps the prototype's number keys; the app keys numbers by claim id.
+      const num = fixture ? "verified" : "photos_verified";
+      return {
+        route: at("/r/<report id>"),
+        variants: [{ id: "default" }, { id: "hover-verified", mode: "single", prepare: `(async () => { document.querySelector('[data-num="${num}"]')?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); document.querySelector('[data-num="${num}"]')?.focus(); await new Promise((r) => setTimeout(r, 900)); })()` }],
+      };
+    }
+    case "qr-poster":
+      return { route: at("/spots/demo-hero-cleanup-spot-1/poster"), variants: [{ id: "default", mode: "single" }] };
+    case "spot-page":
+      return { route: at("/spots/demo-hero-cleanup-spot-1"), variants: [{ id: "default" }] };
     case "demo-entry":
       return {
         route: at("/demo"),

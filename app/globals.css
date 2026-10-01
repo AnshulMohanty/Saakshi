@@ -94,6 +94,7 @@
   --ink-black: #000; /* pure black: the camera viewfinder, scrims over photos, deep shadows */
   --logo-off: #786ea0; /* unlit cells of the logo glyph (at 18%) */
   --chart-axis: #b9bed3; /* landing chapter 7 baseline */
+  --desk: #f5f5f4; /* the print shell's desk behind the poster sheet (the prototype's doc-page) */
 }
 
 @media (prefers-reduced-motion: reduce) {

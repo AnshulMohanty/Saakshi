@@ -1,0 +1,1 @@
+ALTER TABLE "spots" ADD COLUMN "framing_note" text;

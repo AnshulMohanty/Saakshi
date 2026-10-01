@@ -32,6 +32,17 @@ describe("renderClaims", () => {
     expect(formatClaimValue(claims[3])).toBe("≈12 saplings");
   });
 
+  it("reads a unit singular for exactly one, and leaves non-plural units alone", () => {
+    const one = (unit: string, value = 1) => formatClaimValue({ id: "x", label: "X", value, unit, method: "measured", asset_ids: [] });
+    expect(one("spots")).toBe("1 spot");
+    expect(one("check-ins")).toBe("1 check-in");
+    expect(one("photos", 2)).toBe("2 photos");
+    expect(one("points", -1)).toBe("-1 point");
+    expect(one("%")).toBe("1%");
+    expect(one("bus")).toBe("1 bus");
+    expect(one("days", 0)).toBe("0 days");
+  });
+
   it("lets callers wrap values (e.g. link to source photos)", () => {
     const out = renderClaims("{{claim:bags}}", claims, { wrap: (v, c) => `[${v}](/e/${c.asset_ids[0]})` });
     expect(out).toBe("[1,240 bags](/e/a1)");

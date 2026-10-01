@@ -8,7 +8,7 @@ import { assets, comparisons, measurements, projects, spots, type CapturePrecisi
 import { THUMB } from "../library";
 import { captureDate } from "../media/composite";
 import type { MediaProvider } from "../providers/media";
-import { CAVEAT, FRAME_KEY, METRIC_LABEL, METRICS, measureKind, pairPhotoOf, unitOf } from "./measure";
+import { CAVEAT, FRAME_KEY, METRIC_LABEL, METRICS, measureKind, pairPhotoOf, unitOf, VIEW } from "./measure";
 import { exclusionsOf } from "./pairing";
 import { combineModes, HIDDEN_MOCK, numberPolicy, showEstimate, showNumber, type DisplayPolicy } from "../provenance";
 
@@ -132,6 +132,10 @@ export interface TrendPoint {
   source: string;
   /** How precisely the capture time is known (the tooltip says "date only" when coarse). */
   precision: CapturePrecision | null;
+  band: "VERIFIED" | "NEEDS_REVIEW" | "FLAGGED" | null;
+  /** The face-blurred same-frame view (VIEW) and the measurement's mask: one frame, so they align. */
+  viewUrl: string;
+  maskUrl: string | null;
 }
 
 export async function spotView(db: DB, media: MediaProvider, slug: string, policy: DisplayPolicy = { production: false, minConfidence: 0.5 }) {
@@ -151,7 +155,17 @@ export async function spotView(db: DB, media: MediaProvider, slug: string, polic
   const trend: TrendPoint[] = ms
     .map((m) => {
       const a = photos.find((p) => p.id === m.assetId)!;
-      return { t: a.capturedAt!.getTime(), label: captureDate(a.capturedAt, a.capturedAtPrecision), value: m.value, assetId: a.id, source: a.source, precision: a.capturedAtPrecision ?? null };
+      return {
+        t: a.capturedAt!.getTime(),
+        label: captureDate(a.capturedAt, a.capturedAtPrecision),
+        value: m.value,
+        assetId: a.id,
+        source: a.source,
+        precision: a.capturedAtPrecision ?? null,
+        band: a.trustBand,
+        viewUrl: media.url(a.cldPublicId, VIEW, { signed: true }),
+        maskUrl: m.maskUrl,
+      };
     })
     .sort((x, y) => x.t - y.t || x.assetId.localeCompare(y.assetId));
   const trendPolicy = numberPolicy(combineModes(ms.map((m) => m.providerMode)), policy);
@@ -161,7 +175,7 @@ export async function spotView(db: DB, media: MediaProvider, slug: string, polic
     return fix ? { lat: fix.lat, lng: fix.lng } : a.exifLat !== null && a.exifLng !== null ? { lat: a.exifLat, lng: a.exifLng } : null;
   };
   return {
-    spot: { id: spot.id, name: spot.name, slug: spot.slug, lat: spot.lat, lng: spot.lng, radiusM: spot.radiusM },
+    spot: { id: spot.id, name: spot.name, slug: spot.slug, lat: spot.lat, lng: spot.lng, radiusM: spot.radiusM, framingNote: spot.framingNote },
     project: { id: project.id, name: project.name, slug: project.slug, type: project.type, locationApproximate: project.locationApproximate },
     metric: metric ? { id: metric, label: METRIC_LABEL[metric], unit: unitOf(metric) } : null,
     // Mock-derived measurements never ship: no trend in production until real masks exist.
@@ -169,7 +183,9 @@ export async function spotView(db: DB, media: MediaProvider, slug: string, polic
     trendHidden: trendPolicy === "hide" && trend.length > 0 ? HIDDEN_MOCK : null,
     trendMock: trendPolicy === "tag",
     baseline: baseline ? { id: baseline.id, date: captureDate(baseline.capturedAt, baseline.capturedAtPrecision), thumbUrl: media.url(baseline.cldPublicId, THUMB, { signed: true }) } : null,
-    latest: photos.slice(0, 12).map((a) => ({ id: a.id, date: captureDate(a.capturedAt, a.capturedAtPrecision), source: a.source, thumbUrl: media.url(a.cldPublicId, THUMB, { signed: true }), location: pin(a) })),
+    latest: photos.slice(0, 12).map((a) => ({ id: a.id, t: a.capturedAt?.getTime() ?? null, date: captureDate(a.capturedAt, a.capturedAtPrecision), source: a.source, band: a.trustBand, thumbUrl: media.url(a.cldPublicId, THUMB, { signed: true }), location: pin(a) })),
+    /** Capture times of the witness check-ins here (eligible photos only), newest first. */
+    checkins: photos.filter((a) => a.source === "witness").map((a) => a.capturedAt?.getTime() ?? null),
     photos: photos.length,
     checkinPath: `/capture?spot=${encodeURIComponent(spot.slug ?? spot.id)}`,
     caveat: CAVEAT,

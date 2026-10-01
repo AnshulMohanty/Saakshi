@@ -590,3 +590,69 @@ Newest last. After every phase or fix: what changed, why, the evidence, any new 
     - `.design-root` in `app/globals.css` now reverts every element inside a ported page to the browser's styles. SVG is excluded, so its presentation attributes survive, apart from `display`. The design's own globals are then re-applied.
   - **New issue G2 (found and fixed):** the stage's first frame projected points before `renderer.render` had set the camera's world-inverse matrix. SVG leader lines got `Infinity`, 20 console errors. The prototype has the same first-frame error; `cam.updateMatrixWorld()` after positioning fixes it.
   - Tests: 462 passing in 43 files; lint and typecheck clean.
+
+- **2026-10-01, Phase 8 Part C: Witness Wall, How it works, demo entry, evidence and spot pages.** Parity is from `pnpm parity:report` on the `/dev/parity/<page>` fixtures, which use the design's own data.
+  - **Witness Wall** (`9073712`), `/witness`:
+    - The 1920×1080 stage is ported: drift loop, arrival, ripples, queue, reduced motion and "Reconnecting".
+    - Arrivals are real (`/api/live`, with place and first reason), and the counters are refetched from SQL. Rehearsals run only with `?operator=` (B5.8).
+    - The map plane keeps equal px per degree on B5.10's frame (lat 6–30, lng 68–92).
+    - Parity: idle 0.2% at 1440, 0.1% at 390 and 0.2% at 1920. Arrival at 1920: 2.2% mean, worst 7.9% (open issue G5).
+  - **How it works** (`117082f`):
+    - The simulator runs our Trust Engine (`lib/trust/simulate.ts`, bands 45/75; B5.1).
+    - The threshold demo is the prototype's colour heuristic (`lib/measure/demo-mask.ts`) on a real demo photo, labelled as such.
+    - Pipeline stages show our real calls (B5.5).
+    - Parity: 0% in all six variant×width runs; bounding boxes 0 over tolerance.
+  - **Demo entry** (`349873e`), `/demo`:
+    - The three role cards and their loops are ported.
+    - Each card is bound to the demo projects: real place, time, score, SQL verified count, the planted fake outlined, and the latest report.
+    - Parity: loops on the fake clock 1.3% mean (worst 3.5%); default 6.1% at 1440 and 1.8% at 390 (open issue G6).
+  - **Evidence page** (`a44872f`), `/e/[assetId]`:
+    - The layers viewer (`components/evidence-viewer.tsx`, shared with the drawer) is ported, with the proof strip, ledger, and fingerprint with the nearest photo in any project.
+    - Edits are read off the real signed link (`lib/media/link-chips.ts`).
+    - The audit timeline is recomputed in the browser with Web Crypto from `GET /api/audit/chain`, in `lib/hashchain.ts`'s canonical form (`lib/hashchain-web.ts`; B5.9).
+    - Parity: 0% in all four runs (default and exploded × 1440, 390).
+  - **Spot page**, `/spots/[slug]`, moved to `app/(designed)`:
+    - Counters, the photo with its mask, the scrubber through every measured photo, the trend card, the latest check-ins and the fixed check-in bar (SP:319-387).
+    - The trend keeps the design's look on the adaptive time axis (`lib/charts/trend-svg.ts`, A3). Breaks are drawn and labelled, ticks fall on round local times, and hovering a point shows its full date and time.
+    - Photo labels come from stored facts only (`lib/measure/timeline.ts`): photos before the spot's baseline are "Earlier", then "Baseline" and "Later", and Witness check-ins are numbered. The AI's stage guess is never used.
+    - B5.13: new column `spots.framing_note` (migration `0012`). Without a note the page shows "Stand where this photo was taken" with the baseline thumbnail.
+    - The map of photo locations is kept below the design's sections.
+    - Parity: 0.2% at 1440 and at 390, all of it in the trend chart, where the points sit by time (A3) instead of the design's index spacing.
+    - Boxes with the new `parity:boxes --text`: 41 compared at each width, 1 over tolerance. That one is a key collision, not a layout difference: the prototype's runtime wraps each `{{ }}` in an inline element, so "Check-in 5" appears twice there.
+    - Tests: `tests/spot-timeline.test.ts` (10) and a spot-page model test in `tests/measure-db.test.ts`.
+  - **New issues:**
+    - **G3 (fixed):** the landing listened with `onmessage`, so named `arrival` SSE events never reached it. It now uses `addEventListener("arrival")`.
+    - **G4 (fixed):** the Wall's idle reference was contaminated by the prototype's autoSimulate. It is now captured on the fake clock, with triggers aligned to 16 ms frames and a MessageChannel flush before each frame.
+    - **G5 (open):** Wall arrival frames vary by frame phase between runs (2.2% mean).
+    - **G6 (open):** the demo entry's `default` variant is a scroll capture with the loops running in real time (6.1%). The fake-clock `loops` variant is the comparable run.
+    - **G7 (fixed):** the spot map's Leaflet panes (z-index 400+) painted over the fixed bar; the map now isolates its stacking context. The product's masks are greyscale, so the page reads them by luminance; the prototype's are alpha.
+
+- **2026-10-02, Phase 8 Part C: report page** (`/r/[reportId]`, moved to `app/(designed)`; the `(public)` group is gone).
+  - Port of RP:350-399:
+    - every number is a button keyed by its claim id;
+    - hover, focus or tap draws threads to the photos it was counted from (RP:436-460, two paths per tile, a 600 ms dash draw), and the other tiles fade to 0.3;
+    - then the flagged photos with the rule that caught them, and the Method.
+  - Below the design: the summary prose (its numbers are claim buttons too, with the same threads) and the campaign kit.
+  - **Data:**
+    - Numbers are the report's SQL claims only (`lib/report/numbers.ts`, pure). The design's "litter cover before" and "after" become our median change claim; nothing is invented.
+    - Tiles are every photo behind a shown number, in capture order. Flag reasons come from `flagTitle(decisiveReason(...))`.
+    - The Method is built from `defaultTrustConfig` (Verified 75, Needs review 45; B5.1) and `MASK_THRESHOLD`.
+    - "Download PDF" opens `/api/reports/<id>/pdf` (D-1086), with `window.print()` as the fallback.
+    - Number buttons keep `id="claim-<id>"`, because the PDF links each number there.
+  - **Fix in `lib/claims.ts`:** units read singular for exactly 1 ("1 spots" → "1 spot"), through an explicit map. It has a test (Rule 7).
+  - **Parity** on `/dev/parity/report-page`: pixelmatch 0% in all four runs (default and hover-verified × 1440, 390). `parity:boxes --text` compared 76 boxes at each width, 0 over tolerance.
+  - Tests: `tests/report-numbers.test.ts` (7) and a report-page model test in `tests/report.test.ts`. `pnpm test`: 498 passing in 48 files; lint and typecheck clean.
+  - The inventory's component paths now point at `app/(designed)` and `components/witness/wall.tsx` (`pnpm design:inventory`: 1,859 items, ids unchanged).
+
+- **2026-10-02, Phase 8 Part C: QR poster** (`/spots/[slug]/poster`).
+  - Port of QP:422-449 (`components/poster/qr-poster.tsx`): one A4 sheet sized in container units.
+  - On screen it sits on the prototype's `<doc-page>` desk: 48 × 24 px padding, `--desk`, a 210 mm card with a 7 px radius and its shadow. In print it is one full-bleed A4 page. A PDF from Chromium at 390 px is 1 page, MediaBox 595 × 842 pt.
+  - The sheet is always light (paper).
+  - **QR** at level Q (D-1157; `qrSvg` gained a `level` option). It encodes a new short link, `/s/<first 8 hex of the spot id>` (`lib/short-link.ts`, `app/s/[code]/route.ts`, 307 to the spot page; unknown or ambiguous codes give 404). The design prints and encodes a short URL; this one is real and keeps the QR small.
+  - **Step 2 (B5.13):** from `spots.framing_note`; without a note, "Stand where this photo was taken" with the baseline thumbnail. Step 3 is worded by project type.
+  - **New issue G8 (found and fixed):** two styles the prototype gets from outside its markup.
+    - Its print shell injects `h1–h6 { text-wrap: balance }` and `p, li { text-wrap: pretty }` document-wide. Without them the headline broke "Be a witness at this / spot."
+    - A ported root inherits the app body's `font-variant-numeric: tabular-nums` and `text-rendering`, because `.design-root`'s `all: revert` leaves inherited properties inheriting. A tabular "1." widened the step titles by 6 px.
+    - The poster sets the shell's defaults and resets those inherited properties. The other ported pages set tabular-nums themselves, as their designs do.
+  - **Parity** on `/dev/parity/qr-poster`: 0% at 1440 and 0.1% at 390. The 390 remainder is the logo: the prototype's own 390 capture shows a broken image there. Boxes `--text`: 15 compared at each width, 0 over tolerance.
+  - Tests: `tests/short-link.test.ts` (2) and a poster model test in `tests/measure-db.test.ts`. `pnpm test`: 501 passing in 49 files; lint and typecheck clean.

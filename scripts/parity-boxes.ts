@@ -4,6 +4,7 @@
  * data-screen-label (sections) and by data-* hooks the port keeps (data-ll, data-num, data-tile…).
  * Document coordinates (rect + scroll), at the top of the page, reduced motion (pins released,
  * so every section is in flow). Tolerance: ±2 px at 1440, ±1 px at 390 (Phase 8 brief).
+ * `--text` also pairs every leaf element by its own text (pages whose port keeps the copy).
  * Writes design/parity/boxes-<page>-<width>.json and prints the worst offenders.
  */
 import "./_env";
@@ -22,7 +23,7 @@ interface Box {
   h: number;
 }
 
-const COLLECT = `(() => {
+const COLLECT = (text: boolean) => `(() => {
   const out = [];
   const seen = new Map();
   const push = (key, el) => {
@@ -35,6 +36,17 @@ const COLLECT = `(() => {
   for (const el of document.querySelectorAll("[id]")) if (!/^(__|top$|sk-gl$|sk-sky$|gl-)/.test(el.id)) push("#" + el.id, el);
   for (const a of ["data-ll", "data-num", "data-flag", "data-hole", "data-tile", "data-rule", "data-pl"]) for (const el of document.querySelectorAll("[" + a + "]")) push(a + "=" + el.getAttribute(a), el);
   for (const el of document.querySelectorAll("h1, h2")) push("heading:" + (el.textContent || "").trim().slice(0, 40), el);
+  // --text: every leaf element with its own text (spans, labels, links), keyed by that text. The
+  // prototype's runtime wraps each {{ }} in an inline element, so climb to the outermost element
+  // holding just that text (on both sides alike).
+  const norm = (e) => (e.textContent || "").replace(/\\s+/g, " ").trim();
+  if (${text}) for (const el of document.querySelectorAll("body *:not(script, style, svg *, title)")) {
+    const t = norm(el);
+    if (el.children.length || t.length < 2 || t.length > 80) continue;
+    let e = el;
+    while (e.parentElement && e.parentElement !== document.body && e.parentElement.children.length === 1 && norm(e.parentElement) === t) e = e.parentElement;
+    push("text:" + t, e);
+  }
   return out;
 })()`;
 
@@ -48,14 +60,14 @@ async function boxes(url: string, width: number, prepare?: string): Promise<Box[
     await page.waitForTimeout(2500);
     if (prepare) await page.evaluate(prepare);
     await page.waitForTimeout(800);
-    return (await page.evaluate(COLLECT)) as Box[];
+    return (await page.evaluate(COLLECT(process.argv.includes("--text")))) as Box[];
   } finally {
     await b.close();
   }
 }
 
 async function main() {
-  const [designPage, route] = process.argv.slice(2).filter((a, i, all) => !a.startsWith("--") && !["--width", "--base"].includes(all[i - 1] ?? ""));
+  const [designPage, route] = process.argv.slice(2).filter((a, i, all) => !a.startsWith("--") && !["--width", "--base", "--show"].includes(all[i - 1] ?? ""));
   if (!designPage || !route) throw new Error("Usage: pnpm parity:boxes <design page slug> <route> [--width 1440]");
   const width = Number(arg("--width") ?? 1440);
   const tol = width < 800 ? 1 : 2;

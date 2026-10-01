@@ -42,9 +42,10 @@ The app also migrates PGlite on first connection.
 
 ## Folder conventions
 
-- `app/(marketing)` landing · `app/(app)` product pages (library, capture, …) · `app/(public)`
-  shareable pages with a minimal layout (`/e/[assetId]`, `/spots/[slug]`, later `/r/[reportId]`) ·
-  `app/(print)` chrome-free print pages (`/spots/[slug]/poster`, one A4 sheet) ·
+- `app/(marketing)` landing, how it works, demo · `app/(app)` product pages (library, capture, …) ·
+  `app/(designed)` shareable pages ported from the design, each with its own header (`/e/[assetId]`,
+  `/spots/[slug]`, `/r/[reportId]`) · `app/(stage)` the Witness Wall · `app/(print)` chrome-free print pages (`/spots/[slug]/poster`, one A4 sheet) ·
+  `app/s/[code]` poster short links (`lib/short-link.ts`) → the spot page ·
   `app/dev/*` dev tools (404 in production unless `DEV_TOOLS=1`) · `app/api/*` routes.
 - `lib/providers/<name>/`: `index.ts` (interface + factory), `mock.ts`, `real.ts`.
 - `lib/media/transform.ts`: structured transforms, Cloudinary URL compiler/parser, signing.

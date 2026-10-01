@@ -98,3 +98,31 @@ export function ruleChips(reasons: Array<Pick<TrustReason, "code" | "signal" | "
 }
 
 export const reasonLabel = (code: ReasonCode) => LABEL[code];
+
+export interface LedgerRow {
+  signal: TrustSignalName;
+  label: string;
+  /** The deciding reason's sentence (lib/trust/reasons.ts). */
+  note: string;
+  pts: number;
+  max: number;
+  tone: ChipTone;
+}
+
+const LEDGER_SIGNALS: TrustSignalName[] = ["location", "time", "uniqueness", "authenticity", "quality", "provenance"];
+
+/**
+ * The ledger (evidence page, How it works): one row per scoring signal, labelled by its deciding
+ * reason (a flag first, then a review, then the first), with the signal's points "of" its most.
+ */
+export function ledgerRows(reasons: TrustReason[], describe: (r: TrustReason) => string, cfg: TrustConfig = defaultTrustConfig): LedgerRow[] {
+  return LEDGER_SIGNALS.flatMap((signal) => {
+    const rs = reasons.filter((x) => x.signal === signal && x.kind !== "info");
+    const main = rs.find((x) => x.kind === "hard") ?? rs.find((x) => x.kind === "review") ?? rs[0];
+    if (!main) return [];
+    const pts = rs.reduce((n, x) => n + x.points, 0);
+    const max = signalMax(signal, cfg) ?? 0;
+    const tone: ChipTone = main.kind === "hard" || pts < 0 ? "bad" : main.kind === "review" ? "warn" : pts >= max ? "good" : "neutral";
+    return [{ signal, label: LABEL[main.code], note: describe(main), pts, max, tone }];
+  });
+}

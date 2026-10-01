@@ -120,11 +120,14 @@ export interface RenderOptions {
 }
 
 /** "1,240 kg", "38%", "≈12 bags" (≈ marks ai_estimated values), "+5.9 points" for *_change claims. */
+const SINGULAR: Record<string, string> = { photos: "photo", spots: "spot", "check-ins": "check-in", days: "day", points: "point", items: "item", bags: "bag", saplings: "sapling", trees: "tree", volunteers: "volunteer" };
+
 export function formatClaimValue(claim: Claim, locale = "en-IN"): string {
   const digits = Number.isInteger(claim.value) ? 0 : 2;
   const change = claim.id.endsWith("_change");
   const n = new Intl.NumberFormat(locale, { maximumFractionDigits: digits, ...(change ? { signDisplay: "exceptZero" as const } : {}) }).format(claim.value);
-  const unit = claim.unit.trim();
+  // Units are stored plural ("photos", "check-ins"); exactly one reads singular.
+  const unit = Math.abs(claim.value) === 1 ? (SINGULAR[claim.unit.trim()] ?? claim.unit.trim()) : claim.unit.trim();
   const withUnit = unit === "" ? n : unit === "%" ? `${n}%` : `${n} ${unit}`;
   return claim.method === "ai_estimated" ? `≈${withUnit}` : withUnit;
 }
