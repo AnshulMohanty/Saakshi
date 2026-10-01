@@ -23,7 +23,7 @@ import { PREVIEW, THUMB, VIEW } from "../media/derivatives";
 import { MASK_THRESHOLD } from "../measure/cover";
 import { CAVEAT } from "../measure/measure";
 import { spotView } from "../measure/views";
-import { assetMode, showClaim, showNumber, type DisplayPolicy } from "../provenance";
+import { AI_PENDING, aiPending, assetMode, mockLabel, showClaim, showNumber, type DisplayPolicy } from "../provenance";
 import type { MediaProvider } from "../providers/media";
 import { methodLines, numberCards, periodLabel } from "../report/numbers";
 import { reportView } from "../report/view";
@@ -78,7 +78,9 @@ export async function appView(db: DB, media: MediaProvider, o: { policy: Display
     const allGood = ["location", "time", "uniqueness"].every((s) => ledger.find((r) => r.signal === s)?.tone === "good");
     const reason = decisive ? (decisive.kind === "hard" ? flagTitle(decisive) : describeReason(decisive)) : allGood ? "Location, time and fingerprint check out" : (ledger.find((r) => r.tone !== "good")?.note ?? "Checked by the fixed rules");
     const d = dupOf.get(a.id);
-    const title = a.caption ?? a.attribution?.title?.replace(/\.(jpe?g|png)$/i, "") ?? placeShort(a.placeName) ?? "Photo";
+    // The preview never shows a caption a mock AI wrote: the Commons title instead.
+    const pendingAi = aiPending(assetMode(a.provenance), o.policy);
+    const title = (pendingAi ? null : a.caption) ?? a.attribution?.title?.replace(/\.(jpe?g|png)$/i, "") ?? placeShort(a.placeName) ?? "Photo";
     const taken = when(a.capturedAt);
     return {
       id: a.id,
@@ -114,7 +116,7 @@ export async function appView(db: DB, media: MediaProvider, o: { policy: Display
       planted: !!a.testCase,
       history: historyOf.get(a.id) ?? [],
       evidenceHref: `/e/${a.id}`,
-      layer: a.phash ? { input: { bits: hexToBits(a.phash), lat: gps ? lat! : null, lng: gps ? lng! : null, when: taken ?? `Uploaded ${fullDateTime(a.uploadedAt.getTime(), "minute", off)}`, extra: a.cameraModel ? `camera ${[a.cameraMake, a.cameraModel].filter(Boolean).join(" ")}` : null, aiBoxes: [], aiTags: (a.ai?.visibleCounts ?? []).map((c) => c.label).slice(0, 8) }, mask: maskOf.get(a.id) ?? null } : null,
+      layer: a.phash ? { input: { bits: hexToBits(a.phash), lat: gps ? lat! : null, lng: gps ? lng! : null, when: taken ?? `Uploaded ${fullDateTime(a.uploadedAt.getTime(), "minute", off)}`, extra: a.cameraModel ? `camera ${[a.cameraMake, a.cameraModel].filter(Boolean).join(" ")}` : null, aiBoxes: [], aiTags: pendingAi ? [AI_PENDING] : (a.ai?.visibleCounts ?? []).map((c) => c.label).slice(0, 8) }, mask: maskOf.get(a.id) ?? null } : null,
       facts: [
         { k: "Project", v: a.projectId ? (nameOf.get(a.projectId) ?? "Unknown") : "Not assigned" },
         { k: "Coordinates", v: gps ? `${coord(lat!, ["N", "S"])}, ${coord(lng!, ["E", "W"])}` : "Not recorded" },
@@ -185,7 +187,7 @@ async function projectScreen(db: DB, media: MediaProvider, p: { id: string; key:
   const val = (v: number | null) => {
     if (!best || v === null) return { value: "no data", tag: null };
     const s = showNumber(v, best.providerMode ?? "mock", policy);
-    return s?.kind === "hidden" ? { value: "–", tag: "Not shown: mock providers" } : { value: pct(v), tag: s?.mock ? "Mock output" : null };
+    return s?.kind === "hidden" ? { value: "–", tag: "Not shown: mock providers" } : { value: pct(v), tag: s?.mock ? mockLabel(policy) : null };
   };
   const word = best?.metric === "green_cover" ? "green" : "litter";
   const bv = val(best?.beforeValue ?? null);
@@ -237,7 +239,7 @@ async function studioScreen(db: DB, media: MediaProvider, p: { id: string; key: 
   const verified = pp.filter((x) => x.band === "Verified");
   const v = latest ? await reportView(db, media, latest.id, policy) : null;
   const claims = (latest?.claims ?? []) as Claim[];
-  const cards = latest ? numberCards(claims, (c) => showClaim(c, policy)) : [];
+  const cards = latest ? numberCards(claims, (c) => showClaim(c, policy), undefined, mockLabel(policy)) : [];
   const KEY: Record<string, string> = { photos_verified: "v", photos_flagged: "f", litter_cover_change: "b", green_cover_change: "b", spots_monitored: "s" };
   const COLOR: Record<string, string> = { verified: "var(--l-verified)", flagged: "var(--l-destructive)", measured: "var(--l-measured)", estimated: "var(--l-estimated)", count: "var(--l-foreground)" };
   const asset = (id: string) => photos.find((x) => x.id === id);

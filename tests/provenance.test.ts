@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Claim } from "@/lib/claims";
-import { assetMode, combineModes, HIDDEN_MOCK, LOW_CONFIDENCE, numberPolicy, showClaim, showEstimate, showNumber } from "@/lib/provenance";
+import { aiPending, assetMode, combineModes, HIDDEN_MOCK, LOW_CONFIDENCE, MOCK_TAG, mockLabel, numberPolicy, PREVIEW_TAG, showClaim, showEstimate, showNumber } from "@/lib/provenance";
 
 const dev = { production: false, minConfidence: 0.5 };
 const prod = { production: true, minConfidence: 0.5 };
@@ -25,6 +25,19 @@ describe("provider mode", () => {
     expect(numberPolicy("real", prod)).toBe("show");
     expect(numberPolicy("mock", dev)).toBe("tag");
     expect(numberPolicy("mock", prod)).toBe("hide");
+  });
+
+  it("the preview (DEMO_PREVIEW=1) tags mock values in production as prototype measurements, and withholds mock AI readings", () => {
+    const preview = { ...prod, preview: true };
+    expect(numberPolicy("mock", preview)).toBe("tag");
+    expect(numberPolicy("real", preview)).toBe("show");
+    expect(showNumber(42, "mock", preview)).toEqual({ kind: "value", text: "42", mock: true });
+    expect(mockLabel(preview)).toBe(PREVIEW_TAG);
+    expect(mockLabel(dev)).toBe(MOCK_TAG);
+    expect(aiPending("mock", preview)).toBe(true);
+    expect(aiPending("real", preview)).toBe(false);
+    expect(aiPending("mock", dev)).toBe(false);
+    expect(aiPending("mock", prod)).toBe(false);
   });
 });
 

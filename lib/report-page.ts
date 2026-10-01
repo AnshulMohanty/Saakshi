@@ -16,7 +16,7 @@ import { THUMB } from "./library";
 import { captureDate } from "./media/composite";
 import { MASK_THRESHOLD } from "./measure/cover";
 import { EVENT_WORD } from "./measure/timeline";
-import { showClaim, type DisplayPolicy } from "./provenance";
+import { mockLabel, showClaim, type DisplayPolicy } from "./provenance";
 import type { MediaProvider } from "./providers/media";
 import { methodLines, numberCards, periodLabel } from "./report/numbers";
 import { loadReport, reportView } from "./report/view";
@@ -27,7 +27,7 @@ export async function reportPageData(db: DB, media: MediaProvider, id: string, p
   if (!v || !report) return null;
   const [project] = await db.select().from(projects).where(eq(projects.id, report.projectId));
   const claims = report.claims as Claim[];
-  const cards = numberCards(claims, (c) => showClaim(c, policy), EVENT_WORD[project?.type ?? "other"] ?? "event");
+  const cards = numberCards(claims, (c) => showClaim(c, policy), EVENT_WORD[project?.type ?? "other"] ?? "event", mockLabel(policy));
   const shownIds = new Set(cards.map((c) => c.key));
   const keysOf = new Map<string, string[]>();
   for (const c of claims) if (shownIds.has(c.id)) for (const a of c.asset_ids) keysOf.set(a, [...(keysOf.get(a) ?? []), c.id]);

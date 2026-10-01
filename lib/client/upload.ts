@@ -27,6 +27,7 @@ export interface AssetStatus {
   trustBand: "VERIFIED" | "NEEDS_REVIEW" | "FLAGGED" | null;
   scoreHidden: string | null;
   scoreMock: boolean;
+  scoreTag: string | null;
   chips: Array<{ code: string; text: string; tone: "good" | "neutral" | "warn" | "bad" }>;
   /** The reason that decided a Needs review or Flagged band, in words. */
   decisive: string | null;

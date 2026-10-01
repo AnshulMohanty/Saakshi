@@ -33,8 +33,8 @@ const PRINT = `@page { size: A4; margin: 0 }
 
 export function QrPoster({ data, toolbar }: { data: PosterData; toolbar?: React.ReactNode }) {
   return (
-    // The prototype has no body styles: proportional figures, default text rendering (not the app's).
-    <div className="design-root light qp-desk" style={{ position: "relative", display: "block", minWidth: "max-content", minHeight: "100vh", background: "var(--desk)", padding: "48px 24px", boxSizing: "border-box", fontVariantNumeric: "normal", textRendering: "auto", WebkitFontSmoothing: "auto" }}>
+    // The prototype has no body styles: proportional figures, default text rendering (not the app's). A main landmark (Lighthouse).
+    <main className="design-root light qp-desk" style={{ position: "relative", display: "block", minWidth: "max-content", minHeight: "100vh", background: "var(--desk)", padding: "48px 24px", boxSizing: "border-box", fontVariantNumeric: "normal", textRendering: "auto", WebkitFontSmoothing: "auto" }}>
       <style>{PRINT}</style>
       {toolbar && <div className="qp-noprint">{toolbar}</div>}
       <div className="qp-sheet" style={{ width: "210mm", margin: "0 auto" }}>
@@ -90,6 +90,6 @@ export function QrPoster({ data, toolbar }: { data: PosterData; toolbar?: React.
           </div>
         </section>
       </div>
-    </div>
+    </main>
   );
 }

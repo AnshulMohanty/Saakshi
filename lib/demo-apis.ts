@@ -19,7 +19,7 @@ import type { PipelineDeps } from "./pipeline/steps";
 import { runPipeline } from "./pipeline/runner";
 import type { MediaProvider } from "./providers/media";
 import { describeReason } from "./trust";
-import { assetMode, HIDDEN_MOCK, numberPolicy, type DisplayPolicy, type ProviderMode } from "./provenance";
+import { assetMode, HIDDEN_MOCK, hidesMock, numberPolicy, type DisplayPolicy, type ProviderMode } from "./provenance";
 
 /** A measured value under the display policy: withheld (production + mock) or tagged (development + mock). */
 function shownValue(value: number, mode: ProviderMode, policy: DisplayPolicy) {
@@ -59,14 +59,14 @@ export async function stats(db: DB, now = new Date(), policy: DisplayPolicy = { 
   const mockDerived = { verified: verifiedAll - verifiedReal, flagged: flaggedAll - flaggedReal, pairs: pairsAll - pairsReal };
   return {
     photos,
-    verified: policy.production ? verifiedReal : verifiedAll,
-    flagged: policy.production ? flaggedReal : flaggedAll,
+    verified: hidesMock(policy) ? verifiedReal : verifiedAll,
+    flagged: hidesMock(policy) ? flaggedReal : flaggedAll,
     spots: spotsN,
     witnessToday,
     projects: projectsN,
-    pairs: policy.production ? pairsReal : pairsAll,
+    pairs: hidesMock(policy) ? pairsReal : pairsAll,
     /** Development only: how many of the counts above rest on mock providers ("Mock output"). */
-    ...(policy.production ? {} : { mockDerived }),
+    ...(hidesMock(policy) ? {} : { mockDerived }),
     hero: hero.project ? { slug: hero.slug, name: hero.project.name } : null,
     at: now.toISOString(),
   };

@@ -537,6 +537,9 @@ export function setupLanding(root: HTMLElement, d: LandingData, opts: { mode: Mo
               stage.dispose();
               return;
             }
+            // For scripts/quality-gates.ts: when the 3D took over (after idle, never before the still).
+            performance.mark("saakshi:stage");
+            root.dataset.stage = "on";
             setTimeout(() => {
               const still = q("#hero-still");
               if (still) still.style.opacity = "0";

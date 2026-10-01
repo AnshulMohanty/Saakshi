@@ -41,11 +41,13 @@ export interface TrustMeterProps {
   /** Id prefix for timeline-driven parts ("h" → #h-score, #h-band, #h-bar); starts at "Checking". */
   ids?: string;
   mock?: boolean;
+  /** The badge text when `mock` ("Mock output" in development, "Prototype measurement" in the preview). */
+  mockTag?: string;
   style?: CSSProperties;
   innerId?: string;
 }
 
-export function TrustMeter({ score, band, chips, ids, mock, style, innerId }: TrustMeterProps) {
+export function TrustMeter({ score, band, chips, ids, mock, mockTag = "Mock output", style, innerId }: TrustMeterProps) {
   const counting = !!ids;
   const shown = counting ? 0 : (score ?? 0);
   const color = counting || !band ? "var(--verified)" : BAND_COLOR[band];
@@ -59,7 +61,7 @@ export function TrustMeter({ score, band, chips, ids, mock, style, innerId }: Tr
           <span id={ids ? `${ids}-band` : undefined} style={{ fontWeight: "600", fontSize: "15px", color: counting || !band ? "var(--muted-foreground)" : color }}>
             {counting || !band ? "Checking" : BAND_LABEL[band]}
           </span>
-          {mock && <span style={{ fontSize: "11px", padding: "1px 6px", borderRadius: "5px", border: "1px dashed var(--review)", color: "var(--review)" }}>Mock output</span>}
+          {mock && <span style={{ fontSize: "11px", padding: "1px 6px", borderRadius: "5px", border: "1px dashed var(--review)", color: "var(--review)" }}>{mockTag}</span>}
         </div>
         <div style={{ flex: "1", minWidth: "160px", display: "flex", flexDirection: "column", gap: "4px" }}>
           <div style={{ position: "relative", height: "8px", borderRadius: "4px", background: "var(--secondary)", overflow: "hidden" }}>

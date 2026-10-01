@@ -41,7 +41,7 @@ export function CatchChapter({ data, heroProject }: { data: LandingData; heroPro
               {flags.map((f, i) => (
                 <div key={f.id} data-flag={i} style={{ position: "absolute", left: "0", right: "0", top: "0", opacity: "0", display: "flex", flexDirection: "column", gap: "12px" }}>
                   <div data-flagimg="" style={{ position: "relative", width: "100%", height: "clamp(110px,24vh,280px)", borderRadius: "var(--radius)", overflow: "hidden", outline: "2px solid var(--flagged)", transformOrigin: "0 0", background: "var(--card)" }}>
-                    <img src={f.src} alt={f.alt} style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover" }} />
+                    <img loading="lazy" src={f.src} alt={f.alt} style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover" }} />
                     {f.watermarkOverlay && (
                       <div aria-hidden="true" style={{ position: "absolute", inset: "-20%", display: "flex", flexWrap: "wrap", gap: "18px 30px", alignContent: "center", justifyContent: "center", transform: "rotate(-24deg)", fontFamily: "var(--font-sans)", fontWeight: "600", fontSize: "22px", color: "color-mix(in srgb, var(--l-card) 42%, transparent)" }}>
                         {Array.from({ length: 12 }, (_, k) => (
@@ -59,7 +59,7 @@ export function CatchChapter({ data, heroProject }: { data: LandingData; heroPro
                         ))}
                       </div>
                     )}
-                    <img data-glitch="" src={f.src} alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: "0", filter: "saturate(3) hue-rotate(160deg)", mixBlendMode: "screen" }} />
+                    <img loading="lazy" data-glitch="" src={f.src} alt="" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", opacity: "0", filter: "saturate(3) hue-rotate(160deg)", mixBlendMode: "screen" }} />
                   </div>
                   <div data-reason="" style={{ display: "flex", gap: "14px", alignItems: "flex-start", padding: "14px", borderRadius: "var(--radius)", background: "var(--card)", border: "1px solid var(--border)" }}>
                     <div style={{ flex: "1", display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -95,7 +95,7 @@ export function CatchChapter({ data, heroProject }: { data: LandingData; heroPro
             {L && (
               <div style={{ flex: "1 1 320px", maxWidth: "440px", display: "flex", flexDirection: "column", gap: "12px", padding: "16px", borderRadius: "12px", background: "var(--card)", border: "1px solid var(--border)" }}>
                 <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-                  <img src={L.src} alt="" style={{ width: "72px", height: "54px", objectFit: "cover", borderRadius: "6px" }} />
+                  <img loading="lazy" src={L.src} alt="" style={{ width: "72px", height: "54px", objectFit: "cover", borderRadius: "6px" }} />
                   <div style={{ flex: "1", display: "flex", flexDirection: "column", gap: "2px" }}>
                     <span style={{ fontSize: "13px", color: "var(--muted-foreground)" }}>{L.caption}</span>
                     <span style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>

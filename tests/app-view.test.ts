@@ -99,4 +99,15 @@ describe("appView", () => {
     const [row] = await ctx.db.select().from(assets).where(eq(assets.id, ids[0]));
     expect(row.trustScore).not.toBeNull();
   });
+
+  it("the preview (DEMO_PREVIEW=1) shows computed values as prototype measurements and no mock AI readings", async () => {
+    const { appView } = await import("@/lib/app/view");
+    const d = await appView(ctx.db, ctx.media, { policy: { production: true, minConfidence: 0.5, preview: true } });
+    const before = d.photos.find((p) => p.id === ids[0])!;
+    expect(before.score).toEqual(expect.any(Number));
+    expect(before.layer?.input.aiTags).toEqual(["AI reading pending"]);
+    // Titles come from Commons, never from a mock caption.
+    expect(before.title).toBe("River bank 1");
+    expect(d.projectScreens.tiruppur.kpis.find((x) => x.k === "before")?.tag).toBe("Prototype measurement");
+  });
 });

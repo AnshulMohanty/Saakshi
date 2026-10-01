@@ -13,7 +13,7 @@ import { ARRIVAL, DOTS, DRIFT, LIVE_PULSE, PLANE, QUEUE, RIPPLE, SCORE_WAIT_MS, 
 import { DUST } from "../motion/scenes/landing";
 import type { TrustBand } from "../trust/types";
 import type { WallArrival, WallData, WallSpot } from "../wall/types";
-import { rng } from "./landing-stage";
+import { rng } from "./rng";
 
 export interface WallCard {
   src: string;

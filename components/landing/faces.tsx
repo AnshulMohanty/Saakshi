@@ -72,7 +72,7 @@ export function FacesChapter({ data }: { data: LandingData }) {
                       <span style={{ color: "var(--foreground)" }}>{c.text}</span>
                     </span>
                     {c.removable && (
-                      <button type="button" onClick={() => check([...removed, c.k])} aria-label={`Remove ${c.label} from the link`} style={{ all: "unset", cursor: "pointer", width: "22px", height: "22px", borderRadius: "5px", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--foreground)", background: "var(--border)", fontFamily: "var(--font-sans)", fontSize: "14px", lineHeight: "1" }}>
+                      <button type="button" onClick={() => check([...removed, c.k])} aria-label={`Remove ${c.label} from the link`} className="focus-ring" style={{ all: "unset", cursor: "pointer", width: "22px", height: "22px", borderRadius: "5px", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--foreground)", background: "var(--border)", fontFamily: "var(--font-sans)", fontSize: "14px", lineHeight: "1" }}>
                         ×
                       </button>
                     )}

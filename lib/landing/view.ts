@@ -22,7 +22,7 @@ import { compileTransform, type Transform } from "../media/transform";
 import { FRAME_KEY, LITTER_PROMPTS } from "../measure/measure";
 import { spotView } from "../measure/views";
 import { FRAME as MAP_FRAME } from "../motion/scenes/landing";
-import { assetMode, combineModes, HIDDEN_MOCK, MOCK_TAG, numberPolicy, type DisplayPolicy, type ProviderMode } from "../provenance";
+import { AI_PENDING, aiPending, assetMode, combineModes, HIDDEN_MOCK, hidesMock, mockLabel, numberPolicy, type DisplayPolicy, type ProviderMode } from "../provenance";
 import { maskTransform, type MediaProvider } from "../providers/media";
 import { rankPairs, showcase } from "../showcase";
 import { defaultTrustConfig, describeReason, scoreAsset } from "../trust";
@@ -48,8 +48,8 @@ export interface LandingOptions {
 export async function landingView(db: DB, media: MediaProvider, o: LandingOptions): Promise<LandingData> {
   const cfg = getConfig();
   const off = offsetMinutes(cfg.env.EXIF_DEFAULT_UTC_OFFSET);
-  const policy = o.preview ? { ...o.policy, production: false } : o.policy;
-  const mockTag = o.preview ? "Prototype measurement" : MOCK_TAG;
+  const policy: DisplayPolicy = { ...o.policy, preview: !!(o.preview || o.policy.preview) };
+  const mockTag = mockLabel(policy);
   let anyMock = false;
   const shown = (value: number | null, mode: ProviderMode, fmt: (v: number) => string = (v) => v.toFixed(1)): LandingNumber => {
     if (value === null) return { value: null, text: "Not measured", mock: false };
@@ -101,7 +101,8 @@ export async function landingView(db: DB, media: MediaProvider, o: LandingOption
       extra: a.cameraModel ? `camera ${[a.cameraMake, a.cameraModel].filter(Boolean).join(" ")}` : null,
       locationNote: a.source === "witness" ? `Live device fix${a.deviceAccuracyM ? `, ±${Math.round(a.deviceAccuracyM)} m` : ""}.` : a.exifSource === "commons_api" ? "From the Wikimedia Commons record. Accuracy not recorded." : "From the camera file. Accuracy not recorded.",
       photoNote: `${place}. Faces blurred.`,
-      aiText: aiSentence(labels),
+      // The preview never shows tags a mock made up.
+      aiText: aiPending(mode, policy) ? AI_PENDING : aiSentence(labels),
       aiBoxes: [],
       cover: m ? shown(m.value, m.providerMode) : null,
       metric: m?.metric === "green_cover" ? "green" : "litter",
@@ -172,7 +173,7 @@ export async function landingView(db: DB, media: MediaProvider, o: LandingOption
   const heroRows = all.filter((a) => a.projectId === heroId);
   const countOf = (band: "VERIFIED" | "FLAGGED") => {
     const rows = heroRows.filter((a) => a.trustBand === band);
-    const counted = policy.production ? rows.filter((a) => assetMode(a.provenance) === "real") : rows;
+    const counted = hidesMock(policy) ? rows.filter((a) => assetMode(a.provenance) === "real") : rows;
     const mode = combineModes(counted.map((a) => assetMode(a.provenance)));
     return { rows: counted, n: shown(counted.length, counted.length ? mode : "real", (v) => String(Math.round(v))) };
   };

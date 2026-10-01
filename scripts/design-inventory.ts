@@ -28,16 +28,16 @@ interface Row extends ManualRow {
 const ROOT = process.cwd();
 /** Pages that are built (B2). Specs and reference pages contribute manual rows only. */
 const PAGES: Record<string, { route: string; component: string; file: string }> = {
-  "saakshi-landing": { route: "/", component: "app/(marketing)/page.tsx", file: "Saakshi Landing.html" },
+  "saakshi-landing": { route: "/", component: "components/landing/landing.tsx", file: "Saakshi Landing.html" },
   "witness-wall": { route: "/witness", component: "components/witness/wall.tsx", file: "Witness Wall.html" },
-  "how-it-works": { route: "/how-it-works", component: "app/(marketing)/how-it-works/page.tsx", file: "How It Works.html" },
-  "demo-entry": { route: "/demo", component: "app/(marketing)/demo/page.tsx", file: "Demo Entry.html" },
-  "evidence-page": { route: "/e/[assetId]", component: "app/(designed)/e/[assetId]/page.tsx", file: "Evidence Page.html" },
-  "spot-page": { route: "/spots/[slug]", component: "app/(designed)/spots/[slug]/page.tsx", file: "Spot Page.html" },
-  "report-page": { route: "/r/[reportId]", component: "app/(designed)/r/[reportId]/page.tsx", file: "Report Page.html" },
-  "qr-poster": { route: "/spots/[slug]/poster", component: "app/(print)/spots/[slug]/poster/page.tsx", file: "QR Poster.html" },
-  capture: { route: "/capture", component: "app/(app)/capture/capture-screen.tsx", file: "Capture.html" },
-  "saakshi-app": { route: "/library (+ /review, /projects/[id], /studio)", component: "components/app-shell.tsx", file: "Saakshi App.html" },
+  "how-it-works": { route: "/how-it-works", component: "components/how/how-it-works.tsx", file: "How It Works.html" },
+  "demo-entry": { route: "/demo", component: "components/demo/demo-entry.tsx", file: "Demo Entry.html" },
+  "evidence-page": { route: "/e/[assetId]", component: "components/evidence/evidence-page.tsx", file: "Evidence Page.html" },
+  "spot-page": { route: "/spots/[slug]", component: "components/spot/spot-page.tsx", file: "Spot Page.html" },
+  "report-page": { route: "/r/[reportId]", component: "components/report/report-page.tsx", file: "Report Page.html" },
+  "qr-poster": { route: "/spots/[slug]/poster", component: "components/poster/qr-poster.tsx", file: "QR Poster.html" },
+  capture: { route: "/capture", component: "components/capture/capture-screen.tsx", file: "Capture.html" },
+  "saakshi-app": { route: "/library (+ /review, /projects/[id], /studio)", component: "components/app/app-shell.tsx", file: "Saakshi App.html" },
 };
 const REFERENCE_ONLY = ["saakshi-concept-board", "saakshi-index", "landing-viewports"];
 const P1_SECTIONS = new Set(["07 It keeps watching", "08 Try to fool it"]);

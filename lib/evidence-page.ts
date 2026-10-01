@@ -15,7 +15,7 @@ import { hexToBits } from "./glyph";
 import { hamming } from "./hamming";
 import { aiSentence, placeShort } from "./landing/copy";
 import { linkChips } from "./media/link-chips";
-import type { DisplayPolicy } from "./provenance";
+import { AI_PENDING, aiPending, assetMode, mockLabel, type DisplayPolicy } from "./provenance";
 import type { MediaProvider } from "./providers/media";
 import { defaultTrustConfig, describeReason } from "./trust";
 import { ledgerRows, ruleChips } from "./trust/labels";
@@ -51,6 +51,8 @@ export async function evidencePageData(db: DB, media: MediaProvider, assetId: st
 
   const when = f.capturedAt ? fullDateTime(Date.parse(f.capturedAt), f.capturedAtPrecision, off, { seconds: true }) : `Uploaded ${fullDateTime(Date.parse(f.uploadedAt), "minute", off)}`;
   const place = placeShort(f.place) ?? v.spot?.name ?? v.project?.name ?? "Photo evidence";
+  const tag = mockLabel(o.policy);
+  const pendingAi = aiPending(assetMode(row.provenance), o.policy);
   const tags = row.ai?.visibleCounts?.length ? row.ai.visibleCounts.map((c) => c.label) : row.cldTags.filter((t) => !/^(saakshi|planted|sandbox|trust_)/.test(t));
   const cover = m && v.trust.hiddenText === null ? `${m.value.toFixed(1)}%` : null;
   const chips = linkChips(v.imageUrl);
@@ -87,7 +89,7 @@ export async function evidencePageData(db: DB, media: MediaProvider, assetId: st
   if (v.comparisons.length)
     more.push({
       title: "Before and after",
-      lines: v.comparisons.map((c) => ({ text: `${c.metric}: ${c.shown?.kind === "hidden" ? c.shown.text : `${c.before} → ${c.after}${c.unit === "%" ? "%" : ""}${c.shown?.kind === "value" && c.shown.mock ? " (Mock output)" : ""}`}. This photo is the ${c.role}.`, href: `/e/${c.other}` })),
+      lines: v.comparisons.map((c) => ({ text: `${c.metric}: ${c.shown?.kind === "hidden" ? c.shown.text : `${c.before} → ${c.after}${c.unit === "%" ? "%" : ""}${c.shown?.kind === "value" && c.shown.mock ? ` (${tag})` : ""}`}. This photo is the ${c.role}.`, href: `/e/${c.other}` })),
     });
   if (v.review) more.push({ title: v.review.decision === "approve" ? "Approved by a reviewer" : "Rejected by a reviewer", lines: [{ text: `“${v.review.note}” The score and band are unchanged.` }] });
   more.push({ title: "Every derivative Saakshi delivers", lines: v.edits.map((e) => ({ text: `${e.title}: ${e.steps.map((s) => s.words).join("; ")}` })) });
@@ -97,17 +99,17 @@ export async function evidencePageData(db: DB, media: MediaProvider, assetId: st
     title: place,
     when,
     crumb: v.project ? { label: v.project.name, href: v.spot?.slug ? `/spots/${v.spot.slug}` : `/projects/${v.project.slug ?? v.project.id}` } : { label: "Unassigned photo", href: null },
-    trust: { score: v.trust.score, band: v.trust.band, hiddenText: v.trust.hiddenText, mock: v.trust.mock },
+    trust: { score: v.trust.score, band: v.trust.band, hiddenText: v.trust.hiddenText, mock: v.trust.mock, mockTag: tag },
     viewer: {
       photo: { src: v.previewUrl, alt: `${v.caption ?? "Photo evidence"} Faces blurred.` },
-      layer: { bits: f.pHash ? hexToBits(f.pHash) : "0".repeat(64), lat: f.location?.lat ?? null, lng: f.location?.lng ?? null, when, extra: f.device ? `camera ${f.device}` : null, aiBoxes: [], aiTags: tags.slice(0, 8) },
+      layer: { bits: f.pHash ? hexToBits(f.pHash) : "0".repeat(64), lat: f.location?.lat ?? null, lng: f.location?.lng ?? null, when, extra: f.device ? `camera ${f.device}` : null, aiBoxes: [], aiTags: pendingAi ? [AI_PENDING] : tags.slice(0, 8) },
       mask: m?.maskUrl ?? null,
       layers: [
         { name: "The photo", color: "var(--foreground)", detail: `The file as received${row.width && row.height ? `, ${row.width} × ${row.height}` : ""}. Faces blurred on every public copy.` },
         { name: "Where and when", color: "var(--verified)", detail: `${f.location ? `${coord(f.location.lat, ["N", "S"])}, ${coord(f.location.lng, ["E", "W"])}, ` : "No location recorded, "}${when}. ${f.location ? `From ${f.location.from}.` : ""}${f.tzNote ? ` ${f.tzNote}` : ""}` },
         { name: "Fingerprint", color: "var(--primary)", detail: "The 8×8 perceptual hash of the pixels. Used to catch the same photo in any project, even after a crop." },
-        { name: "What the AI sees", color: "var(--estimated)", detail: `${aiSentence(tags)} AI-estimated tags; they describe the photo but never become a number.` },
-        { name: "What we measured", color: "var(--measured)", detail: m ? (cover ? `${m.metric === "green_cover" ? "Green" : "Litter"} covers ${cover} of the frame, counted from mask pixels at threshold 0.50.${m.providerMode === "mock" ? " (Mock output)" : ""}` : "Measured with a mock provider: not shown in production.") : "Not measured: only spot photos are measured." },
+        { name: "What the AI sees", color: "var(--estimated)", detail: pendingAi ? `${AI_PENDING}. AI-estimated tags describe the photo but never become a number.` : `${aiSentence(tags)} AI-estimated tags; they describe the photo but never become a number.` },
+        { name: "What we measured", color: "var(--measured)", detail: m ? (cover ? `${m.metric === "green_cover" ? "Green" : "Litter"} covers ${cover} of the frame, counted from mask pixels at threshold 0.50.${m.providerMode === "mock" ? ` (${tag})` : ""}` : "Measured with a mock provider: not shown in production.") : "Not measured: only spot photos are measured." },
       ],
     },
     chips: v.trust.hiddenText ? [] : ruleChips(v.trust.reasons),

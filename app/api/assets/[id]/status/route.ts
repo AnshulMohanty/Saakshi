@@ -4,7 +4,7 @@ import { assets } from "@/lib/db/schema";
 import { displayPolicy } from "@/lib/display-policy";
 import { decisiveReason, flagTitle } from "@/lib/landing/copy";
 import { STEP_ORDER } from "@/lib/pipeline/steps";
-import { assetMode, showNumber } from "@/lib/provenance";
+import { assetMode, mockLabel, showNumber } from "@/lib/provenance";
 import { describeReason } from "@/lib/trust";
 import { ruleChips } from "@/lib/trust/labels";
 
@@ -38,7 +38,8 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/assets/[id]
     .limit(1);
   if (!a) return Response.json({ error: "Not found" }, { status: 404 });
   const steps = STEP_ORDER.map((name) => ({ name, status: a.pipeline.steps[name]?.status ?? "pending", error: a.pipeline.steps[name]?.error }));
-  const shown = showNumber(a.trustScore, assetMode(a.provenance), displayPolicy());
+  const policy = displayPolicy();
+  const shown = showNumber(a.trustScore, assetMode(a.provenance), policy);
   const decisive = decisiveReason(a.trustReasons ?? []);
   return Response.json({
     id: a.id,
@@ -51,6 +52,8 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/assets/[id]
     trustBand: a.trustBand,
     scoreHidden: shown?.kind === "hidden" ? shown.text : null,
     scoreMock: shown?.kind === "value" && shown.mock,
+    /** The badge on a mock-derived score ("Mock output", or "Prototype measurement" in the preview). */
+    scoreTag: shown?.kind === "value" && shown.mock ? mockLabel(policy) : null,
     chips: a.trustReasons ? ruleChips(a.trustReasons) : [],
     decisive: decisive ? (decisive.kind === "hard" ? flagTitle(decisive) : describeReason(decisive)) : null,
     phash: a.phash,

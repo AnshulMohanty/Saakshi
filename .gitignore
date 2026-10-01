@@ -40,3 +40,14 @@ next-env.d.ts
 /design/unpacked/
 /design/extracted/
 /design/inventory.json
+/design/quality/
+
+# preview videos (re-render with pnpm video:final); DESCRIPTION.md, .srt and the brag plan are committed
+/video/preview/footage/
+/video/preview/work/
+/video/preview/*.mp4
+/video/preview/*.m4a
+/video/preview/*.jpg
+/brag-output/*.mp4
+/brag-output/*.jpg
+/brag-output/work/

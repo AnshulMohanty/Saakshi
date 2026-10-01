@@ -5,6 +5,10 @@
  * derived from a mock provider in production. In development, mock-derived values render with
  * a visible "Mock output" tag. AI estimates below the confidence threshold show "Not enough
  * confidence to estimate" instead of a number, everywhere.
+ *
+ * Preview (DEMO_PREVIEW=1, the preview video only, never a public deployment): values computed
+ * on this machine are shown in production too, badged "Prototype measurement", and readings a
+ * mock AI made up say "AI reading pending" instead of a result.
  */
 import { formatClaimValue, type Claim } from "./claims";
 import type { AssetProvenance, ProviderMode } from "./db/schema";
@@ -15,11 +19,24 @@ export interface DisplayPolicy {
   production: boolean;
   /** AI_MIN_CONFIDENCE (default 0.5). */
   minConfidence: number;
+  /** DEMO_PREVIEW=1: mock-derived values tagged "Prototype measurement" instead of hidden. */
+  preview?: boolean;
 }
 
 export const MOCK_TAG = "Mock output";
 export const HIDDEN_MOCK = "Not available: computed with mock providers";
 export const LOW_CONFIDENCE = "Not enough confidence to estimate";
+export const PREVIEW_TAG = "Prototype measurement";
+export const AI_PENDING = "AI reading pending";
+
+/** Production withholds mock-derived values (counts only real rows); development and the preview don't. */
+export const hidesMock = (policy: DisplayPolicy): boolean => policy.production && !policy.preview;
+
+/** The badge on a tagged value: "Mock output" in development, "Prototype measurement" in the preview. */
+export const mockLabel = (policy: DisplayPolicy): string => (policy.preview ? PREVIEW_TAG : MOCK_TAG);
+
+/** The preview never shows a reading a mock AI made up (captions, tags, moderation answers). */
+export const aiPending = (mode: ProviderMode | null | undefined, policy: DisplayPolicy): boolean => !!policy.preview && mode !== "real";
 
 /** A trust score rests on the analysis (tags, moderation, watermark) and the AI (OCR, children). Unknown = mock. */
 export function assetMode(p: AssetProvenance | null | undefined): ProviderMode {
@@ -36,10 +53,10 @@ export const combineModes = (modes: Iterable<ProviderMode | null | undefined>): 
   return any ? "real" : "mock";
 };
 
-/** show: plain · tag: show with "Mock output" (development) · hide: never (production). */
+/** show: plain · tag: show with a badge (development, or the preview) · hide: never (production). */
 export function numberPolicy(mode: ProviderMode, policy: DisplayPolicy): "show" | "tag" | "hide" {
   if (mode === "real") return "show";
-  return policy.production ? "hide" : "tag";
+  return hidesMock(policy) ? "hide" : "tag";
 }
 
 export type Shown =

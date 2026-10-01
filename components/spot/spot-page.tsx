@@ -56,6 +56,8 @@ export interface SpotPageData {
   /** Why there is no trend (production hides mock-derived numbers), or null. */
   hidden: string | null;
   mock: boolean;
+  /** The badge when `mock` (default "Mock output"; "Prototype measurement" in the preview). */
+  mockTag?: string;
   points: SpotPoint[];
   /** Our masks are greyscale (luminance); the prototype's are transparent PNGs (alpha). */
   maskMode: "luminance" | "alpha";
@@ -120,7 +122,7 @@ export function SpotPage({ data }: { data: SpotPageData }) {
               {data.counters.change}
             </span>
             <span style={SMALL}>{data.metric} cover, before and now, Measured</span>
-            {data.mock && <span style={MOCK}>Mock output</span>}
+            {data.mock && <span style={MOCK}>{data.mockTag ?? "Mock output"}</span>}
           </div>
         </div>
         <section style={{ display: "flex", flexWrap: "wrap", gap: "16px", alignItems: "flex-start" }}>
@@ -288,7 +290,7 @@ export function SpotPage({ data }: { data: SpotPageData }) {
           <span style={{ width: "min(520px,100%)", display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", color: "var(--muted-foreground)" }} data-testid="spot-framing">
             {data.framing.thumb && (
               // eslint-disable-next-line @next/next/no-img-element -- signed, face-blurred thumbnail of the baseline
-              <img src={data.framing.thumb} alt="The baseline photo: frame your check-in like this" style={{ width: "48px", height: "36px", borderRadius: "6px", objectFit: "cover", flexShrink: "0" }} />
+              <img loading="lazy" src={data.framing.thumb} alt="The baseline photo: frame your check-in like this" style={{ width: "48px", height: "36px", borderRadius: "6px", objectFit: "cover", flexShrink: "0" }} />
             )}
             <span>{data.framing.note}</span>
           </span>

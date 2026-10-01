@@ -113,7 +113,7 @@ export function ReviewScreen({ photos, decisions, onDecide, blocked }: { photos:
             style={{ display: "flex", gap: "10px", alignItems: "center", padding: "8px", borderRadius: "var(--radius)", border: `1px solid ${k === i ? "var(--primary)" : "var(--border)"}`, background: k === i ? "var(--card)" : "transparent", cursor: "pointer", textAlign: "left" }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element -- signed, face-blurred thumbnail */}
-            <img src={p.src} alt="" style={{ width: "52px", height: "40px", objectFit: "cover", borderRadius: "6px", flexShrink: "0" }} />
+            <img loading="lazy" src={p.src} alt="" style={{ width: "52px", height: "40px", objectFit: "cover", borderRadius: "6px", flexShrink: "0" }} />
             <span style={{ flex: "1", minWidth: "0", display: "flex", flexDirection: "column", gap: "1px" }}>
               <span style={{ fontSize: "12px", fontWeight: "600", color: bandMark(p.band).color }}>
                 {p.band}, {p.score ?? p.scoreHidden ?? "–"}
@@ -129,7 +129,7 @@ export function ReviewScreen({ photos, decisions, onDecide, blocked }: { photos:
             {decided.map(({ p, d }) => (
               <div key={p.id} style={{ display: "flex", gap: "10px", alignItems: "center", padding: "6px 8px", borderRadius: "8px", fontSize: "12px", color: "var(--muted-foreground)" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element -- signed, face-blurred thumbnail */}
-                <img src={p.src} alt="" style={{ width: "40px", height: "30px", objectFit: "cover", borderRadius: "4px", filter: d.kind === "rejected" ? "grayscale(1)" : "none" }} />
+                <img loading="lazy" src={p.src} alt="" style={{ width: "40px", height: "30px", objectFit: "cover", borderRadius: "4px", filter: d.kind === "rejected" ? "grayscale(1)" : "none" }} />
                 <span>{`${d.kind === "approved" ? "Approved: " : "Rejected: "}${d.note}`}</span>
               </div>
             ))}
@@ -142,7 +142,7 @@ export function ReviewScreen({ photos, decisions, onDecide, blocked }: { photos:
             <figure style={{ margin: "0", flex: "1 1 280px", minWidth: "0", display: "flex", flexDirection: "column", gap: "6px" }}>
               <div id="rv-photo" style={{ position: "relative", aspectRatio: "4/3", borderRadius: "12px", overflow: "hidden", background: "var(--muted)" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element -- signed, face-blurred preview */}
-                <img src={cur.preview} alt={cur.title} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                <img src={cur.preview} alt={cur.title} fetchPriority="high" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                 {cur.overlay === "watermark" && (
                   <div aria-hidden="true" style={{ position: "absolute", inset: "-20%", display: "flex", flexWrap: "wrap", gap: "18px 30px", alignContent: "center", justifyContent: "center", transform: "rotate(-24deg)", fontWeight: "600", fontSize: "22px", color: "color-mix(in srgb, var(--l-card) 45%, transparent)" }}>
                     {Array.from({ length: 9 }, (_, k) => (

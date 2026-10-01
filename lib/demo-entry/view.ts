@@ -16,7 +16,7 @@ import { placeShort, splitProjectName } from "../landing/copy";
 import { countWord } from "../landing/count-word";
 import { THUMB } from "../media/derivatives";
 import type { Transform } from "../media/transform";
-import { assetMode, numberPolicy, type DisplayPolicy } from "../provenance";
+import { assetMode, hidesMock, numberPolicy, type DisplayPolicy } from "../provenance";
 import type { MediaProvider } from "../providers/media";
 
 const PHONE: Transform = [{ crop: "fill", gravity: "auto", width: 300, height: 540 }, { effect: "blur_faces" }, { format: "auto", quality: "auto" }];
@@ -53,7 +53,7 @@ export async function demoEntryView(db: DB, media: MediaProvider, policy: Displa
   };
 
   const verified = heroRows.filter((a) => a.trustBand === "VERIFIED");
-  const countable = policy.production ? verified.filter((a) => assetMode(a.provenance) === "real") : verified;
+  const countable = hidesMock(policy) ? verified.filter((a) => assetMode(a.provenance) === "real") : verified;
   const [latest] = hero.project ? await db.select({ id: reports.id }).from(reports).where(eq(reports.projectId, hero.project.id)).orderBy(desc(reports.createdAt)).limit(1) : [];
   const planted = rows.filter((a) => a.testCase).length;
   return {

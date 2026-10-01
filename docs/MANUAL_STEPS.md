@@ -145,6 +145,17 @@ With the production `DATABASE_URL` and Cloudinary keys in your env:
 3. Run `pnpm design:capture`, then `pnpm parity:capture <route>`, then `pnpm parity:report`, and
    open `design/parity/report.html`.
 
+## 9. Before publishing the preview videos (10 min)
+
+1. **Music licence.** The videos use "Happy Beats / Business Moves" Vols. 1, 10 and 11 by ende.app,
+   bundled with the brag skill without written licence terms. Check the terms at https://ende.app/en
+   and put them in video/preview/DESCRIPTION.md; if they don't allow it, swap the track in
+   `scripts/video/render.ts` and run `pnpm video:render`.
+2. **Android vibration.** On an Android phone, take a photo on `/capture`: a short buzz on the shutter
+   and a double buzz on the score (iOS has no vibration API). It has only run in emulation.
+3. **Re-record with real data** once the live providers are connected and `pnpm demo:remeasure` has
+   run: `pnpm video:final --real` (needs `CAPTURE_TOKEN_SECRET`, the key the demo was imported with).
+
 ## Still to confirm with real keys (Phase 10)
 
 The UNVERIFIED items in docs/external-apis.md. Each has a fallback switch, and `pnpm services:check`

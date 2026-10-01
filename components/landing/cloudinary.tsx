@@ -44,7 +44,7 @@ export function CloudinaryChapter({ data }: { data: LandingData }) {
           </div>
           <div style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", gap: "6px", alignItems: "center" }}>
             <div style={{ position: "relative", width: "200px", height: "150px", borderRadius: "8px", overflow: "hidden", background: "var(--background)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {node.preview?.kind === "image" && <img src={node.preview.src} alt={node.alt} style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: node.preview.fit }} />}
+              {node.preview?.kind === "image" && <img loading="lazy" src={node.preview.src} alt={node.alt} style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: node.preview.fit }} />}
               {node.preview?.kind === "glyph" && <Glyph bits={node.preview.bits} variant={node.preview.variant} label={node.alt} style={{ position: "absolute", inset: "0", width: "100%", height: "100%" }} />}
             </div>
             <span style={{ fontSize: "12px", color: "var(--muted-foreground)" }}>{node.caption}</span>

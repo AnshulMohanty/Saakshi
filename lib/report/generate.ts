@@ -17,7 +17,7 @@ import type { AIProvider } from "../providers/ai";
 import type { MediaProvider } from "../providers/media";
 import { describeReason } from "../trust";
 import { displayPolicy } from "../display-policy";
-import { assetMode, combineModes, showClaim, showEstimate, showNumber, type DisplayPolicy } from "../provenance";
+import { assetMode, combineModes, hidesMock, showClaim, showEstimate, showNumber, type DisplayPolicy } from "../provenance";
 import { ensureQr } from "../evidence";
 import { buildClaims } from "./claims";
 import { renderReportPdf } from "./pdf";
@@ -105,7 +105,7 @@ export async function generateReport(deps: ReportDeps, projectId: string, opts: 
   }
 
   let trend: ReportData["trend"] = null;
-  const trendAllowed = !policy.production || photos.every((p) => p.provenance && assetMode(p.provenance) === "real");
+  const trendAllowed = !hidesMock(policy) || photos.every((p) => p.provenance && assetMode(p.provenance) === "real");
   if (!pairs.length && kind && trendAllowed) {
     const metric = METRICS[kind].primary;
     const ms = photos.length ? await db.select().from(measurements).where(inArray(measurements.assetId, photos.map((p) => p.id))) : [];

@@ -72,6 +72,7 @@ export function EvidenceViewer({ photo, layer, mask, layers }: EvidenceViewerPro
         onClick={() => setExploded((e) => !e)}
         aria-pressed={exploded}
         aria-label={exploded ? "Collapse the evidence layers" : "Explode the photo into its evidence layers"}
+        className="focus-ring"
         style={{ all: "unset", cursor: "pointer", position: "relative", display: "block", width: "100%", aspectRatio: "4/3", borderRadius: "14px", background: "var(--secondary)", perspective: "1400px", overflow: "hidden" }}
       >
         <div ref={stack} style={{ position: "absolute", left: "14%", top: "14%", width: "72%", aspectRatio: "4/3", transformStyle: "preserve-3d" }}>
@@ -83,6 +84,7 @@ export function EvidenceViewer({ photo, layer, mask, layers }: EvidenceViewerPro
                   imgs.current[i] = el;
                 }}
                 data-ev={i}
+                fetchPriority={i === 0 ? "high" : "auto"}
                 src={i === 0 ? photo.src : undefined}
                 alt={i === 0 ? photo.alt : ""}
                 style={{ position: "absolute", inset: "0", width: "100%", height: "100%", ...(i === 0 ? { borderRadius: "4px" } : { opacity: "0" }) }}

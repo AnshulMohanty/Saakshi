@@ -227,7 +227,7 @@ export function AppShell({ data, screen: routeScreen, state, theme, project, rou
             <Glyph bits={LOGO_BITS} colors={{ on: "var(--l-primary)", off: "transparent" }} style={{ width: "24px", height: "24px", flexShrink: "0" }} />
             {rail && <span style={{ fontFamily: "var(--font-display)", fontWeight: "650", fontSize: "20px", whiteSpace: "nowrap" }}>Saakshi</span>}
           </div>
-          <button type="button" onClick={() => window.location.assign(data?.captureHref ?? "/capture")} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "10px", borderRadius: "9px", border: "0", background: "var(--primary)", color: "var(--primary-foreground)", cursor: "pointer", fontWeight: "500", whiteSpace: "nowrap", marginBottom: "8px" }}>
+          <button type="button" aria-label="Capture" onClick={() => window.location.assign(data?.captureHref ?? "/capture")} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "10px", borderRadius: "9px", border: "0", background: "var(--primary)", color: "var(--primary-foreground)", cursor: "pointer", fontWeight: "500", whiteSpace: "nowrap", marginBottom: "8px" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path d="M3 8h3l2-3h8l2 3h3v11H3z" />
               <circle cx="12" cy="13" r="4" />
@@ -355,7 +355,7 @@ export function AppShell({ data, screen: routeScreen, state, theme, project, rou
               {palItems.map((p, i) => (
                 <button key={`${p.hint}-${p.label}-${i}`} type="button" onClick={p.run} style={{ width: "100%", display: "flex", alignItems: "center", gap: "10px", padding: "8px 10px", borderRadius: "8px", border: "0", background: i === pi ? "var(--accent)" : "transparent", cursor: "pointer", textAlign: "left" }}>
                   {/* eslint-disable-next-line @next/next/no-img-element -- signed, face-blurred thumbnail */}
-                  {p.src && <img src={p.src} alt="" style={{ width: "32px", height: "24px", objectFit: "cover", borderRadius: "4px" }} />}
+                  {p.src && <img loading="lazy" src={p.src} alt="" style={{ width: "32px", height: "24px", objectFit: "cover", borderRadius: "4px" }} />}
                   <span style={{ flex: "1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.label}</span>
                   <span style={{ fontSize: "12px", color: "var(--muted-foreground)" }}>{p.hint}</span>
                 </button>

@@ -21,7 +21,7 @@ export function WatchingChapter({ data }: { data: LandingData }) {
             <p style={{ margin: "0", fontSize: "15px", lineHeight: "1.5", color: "var(--muted-foreground)" }}>A QR poster on the pole lets anyone passing add a check-in photo of the same spot.</p>
             <div style={{ position: "relative", width: "100%", aspectRatio: "4/3", maxHeight: "min(40vh,52vw)", borderRadius: "var(--radius)", overflow: "hidden", background: "var(--placeholder)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               {first?.photo ? (
-                <img id="c7-img" src={first.photo} alt={`Check-in photo at ${c!.spot}`} style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover" }} />
+                <img loading="lazy" id="c7-img" src={first.photo} alt={`Check-in photo at ${c!.spot}`} style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px", alignItems: "center", textAlign: "center", padding: "12px", color: "var(--muted-foreground)" }}>
                   <span style={{ fontWeight: "600", color: "var(--foreground)" }}>{c ? "Real photo here" : "No check-ins yet"}</span>

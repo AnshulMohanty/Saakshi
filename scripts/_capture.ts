@@ -46,12 +46,12 @@ export const pageSlug = (s: string) =>
     .replace(/^-|-$/g, "") || "index";
 
 /** Edge first (installed on Windows, no download), then Chrome, then Playwright's own Chromium. */
-export async function launchBrowser(): Promise<Browser> {
+export async function launchBrowser(o: { headless?: boolean; args?: string[] } = {}): Promise<Browser> {
   const channels = [process.env.PLAYWRIGHT_CHANNEL, "msedge", "chrome", undefined].filter((c, i, a) => a.indexOf(c) === i);
   let last: unknown;
   for (const channel of channels) {
     try {
-      return await chromium.launch({ headless: true, ...(channel ? { channel } : {}) });
+      return await chromium.launch({ headless: o.headless ?? true, ...(o.args ? { args: o.args } : {}), ...(channel ? { channel } : {}) });
     } catch (err) {
       last = err;
     }

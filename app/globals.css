@@ -304,3 +304,9 @@ html[data-intro="off"] .ink-intro {
     display: none;
   }
 }
+
+/* A focus ring where a ported element resets its own outline (all: unset, outline: 0): keyboard focus stays visible (quality gate). */
+.focus-ring:focus-visible {
+  outline: 2px solid var(--ring) !important;
+  outline-offset: 2px;
+}

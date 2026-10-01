@@ -1,0 +1,3 @@
+Saakshi turns clean-up photos into proof a funder can check: where and when each photo was taken, fakes caught by fixed rules, litter measured from the pixels, and every number in the report linked to the photo behind it. Faces stay blurred, even if you edit the link.
+
+Preview build on real Wikimedia Commons photos; AI checks and litter masks are prototypes until the live pipeline is connected.

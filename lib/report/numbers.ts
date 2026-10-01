@@ -36,7 +36,7 @@ export interface Shown {
 }
 
 /** Claims → cards, in the design's order; `show` applies the display policy (lib/provenance showClaim). */
-export function numberCards(claims: ReadonlyArray<Claim>, show: (c: Claim) => Shown, event = "clean-up"): NumberCard[] {
+export function numberCards(claims: ReadonlyArray<Claim>, show: (c: Claim) => Shown, event = "clean-up", mockTag = "Mock output"): NumberCard[] {
   return [...claims]
     .filter((c) => ORDER.includes(c.id))
     .sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id))
@@ -56,7 +56,7 @@ export function numberCards(claims: ReadonlyArray<Claim>, show: (c: Claim) => Sh
         days_since_last_checkin: { kind: "count", value: String(v), label: one ? "day since the last check-in" : "days since the last check-in" },
       };
       const b = base[c.id];
-      const tag = hidden ? s.text : s.mock ? "Mock output" : c.method === "ai_estimated" ? `AI estimate${c.confidence !== undefined ? `, confidence ${Math.round(c.confidence * 100)}%` : ""}` : "";
+      const tag = hidden ? s.text : s.mock ? mockTag : c.method === "ai_estimated" ? `AI estimate${c.confidence !== undefined ? `, confidence ${Math.round(c.confidence * 100)}%` : ""}` : "";
       return { key: c.id, kind: b.kind, value: hidden ? "–" : b.value, label: b.label, tag, tagTone: hidden ? "muted" : s.mock ? "review" : c.method === "ai_estimated" ? "estimated" : "muted", hidden };
     });
 }

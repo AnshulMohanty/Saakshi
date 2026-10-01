@@ -76,14 +76,14 @@ export function LandingOverlay({ data }: { data: LandingData }) {
                   </span>
                   <span style={{ ...BADGE, background: "var(--measured)" }}>Measured</span>
                 </div>
-                <div style={NOTE}>{h.cover ? (h.cover.value === null ? h.cover.text : `${metric} covers ${h.cover.text}% of the frame.${h.cover.mock ? " (Mock output)" : ""}`) : "Not measured yet."}</div>
+                <div style={NOTE}>{h.cover ? (h.cover.value === null ? h.cover.text : `${metric} covers ${h.cover.text}% of the frame.${h.cover.mock ? ` (${data.mockTag})` : ""}`) : "Not measured yet."}</div>
               </div>
             </>
           )}
         </div>
 
         <div id="h-proof" style={{ position: "absolute", left: "0", top: "0", width: "520px" }}>
-          {h?.trust && <TrustMeter innerId="h-proof-in" ids="h" score={h.trust.score} band={h.trust.band} chips={h.trust.chips} mock={h.trust.mock} style={{ opacity: "0" }} />}
+          {h?.trust && <TrustMeter innerId="h-proof-in" ids="h" score={h.trust.score} band={h.trust.band} chips={h.trust.chips} mock={h.trust.mock} mockTag={data.mockTag} style={{ opacity: "0" }} />}
         </div>
 
         <div id="gl-projects">

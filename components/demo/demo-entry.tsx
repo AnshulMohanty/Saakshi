@@ -6,7 +6,7 @@ import { useEffect, useRef } from "react";
 import { Glyph } from "@/components/glyph";
 import { BAND_COLOR, BAND_LABEL } from "@/components/trust-meter";
 import { LOGO_BITS } from "@/lib/glyph";
-import { rng } from "@/lib/scenes/landing-stage";
+import { rng } from "@/lib/scenes/rng";
 import type { TrustBand } from "@/lib/trust/types";
 
 /**
@@ -175,7 +175,7 @@ export function DemoEntry({ data }: { data: DemoEntryData }) {
                 </div>
                 <div data-m="field" style={{ position: "absolute", inset: "0" }}>
                   {data.manager.tiles.map((t, i) => (
-                    <img key={i} data-mt={i} src={t.src} alt="" style={{ position: "absolute", left: "0", top: "0", width: "52px", height: "52px", objectFit: "cover", borderRadius: "6px", boxShadow: "0 2px 8px color-mix(in srgb, var(--foreground) 18%, transparent)", outline: `2px solid ${t.flagged ? "var(--l-destructive)" : "transparent"}`, outlineOffset: "-2px" }} />
+                    <img loading="lazy" key={i} data-mt={i} src={t.src} alt="" style={{ position: "absolute", left: "0", top: "0", width: "52px", height: "52px", objectFit: "cover", borderRadius: "6px", boxShadow: "0 2px 8px color-mix(in srgb, var(--foreground) 18%, transparent)", outline: `2px solid ${t.flagged ? "var(--l-destructive)" : "transparent"}`, outlineOffset: "-2px" }} />
                   ))}
                 </div>
               </div>
@@ -206,7 +206,7 @@ export function DemoEntry({ data }: { data: DemoEntryData }) {
                 </svg>
                 <div style={{ position: "absolute", left: "0", right: "0", top: "222px", display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "8px", padding: "0 16px" }}>
                   {data.funder.tiles.map((src, i) => (
-                    <img key={i} data-f="tile" src={src} alt="" style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: "5px", opacity: "0.35" }} />
+                    <img loading="lazy" key={i} data-f="tile" src={src} alt="" style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: "5px", opacity: "0.35" }} />
                   ))}
                 </div>
               </div>

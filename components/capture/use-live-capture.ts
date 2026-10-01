@@ -358,7 +358,7 @@ export function useLiveCapture({ project, spot, spotInfo }: { project: string | 
       const text = st.trustBand === "VERIFIED" ? "Verified" : st.trustBand === "NEEDS_REVIEW" ? "Needs review" : "Flagged";
       const tone: BandTone = st.trustBand === "VERIFIED" ? "verified" : st.trustBand === "NEEDS_REVIEW" ? "review" : "flagged";
       const note = shot!.lowAcc !== null ? `Location was weak, ±${shot!.lowAcc} m` : shot!.noLoc && shot!.source === "witness" ? "No location recorded" : st.trustBand === "VERIFIED" ? "Location, time and fingerprint check out" : (st.decisive ?? "A person will check it");
-      band = { text, tone, note: st.scoreHidden ?? note, mock: st.scoreMock };
+      band = { text, tone, note: st.scoreHidden ?? note, mock: st.scoreTag };
     }
     const bits = st?.phash ? hexToBits(st.phash) : shot?.hash ? hexToBits(shot.hash) : ZERO;
     return {

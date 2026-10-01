@@ -19,7 +19,7 @@ function Photo({ side, id, aspect }: { side: MeasuredSide; id: "a" | "b"; aspect
     <div style={{ position: "relative", width: "100%", aspectRatio: aspect, maxHeight: "min(42vh,46vw)", borderRadius: "var(--radius)", overflow: "hidden", background: side.src ? "var(--border)" : "var(--hairline-strong)", display: side.src ? undefined : "flex", alignItems: side.src ? undefined : "center", justifyContent: side.src ? undefined : "center" }}>
       {side.src ? (
         <>
-          <img src={side.src} alt={side.alt} style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover" }} />
+          <img loading="lazy" src={side.src} alt={side.alt} style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover" }} />
           {side.mask && <div id={`c4-mask-${id}`} style={maskStyle(side)} />}
         </>
       ) : (

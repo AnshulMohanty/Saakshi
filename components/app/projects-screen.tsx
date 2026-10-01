@@ -87,7 +87,7 @@ export function ProjectsScreen({ projects, current, data, onPick, onOpen }: { pr
               return (
                 <button key={`${t.id ?? "x"}-${i}`} type="button" data-pt={t.keys.join(" ")} onClick={() => t.id && onOpen(t.id)} aria-label="Open photo" style={{ aspectRatio: "1", padding: "0", border: "0", borderRadius: "6px", overflow: "hidden", cursor: "pointer", background: "var(--muted)", opacity: kpi ? (on ? 1 : 0.28) : 1, outline: `2px solid ${on ? "var(--primary)" : "transparent"}`, outlineOffset: "-2px", transition: "opacity 150ms" }}>
                   {/* eslint-disable-next-line @next/next/no-img-element -- signed, face-blurred thumbnail */}
-                  <img src={t.src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                  <img loading="lazy" src={t.src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                 </button>
               );
             })}
@@ -133,14 +133,14 @@ export function ProjectsScreen({ projects, current, data, onPick, onOpen }: { pr
               {data.flags.map((f) => (
                 <button key={f.id} type="button" onClick={() => onOpen(f.id)} style={{ display: "flex", gap: "10px", alignItems: "center", padding: "6px", borderRadius: "8px", border: "0", background: "transparent", cursor: "pointer", textAlign: "left" }}>
                   {/* eslint-disable-next-line @next/next/no-img-element -- signed, face-blurred thumbnail */}
-                  <img src={f.src} alt="" style={{ width: "48px", height: "36px", objectFit: "cover", borderRadius: "5px" }} />
+                  <img loading="lazy" src={f.src} alt="" style={{ width: "48px", height: "36px", objectFit: "cover", borderRadius: "5px" }} />
                   <span style={{ fontSize: "13px" }}>{f.reason}</span>
                 </button>
               ))}
               {data.flags.length === 0 && <span style={{ color: "var(--muted-foreground)" }}>Nothing flagged in this project.</span>}
             </div>
           </div>
-          <div style={{ padding: "14px", borderRadius: "12px", background: "var(--card)", border: "1px solid var(--border)", overflowX: "auto" }}>
+          <div role="region" aria-label="Spots" tabIndex={0} className="focus-ring" style={{ padding: "14px", borderRadius: "12px", background: "var(--card)", border: "1px solid var(--border)", overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "520px" }}>
               <thead>
                 <tr style={{ textAlign: "left", fontSize: "12px", color: "var(--muted-foreground)" }}>

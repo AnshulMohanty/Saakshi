@@ -58,7 +58,7 @@ export function StudioScreen({ data, offline, toast, onExport, onGenerate }: { d
             <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: "4px", position: "relative", zIndex: "1" }}>
               {r.tiles.map((t, i) => (
                 // eslint-disable-next-line @next/next/no-img-element -- signed, face-blurred thumbnail
-                <img key={`${t.src}-${i}`} data-st={t.k} src={t.src} alt="" style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: "3px" }} />
+                <img loading="lazy" key={`${t.src}-${i}`} data-st={t.k} src={t.src} alt="" style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: "3px" }} />
               ))}
             </div>
             <span style={{ fontSize: "8px", color: "var(--l-muted-foreground)", lineHeight: "1.4" }}>{r.method}</span>

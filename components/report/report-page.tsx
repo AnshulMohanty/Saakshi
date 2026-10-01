@@ -169,7 +169,7 @@ export function ReportPage({ data }: { data: ReportPageData }) {
               {data.flags.map((f) => (
                 <a key={f.key} href={f.href ?? undefined} style={{ display: "flex", gap: "10px", alignItems: "center", padding: "10px", borderRadius: "12px", background: "var(--card)", border: "1px solid var(--border)", color: "var(--foreground)", textDecoration: "none" }}>
                   {/* eslint-disable-next-line @next/next/no-img-element -- signed, face-blurred thumbnail */}
-                  <img src={f.src} alt="" style={{ width: "64px", height: "48px", objectFit: "cover", borderRadius: "6px", flexShrink: "0" }} />
+                  <img loading="lazy" src={f.src} alt="" style={{ width: "64px", height: "48px", objectFit: "cover", borderRadius: "6px", flexShrink: "0" }} />
                   <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                     <span style={{ alignSelf: "flex-start", padding: "1px 6px", borderRadius: "5px", background: "var(--destructive)", color: "var(--card)", fontSize: "11px", fontWeight: "600" }}>Flagged</span>
                     <span style={{ fontSize: "13px", lineHeight: "1.35" }}>{f.reason}</span>

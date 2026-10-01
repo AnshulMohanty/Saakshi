@@ -35,7 +35,7 @@ export interface CaptureView {
   queued: number;
   stepLabels: string[];
   step: number;
-  band: { text: string; tone: BandTone; note: string; mock?: boolean };
+  band: { text: string; tone: BandTone; note: string; /** The badge on a mock-derived score, if any. */ mock?: string | null };
   /** 64 bits: the sheet's fingerprint glyph. */
   glyphBits: string;
   /** 64 bits: the grid that lights up at the shutter. */
@@ -258,7 +258,7 @@ export function CaptureScreen({ view, on, feedImage = null, drift: driftOn = fal
               {view.band.text}
             </span>
             <span style={{ fontSize: "12px", color: "var(--muted-foreground)" }}>{view.band.note}</span>
-            {view.band.mock && <span style={{ alignSelf: "flex-start", marginTop: "2px", fontSize: "11px", padding: "0 5px", borderRadius: "5px", border: "1px dashed var(--review)", color: "var(--review)" }}>Mock output</span>}
+            {view.band.mock && <span style={{ alignSelf: "flex-start", marginTop: "2px", fontSize: "11px", padding: "0 5px", borderRadius: "5px", border: "1px dashed var(--review)", color: "var(--review)" }}>{view.band.mock}</span>}
           </div>
           <Glyph bits={view.glyphBits} label="Fingerprint" style={{ marginLeft: "auto", width: "48px", height: "48px" }} />
         </div>

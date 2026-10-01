@@ -40,6 +40,7 @@ export function WitnessWall({ data, qrSvg, allowMotionOverride = false }: { data
     if (!el) return;
     let disposed = false;
     const mode = resolveMotion({ ...probeMotion({ allowOverride: allowMotionOverride }), webgl2: true, animation: true });
+    el.dataset.motion = mode;
     void import("@/lib/scenes/witness-wall").then(({ setupWall }) => {
       if (disposed) return;
       ctl.current = setupWall(el, data, mode, {
@@ -157,7 +158,7 @@ export function WitnessWall({ data, qrSvg, allowMotionOverride = false }: { data
                   const col = a.band ? NIGHT_BAND[a.band] : "var(--muted-foreground)";
                   return (
                     <div key={a.id} style={{ display: "flex", gap: "14px", alignItems: "center", padding: "10px", borderRadius: "12px", background: "var(--card)", border: "1px solid var(--border)" }}>
-                      <img src={a.src} alt="" style={{ width: "96px", height: "72px", objectFit: "cover", borderRadius: "8px" }} />
+                      <img loading="lazy" src={a.src} alt="" style={{ width: "96px", height: "72px", objectFit: "cover", borderRadius: "8px" }} />
                       <div style={{ flex: "1", minWidth: "0", display: "flex", flexDirection: "column", gap: "2px" }}>
                         <span style={{ fontSize: "20px", fontWeight: "500" }}>{a.place}</span>
                         <span style={{ fontSize: "16px", color: "var(--muted-foreground)" }}>{a.rehearsal && data.rehearsalTag ? `${data.rehearsalTag}. ${a.reason}` : a.reason}</span>

@@ -5,7 +5,7 @@
  * Every number comes from a claim, and each links to its evidence (/r/<id>#claim-<claimId>).
  */
 import { methodLabel, type Claim } from "../claims";
-import { showClaim, type DisplayPolicy } from "../provenance";
+import { hidesMock, showClaim, type DisplayPolicy } from "../provenance";
 
 export const CAVEAT = "Measured on photo pixels. Camera angle, framing, season and light affect the result.";
 
@@ -76,7 +76,7 @@ export function buildReportSections(d: ReportData): Section[] {
       period: `${longDate(d.period.from)} to ${longDate(d.period.to)}`,
       generated: `Generated ${longDate(d.generatedAt)} · report ${d.reportId.slice(0, 8)}`,
       url: d.reportUrl,
-      banner: !d.policy.production && d.claims.some((c) => (c.provider_mode ?? "mock") === "mock") ? "Generated with mock providers: numbers are for development only." : null,
+      banner: !hidesMock(d.policy) && d.claims.some((c) => (c.provider_mode ?? "mock") === "mock") ? (d.policy.preview ? "Preview build: measurements are prototypes until the live pipeline is connected." : "Generated with mock providers: numbers are for development only.") : null,
     },
     {
       kind: "numbers",

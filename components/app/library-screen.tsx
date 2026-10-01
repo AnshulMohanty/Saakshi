@@ -73,6 +73,7 @@ export function LibraryScreen({ data, dark, onOpen, toast, onImport, importTick,
             }}
             placeholder={chips.length ? "Add another filter" : "Try: flagged, Pune, 2024, no location"}
             aria-label="Search photos"
+            className="focus-ring"
             style={{ flex: "1", minWidth: "140px", border: "0", outline: "0", background: "transparent", padding: "4px" }}
           />
         </div>

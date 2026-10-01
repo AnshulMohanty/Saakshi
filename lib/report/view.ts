@@ -6,7 +6,7 @@
 import { eq, inArray } from "drizzle-orm";
 import { claimParts, methodLabel, renderClaims, type Claim } from "../claims";
 import { displayPolicy } from "../display-policy";
-import { showClaim, type DisplayPolicy } from "../provenance";
+import { hidesMock, mockLabel, showClaim, type DisplayPolicy } from "../provenance";
 import type { DB } from "../db/client";
 import { assets, projects, reports, type Asset, type Report } from "../db/schema";
 import { THUMB } from "../library";
@@ -45,7 +45,7 @@ export async function campaignTemplate(
     // A stat card is a number: no card when the policy hides it (mock in production, low confidence).
     const shown = showClaim(claim, policy);
     if (shown.kind === "hidden") return null;
-    return { publicId: photo.cldPublicId, transform: withMockTag(statCardTransform({ value: shown.text, label: claim.label, method: methodLabel(claim) }, download), shown.mock), filename, mock: shown.mock };
+    return { publicId: photo.cldPublicId, transform: withMockTag(statCardTransform({ value: shown.text, label: claim.label, method: methodLabel(claim) }, download), shown.mock, mockLabel(policy)), filename, mock: shown.mock };
   }
   if (template === "split") {
     const before = get(kit.pair?.beforeAssetId);
@@ -57,7 +57,7 @@ export async function campaignTemplate(
     const mock = shown?.kind === "value" && shown.mock;
     return {
       publicId: before.cldPublicId,
-      transform: withMockTag(splitTransform({ afterPublicId: after.cldPublicId, beforeLabel: `Before · ${captureDate(before.capturedAt, before.capturedAtPrecision)}`, afterLabel: `After · ${captureDate(after.capturedAt, after.capturedAtPrecision)}`, headline }, download), mock),
+      transform: withMockTag(splitTransform({ afterPublicId: after.cldPublicId, beforeLabel: `Before · ${captureDate(before.capturedAt, before.capturedAtPrecision)}`, afterLabel: `After · ${captureDate(after.capturedAt, after.capturedAtPrecision)}`, headline }, download), mock, mockLabel(policy)),
       filename,
       mock,
     };
@@ -67,10 +67,10 @@ export async function campaignTemplate(
   return { publicId: photo.cldPublicId, transform: proofTemplateTransform({ assetId: photo.id, place: photo.placeName, date: captureDate(photo.capturedAt, photo.capturedAtPrecision), band: photo.trustBand }, download), filename, mock: false };
 }
 
-/** Development only: a visible "Mock output" label burned into a template that shows a mock-derived number. */
-function withMockTag(t: Transform, mock: boolean): Transform {
+/** A visible badge burned into a template that shows a mock-derived number ("Mock output" in development, "Prototype measurement" in the preview). */
+function withMockTag(t: Transform, mock: boolean, label = "Mock output"): Transform {
   if (!mock) return t;
-  return [...t.slice(0, -1), { overlay: { text: "Mock output", font: "Arial", size: 36, weight: "bold", color: "#FFFFFF", background: "#B45309" }, gravity: "north_east", x: 30, y: 30 }, ...t.slice(-1)];
+  return [...t.slice(0, -1), { overlay: { text: label, font: "Arial", size: 36, weight: "bold", color: "#FFFFFF", background: "#B45309" }, gravity: "north_east", x: 30, y: 30 }, ...t.slice(-1)];
 }
 
 export async function reportView(db: DB, media: MediaProvider, id: string, policy: DisplayPolicy = displayPolicy()) {
@@ -98,7 +98,7 @@ export async function reportView(db: DB, media: MediaProvider, id: string, polic
     project: project ?? null,
     prose: report.prose ? claimParts(report.prose, claims, "en-IN", (c) => showClaim(c, policy).text) : [],
     providerMode: report.providerMode,
-    mockShown: !policy.production && claims.some((c) => (c.provider_mode ?? "mock") === "mock"),
+    mockShown: !hidesMock(policy) && claims.some((c) => (c.provider_mode ?? "mock") === "mock"),
     claims: claims.map((c) => ({
       ...c,
       ...(({ shown }) => ({ formatted: shown.text, hidden: shown.kind === "hidden", mock: shown.kind === "value" && shown.mock }))({ shown: showClaim(c, policy) }),

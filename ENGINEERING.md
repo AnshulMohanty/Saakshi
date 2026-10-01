@@ -757,3 +757,69 @@ Newest last. After every phase or fix: what changed, why, the evidence, any new 
     - The two runs over the gate are the demo entry's `default` (6.3% at 1440, 2.2% at 390). That is **G6, now explained and closed:** the prototype scatters the manager loop's tiles with `Math.random` (DE:471), and `default` is a real-time scroll capture. The deterministic `reduced` (0%) and fake-clock `loops` (≤ 1.5%) runs are the comparable ones.
     - The drawer at 390 is 0.6% because the loupe button is gone on touch.
   - `pnpm test`: 547 passing in 57 files; lint and typecheck clean.
+- **Phase 8, quality gates** (2 Oct, `pnpm quality`, scripts/quality-gates.ts → docs/quality-gates.md)
+  - **Setup:** a production build (`pnpm build && pnpm start`, mock providers, the demo archive) on this machine (Windows 11, 8 GB), Playwright's browsers.
+  - **Result: 171 of 187 checks pass.**
+  - **Fixed along the way:**
+    - **three.js on /demo and /witness.** Both imported `rng` from `lib/scenes/landing-stage.ts`, which pulled the 489 KB three chunk. `rng` now has its own module (`lib/scenes/rng.ts`), and three loads only on /.
+    - **axe at 390:**
+      - the collapsed rail's Capture button had no name;
+      - the project page's horizontally scrolling spots table wasn't focusable (now a labelled region).
+    - **Focus rings:** three ported elements reset their outline (`all: unset`, `outline: 0`): the faces chapter's chip buttons, the evidence viewer's explode button and the library search. A `.focus-ring:focus-visible` rule restores it.
+    - **Fonts:**
+      - Anek Devanagari's devanagari file was 709 KB and loaded on every page for the nav's "साक्षी". `pnpm design:fonts` now subsets it with HarfBuzz (`subset-font`) to the 30 characters our display text uses, weights 400–700 at the default width: 58 KB.
+      - Anek Devanagari's latin file (112 KB) sets only the Latin inside `--font-deva` text ("साक्षी means witness."), so it is subset to ASCII and common punctuation: 28 KB.
+      - Reordering `--font-deva` (Anek Latin first) was tried and reverted. The line box took Anek Latin's metrics and moved the poster's Devanagari headline (0.1% → 1.3% at 390).
+    - **Images:** 17 below-the-fold and list images are now `loading="lazy"`. On the landing this cut the bytes requested before LCP from 2,087 KB to 869 KB.
+    - **WebGL warm-up:** the stage's first frame compiled every shader and uploaded every texture in one 526 ms task, and Lighthouse desktop TBT put the landing at 81. Shaders now go through `compileAsync`, and canvas textures upload two per frame. The landing scores 85.
+    - **LCP images:** the review and evidence photos now load with `fetchPriority="high"`.
+  - **Lighthouse desktop:**
+    - landing: performance 85, accessibility 100 (gate 85/95);
+    - every other page: performance 92–100, accessibility 98–100 (gate 90).
+    - The poster's 98 was the `landmark-one-main` audit; its root is now `<main>`.
+  - **LCP on a throttled mid-range Android profile:**
+    - **Simulated (Lighthouse mobile), fails on all 13 pages:** 2.56 s (spot) to 6.91 s (review). Lighthouse projects every byte requested before the LCP over its 1.6 Mbps network.
+    - **Applied in the browser (Pixel 7, 4× CPU, 1.6 Mbps / 150 ms RTT), 10 of 13 pass:** landing 1.89 s, library 1.87 s, the rest 0.77–1.11 s.
+    - **The three that fail:** witness 2.81 s (its map labels paint after the stage fits), evidence 2.52 s, review 5.65 s.
+    - **Review's cause:** its LCP image is the 1280 px preview, which the mock serves as a 554 KB WebP. Cloudinary's `q_auto`/`f_auto` (AVIF) would serve a fraction of that. Open.
+  - **Still first, 3D after idle:**
+    - desktop: first paint and LCP (the hero copy) at 820 ms, 3D at 1.52 s;
+    - Pixel 7: 364 ms, 3D at 1.13 s.
+  - **Frame rate:**
+    - **Headed Chromium on this machine's GPU, all pass:**
+      - landing while scrolling: 136.3 fps mean, p95 frame 7.1 ms;
+      - Wall idle: 144 fps;
+      - Pixel 7 emulation with 4× CPU throttling: landing 87.7 fps (p95 20.8 ms), Wall 144 fps.
+    - **Headless Chromium renders WebGL in software (SwiftShader):** the landing scrolled at 35.6 fps there and 11.6 fps throttled. That measures the rasteriser, so `--headed` is the recorded run.
+  - **Also passing:**
+    - axe-core WCAG 2.1 A/AA: 0 violations on 13 pages at 1440 and 390;
+    - visible focus on every page;
+    - three.js only on /;
+    - reduced-motion and low-power modes resolve on every scene with no 3D;
+    - Chromium, Firefox and WebKit at 1440, Pixel 7 and iPhone 14: 65 of 65 load with no errors;
+    - no console errors in any gate.
+  - **New issue G11 (open):** signed URLs stored in rows (`measurements.mask_url`; the comparisons' frame and mask URLs) were signed when they were made. A server with another `CAPTURE_TOKEN_SECRET` (the mock's key) or Cloudinary secret gets 401 for every stored mask.
+    - Found when production started with a fresh secret on data imported in development.
+    - Workaround: run with the key the data was imported under, or re-import (`pnpm demo:reset`).
+    - Fix: re-sign stored delivery URLs at read time (parse with `parseDeliveryPath`, rebuild with `media.url`).
+- **Phase 8, part B closed: every inventory item verified from evidence** (2 Oct, `pnpm design:verify`, scripts/design-verify.ts)
+  - **The rule set:**
+    - **Every item:** its component must exist; the planned paths of Part B now point at the files actually built (design/inventory.manual.ts, scripts/design-inventory.ts).
+    - **Copy:** must be in the rendered text of the page's fixture, across every parity state (drawer, palette, the 13 capture states; `--collect` → design/quality/texts.json). Failing that, in the product page (our data) or in our source (a state no capture reaches: errors, toasts, empty and offline states).
+    - **Review annotations (B5.11):** must be absent from the product pages.
+    - **Layout:** the box against the export, else the page's pixel parity at that width.
+    - **Effects, interactions and states:** the page's pixel parity over all its runs, plus the motion-constant tests.
+    - **Data:** the page model that binds it and the test that checks the model. `tests/page-views.test.ts` adds the four that had none: how, demo entry, evidence, poster.
+    - **Fonts:** in app/fonts.css.
+    - **Performance items:** the quality gates.
+    - **By hand:** 20 items have a note from the script's NOTES (the prototype's sample places and simulations, the dropped "P1" mark, the 10–11 px type the exports use, springs no export uses, vibration untested on a device).
+  - **Result: 1,859 items:**
+    - 744 verified;
+    - 1,115 verified with a note: 579 data bindings, 188 effects with page notes or motion tests, 108 copy (sample data or conditional states), 91 assets (self-hosted fonts, photos replaced by ours), and the rest page notes (G6, A3, B5.10);
+    - 0 todo, 0 built.
+  - **Checklist:** all 28 items (C01–C28) verified.
+  - **Parity record after the gate fixes** (`design/PARITY.md`):
+    - 144 runs, 142 within 1.5%, 0 unexplained;
+    - the landing is still 0% mean in all six runs;
+    - the poster is 0% at 1440 and 0.1% at 390, after the font-order revert above.
+  - `pnpm test`: 549 passing in 57 files; lint and typecheck clean.

@@ -13,6 +13,7 @@ import * as THREE from "three";
 import type { Frame, LandingProject, StormPhoto } from "../landing/types";
 import { CAMERA, CARD, CH1, DPR_CAP, GAP, HERO_TO_TILE as HT, LABELS, LAYER_FADE, MAP, MOBILE_BELOW, SPIN, STORM, TILT, COLORS } from "../motion/scenes/landing";
 import { drawLayers, loadImage, type LayerInput } from "./layers";
+import { rng } from "./rng";
 
 const clamp = (x: number, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const seg = (p: number, a: number, b: number) => clamp((p - a) / (b - a));
@@ -21,8 +22,8 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 export const eio = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 /** Expo out (GL:8). */
 export const eo = (t: number) => (t >= 1 ? 1 : 1 - Math.pow(2, -10 * t));
-/** Park–Miller (GL:9): the same seeds give the prototype's exact storm. */
-export const rng = (s: number) => () => (s = (s * 16807) % 2147483647) / 2147483647;
+/** Park–Miller (GL:9): ./rng.ts, re-exported for the stage and its tests. */
+export { rng };
 
 export interface StageInput {
   hero: { src: string; w: number; h: number; mask: string | null; layer: LayerInput };
@@ -342,6 +343,22 @@ export async function createStage(canvas: HTMLCanvasElement, D: StageInput, onFr
     const o = update();
     renderer.render(scene, cam);
     onFrame?.(o);
+  }
+  // Warm-up, so the first frame is not one long task that compiles every shader and uploads every
+  // texture (it was 0.5 s, Lighthouse TBT): shaders compile in parallel where the driver allows,
+  // then the textures that already have pixels (the layer art) upload a few per frame. Photo
+  // textures upload as each image arrives.
+  await renderer.compileAsync(scene, cam);
+  const ready = new Set<THREE.Texture>();
+  scene.traverse((o) => {
+    const m = (o as THREE.Mesh).material;
+    if (m && !Array.isArray(m) && "map" in m && m.map instanceof THREE.Texture && m.map.image) ready.add(m.map);
+  });
+  let uploaded = 0;
+  for (const t of ready) {
+    if (!alive) break;
+    renderer.initTexture(t);
+    if (++uploaded % 2 === 0) await new Promise((r) => requestAnimationFrame(r));
   }
   loop();
   return {

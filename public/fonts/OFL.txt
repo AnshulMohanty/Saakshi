@@ -3,7 +3,8 @@ Fonts in this folder, all under the SIL Open Font License, Version 1.1:
 Anek Latin, Anek Devanagari: Copyright 2021 The Anek Project Authors (https://github.com/EkType/Anek)
 IBM Plex Sans, IBM Plex Sans Devanagari, IBM Plex Mono: Copyright 2017 IBM Corp. with Reserved Font Name "Plex" (https://github.com/IBM/plex)
 
-Served as the woff2 subsets Google Fonts publishes for these families, unmodified.
+Served as the woff2 subsets Google Fonts publishes for these families, unmodified, except
+Anek Devanagari's devanagari and latin files, subset to the characters the site's display text uses (scripts/design-fonts.ts).
 
 SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
 -----------------------------------------------------------

@@ -20,7 +20,7 @@ export interface EvidencePageData {
   title: string;
   when: string;
   crumb: { label: string; href: string | null };
-  trust: { score: number | null; band: TrustBand | null; hiddenText: string | null; mock: boolean };
+  trust: { score: number | null; band: TrustBand | null; hiddenText: string | null; mock: boolean; /** The badge when `mock` (default "Mock output"). */ mockTag?: string };
   viewer: EvidenceViewerProps;
   chips: RuleChip[];
   ledger: LedgerRow[];
@@ -122,7 +122,7 @@ export function EvidencePage({ data }: { data: EvidencePageData }) {
             <span style={{ fontFamily: "var(--font-display)", fontWeight: "700", fontSize: "44px", lineHeight: "1", color }}>{t.score ?? "–"}</span>
             <div style={{ display: "flex", flexDirection: "column" }}>
               <span style={{ fontWeight: "600", color }}>{t.band ? BAND_LABEL[t.band] : (t.hiddenText ?? "Not scored yet")}</span>
-              <span style={{ fontSize: "12px", color: "var(--muted-foreground)" }}>{t.mock ? "trust score, fixed rules (Mock output)" : "trust score, fixed rules"}</span>
+              <span style={{ fontSize: "12px", color: "var(--muted-foreground)" }}>{t.mock ? `trust score, fixed rules (${t.mockTag ?? "Mock output"})` : "trust score, fixed rules"}</span>
             </div>
           </div>
         </div>

@@ -11,7 +11,7 @@ import { getConfig } from "./config";
 import type { DB } from "./db/client";
 import { daysSince, EVENT_WORD, pct, SOURCE_WHO, timelineLabels } from "./measure/timeline";
 import { spotView } from "./measure/views";
-import type { DisplayPolicy } from "./provenance";
+import { mockLabel, type DisplayPolicy } from "./provenance";
 import type { MediaProvider } from "./providers/media";
 
 const coord = (v: number, dir: [string, string]) => `${Math.abs(v).toFixed(5)}° ${v >= 0 ? dir[0] : dir[1]}`;
@@ -52,6 +52,7 @@ export async function spotPageData(db: DB, media: MediaProvider, slug: string, o
     },
     hidden: v.trendHidden,
     mock: v.trendMock,
+    mockTag: mockLabel(o.policy),
     points,
     maskMode: "luminance",
     frameAspect: "800/600",
