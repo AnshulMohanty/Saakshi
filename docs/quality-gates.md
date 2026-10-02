@@ -79,12 +79,12 @@ Run 2026-10-01 21:27 UTC.
 
 ## Hero still first, 3D after idle
 
-Run 2026-10-01 21:27 UTC.
+Run 2026-10-02 07:31 UTC.
 
 | page | profile | result | gate |
 |---|---|---|---|
-| landing | desktop 1440 | mode full; first paint 820 ms, LCP 820 ms (#h-copy), 3D started 1519 ms | pass |
-| landing | Pixel 7 emulation | mode full; first paint 364 ms, LCP 364 ms (#h-copy), 3D started 1125 ms | pass |
+| landing | desktop 1440 | mode full; first paint 1444 ms, LCP 1444 ms (#h-copy), 3D started 2247 ms | pass |
+| landing | Pixel 7 emulation | mode full; first paint 316 ms, LCP 316 ms (#h-copy), 3D started 1085 ms | pass |
 
 ## Frame rate: 60 fps desktop, 30+ fps mid-range Android
 
@@ -99,11 +99,11 @@ Run 2026-10-01 21:38 UTC.
 
 ## three.js only on /, /witness and the evidence viewer
 
-Run 2026-10-01 21:29 UTC.
+Run 2026-10-02 07:32 UTC.
 
 | page | profile | result | gate |
 |---|---|---|---|
-| landing | chromium 1440 | loaded (2tn40cao4_3i7.js) | pass |
+| landing | chromium 1440 | loaded (2eutt1dsm_g9i.js) | pass |
 | how-it-works | chromium 1440 | not loaded | pass |
 | demo | chromium 1440 | not loaded | pass |
 | witness | chromium 1440 | not loaded | pass |
@@ -119,7 +119,7 @@ Run 2026-10-01 21:29 UTC.
 
 ## axe-core, WCAG 2.1 A and AA
 
-Run 2026-10-01 21:31 UTC.
+Run 2026-10-02 07:24 UTC.
 
 | page | profile | result | gate |
 |---|---|---|---|
@@ -172,74 +172,74 @@ Run 2026-10-01 21:32 UTC.
 
 ## Browsers: Chromium, Firefox, WebKit, Pixel 7, iPhone 14
 
-Run 2026-10-01 21:36 UTC.
+Run 2026-10-02 07:36 UTC.
 
 | page | profile | result | gate |
 |---|---|---|---|
 | landing | Chromium 1440 | HTTP 200, 9317 chars of text, 0 errors | pass |
-| how-it-works | Chromium 1440 | HTTP 200, 3530 chars of text, 0 errors | pass |
+| how-it-works | Chromium 1440 | HTTP 200, 3531 chars of text, 0 errors | pass |
 | demo | Chromium 1440 | HTTP 200, 800 chars of text, 0 errors | pass |
-| witness | Chromium 1440 | HTTP 200, 610 chars of text, 0 errors | pass |
-| evidence | Chromium 1440 | HTTP 200, 3950 chars of text, 0 errors | pass |
-| spot | Chromium 1440 | HTTP 200, 773 chars of text, 0 errors | pass |
+| witness | Chromium 1440 | HTTP 200, 450 chars of text, 0 errors | pass |
+| evidence | Chromium 1440 | HTTP 200, 3937 chars of text, 0 errors | pass |
+| spot | Chromium 1440 | HTTP 200, 996 chars of text, 0 errors | pass |
 | report | Chromium 1440 | HTTP 200, 1754 chars of text, 0 errors | pass |
 | poster | Chromium 1440 | HTTP 200, 512 chars of text, 0 errors | pass |
 | capture | Chromium 1440 | HTTP 200, 325 chars of text, 0 errors | pass |
-| library | Chromium 1440 | HTTP 200, 1034 chars of text, 0 errors | pass |
+| library | Chromium 1440 | HTTP 200, 1016 chars of text, 0 errors | pass |
 | review | Chromium 1440 | HTTP 200, 908 chars of text, 0 errors | pass |
-| project | Chromium 1440 | HTTP 200, 961 chars of text, 0 errors | pass |
+| project | Chromium 1440 | HTTP 200, 955 chars of text, 0 errors | pass |
 | studio | Chromium 1440 | HTTP 200, 758 chars of text, 0 errors | pass |
 | landing | Firefox 1440 | HTTP 200, 9317 chars of text, 0 errors | pass |
-| how-it-works | Firefox 1440 | HTTP 200, 3530 chars of text, 0 errors | pass |
+| how-it-works | Firefox 1440 | HTTP 200, 3531 chars of text, 0 errors | pass |
 | demo | Firefox 1440 | HTTP 200, 800 chars of text, 0 errors | pass |
-| witness | Firefox 1440 | HTTP 200, 610 chars of text, 0 errors | pass |
-| evidence | Firefox 1440 | HTTP 200, 3950 chars of text, 0 errors | pass |
-| spot | Firefox 1440 | HTTP 200, 773 chars of text, 0 errors | pass |
+| witness | Firefox 1440 | HTTP 200, 450 chars of text, 0 errors | pass |
+| evidence | Firefox 1440 | HTTP 200, 3937 chars of text, 0 errors | pass |
+| spot | Firefox 1440 | HTTP 200, 996 chars of text, 0 errors | pass |
 | report | Firefox 1440 | HTTP 200, 1754 chars of text, 0 errors | pass |
 | poster | Firefox 1440 | HTTP 200, 512 chars of text, 0 errors | pass |
 | capture | Firefox 1440 | HTTP 200, 325 chars of text, 0 errors | pass |
-| library | Firefox 1440 | HTTP 200, 1034 chars of text, 0 errors | pass |
+| library | Firefox 1440 | HTTP 200, 1016 chars of text, 0 errors | pass |
 | review | Firefox 1440 | HTTP 200, 908 chars of text, 0 errors | pass |
-| project | Firefox 1440 | HTTP 200, 961 chars of text, 0 errors | pass |
+| project | Firefox 1440 | HTTP 200, 955 chars of text, 0 errors | pass |
 | studio | Firefox 1440 | HTTP 200, 758 chars of text, 0 errors | pass |
 | landing | WebKit 1440 | HTTP 200, 9317 chars of text, 0 errors | pass |
-| how-it-works | WebKit 1440 | HTTP 200, 3530 chars of text, 0 errors | pass |
+| how-it-works | WebKit 1440 | HTTP 200, 3531 chars of text, 0 errors | pass |
 | demo | WebKit 1440 | HTTP 200, 800 chars of text, 0 errors | pass |
-| witness | WebKit 1440 | HTTP 200, 608 chars of text, 0 errors | pass |
-| evidence | WebKit 1440 | HTTP 200, 3950 chars of text, 0 errors | pass |
-| spot | WebKit 1440 | HTTP 200, 773 chars of text, 0 errors | pass |
+| witness | WebKit 1440 | HTTP 200, 448 chars of text, 0 errors | pass |
+| evidence | WebKit 1440 | HTTP 200, 3937 chars of text, 0 errors | pass |
+| spot | WebKit 1440 | HTTP 200, 996 chars of text, 0 errors | pass |
 | report | WebKit 1440 | HTTP 200, 1754 chars of text, 0 errors | pass |
 | poster | WebKit 1440 | HTTP 200, 512 chars of text, 0 errors | pass |
 | capture | WebKit 1440 | HTTP 200, 325 chars of text, 0 errors | pass |
-| library | WebKit 1440 | HTTP 200, 1034 chars of text, 0 errors | pass |
+| library | WebKit 1440 | HTTP 200, 1016 chars of text, 0 errors | pass |
 | review | WebKit 1440 | HTTP 200, 908 chars of text, 0 errors | pass |
-| project | WebKit 1440 | HTTP 200, 961 chars of text, 0 errors | pass |
+| project | WebKit 1440 | HTTP 200, 955 chars of text, 0 errors | pass |
 | studio | WebKit 1440 | HTTP 200, 758 chars of text, 0 errors | pass |
 | landing | Pixel 7 | HTTP 200, 9317 chars of text, 0 errors | pass |
-| how-it-works | Pixel 7 | HTTP 200, 3530 chars of text, 0 errors | pass |
+| how-it-works | Pixel 7 | HTTP 200, 3531 chars of text, 0 errors | pass |
 | demo | Pixel 7 | HTTP 200, 800 chars of text, 0 errors | pass |
-| witness | Pixel 7 | HTTP 200, 610 chars of text, 0 errors | pass |
-| evidence | Pixel 7 | HTTP 200, 3950 chars of text, 0 errors | pass |
-| spot | Pixel 7 | HTTP 200, 773 chars of text, 0 errors | pass |
+| witness | Pixel 7 | HTTP 200, 450 chars of text, 0 errors | pass |
+| evidence | Pixel 7 | HTTP 200, 3937 chars of text, 0 errors | pass |
+| spot | Pixel 7 | HTTP 200, 996 chars of text, 0 errors | pass |
 | report | Pixel 7 | HTTP 200, 1754 chars of text, 0 errors | pass |
 | poster | Pixel 7 | HTTP 200, 512 chars of text, 0 errors | pass |
 | capture | Pixel 7 | HTTP 200, 325 chars of text, 0 errors | pass |
-| library | Pixel 7 | HTTP 200, 973 chars of text, 0 errors | pass |
+| library | Pixel 7 | HTTP 200, 955 chars of text, 0 errors | pass |
 | review | Pixel 7 | HTTP 200, 847 chars of text, 0 errors | pass |
-| project | Pixel 7 | HTTP 200, 900 chars of text, 0 errors | pass |
+| project | Pixel 7 | HTTP 200, 894 chars of text, 0 errors | pass |
 | studio | Pixel 7 | HTTP 200, 697 chars of text, 0 errors | pass |
 | landing | iPhone 14 | HTTP 200, 9317 chars of text, 0 errors | pass |
-| how-it-works | iPhone 14 | HTTP 200, 3530 chars of text, 0 errors | pass |
+| how-it-works | iPhone 14 | HTTP 200, 3531 chars of text, 0 errors | pass |
 | demo | iPhone 14 | HTTP 200, 800 chars of text, 0 errors | pass |
-| witness | iPhone 14 | HTTP 200, 608 chars of text, 0 errors | pass |
-| evidence | iPhone 14 | HTTP 200, 3950 chars of text, 0 errors | pass |
-| spot | iPhone 14 | HTTP 200, 773 chars of text, 0 errors | pass |
+| witness | iPhone 14 | HTTP 200, 448 chars of text, 0 errors | pass |
+| evidence | iPhone 14 | HTTP 200, 3937 chars of text, 0 errors | pass |
+| spot | iPhone 14 | HTTP 200, 996 chars of text, 0 errors | pass |
 | report | iPhone 14 | HTTP 200, 1754 chars of text, 0 errors | pass |
 | poster | iPhone 14 | HTTP 200, 512 chars of text, 0 errors | pass |
 | capture | iPhone 14 | HTTP 200, 325 chars of text, 0 errors | pass |
-| library | iPhone 14 | HTTP 200, 973 chars of text, 0 errors | pass |
+| library | iPhone 14 | HTTP 200, 955 chars of text, 0 errors | pass |
 | review | iPhone 14 | HTTP 200, 847 chars of text, 0 errors | pass |
-| project | iPhone 14 | HTTP 200, 900 chars of text, 0 errors | pass |
+| project | iPhone 14 | HTTP 200, 894 chars of text, 0 errors | pass |
 | studio | iPhone 14 | HTTP 200, 697 chars of text, 0 errors | pass |
 
 ## Reduced-motion and low-power versions of every scene

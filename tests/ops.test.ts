@@ -15,6 +15,7 @@ const PROD = {
   INNGEST_EVENT_KEY: "e",
   INNGEST_SIGNING_KEY: "signkey-prod-x",
   DEMO_ADMIN_SECRET: "d",
+  WALL_OPERATOR_SECRET: "w",
   APP_CONTACT_EMAIL: "team@saakshi.example",
   STAGE_LAT: "12.97",
   STAGE_LNG: "77.59",

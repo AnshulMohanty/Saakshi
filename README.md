@@ -48,20 +48,21 @@ Anyone can post a clean-up photo. A funder, a CSR team or a city partner has no 
 ## How it works
 
 ```mermaid
-flowchart LR
-  A[Field photo<br/>phone · archive · upload] --> B[Cloudinary ingest<br/>authenticated · EXIF · pHash · faces]
-  B --> C[Understand<br/>AI tags, captions, moderation<br/>always ai_estimated + confidence]
-  C --> D[Trust Engine<br/>fixed rules → score + reasons]
-  D --> E[Measure<br/>e_extract masks → cover %]
-  E --> F[Reports & pages<br/>SQL claims · threads to photos]
-  D --> G[Review queue<br/>notes on the audit chain]
+flowchart TD
+  A["📷 Field photo<br/>phone · archive · upload"] --> B["Cloudinary ingest<br/>EXIF · pHash · faces"]
+  B --> C["Understand<br/>AI tags, with confidence"]
+  C --> D{"Trust Engine<br/>fixed rules"}
+  D -->|"Verified"| E["Measure<br/>mask → cover %"]
+  D -->|"Flagged / review"| G["Review queue<br/>note on the audit chain"]
+  G -->|"listed with reasons"| F
+  E --> F["📄 Reports & public pages<br/>every number → its photos"]
 ```
 
 The pipeline runs as idempotent steps keyed by asset id (parse metadata → analyze → understand → embed → assign → score → measure → finalize), each writing one audit row. Four rules hold everywhere:
 
 1. **Totals and KPIs are database aggregates**, never LLM output.
 2. **The LLM never writes digits.** Prose references numbers only as `{{claim:id}}`, and every generated text is validated.
-3. **Trust scores come only from the rules** in `lib/trust` (pure, tested); the model may only rephrase reasons.
+3. **Trust scores come only from the rules** in `src/lib/trust` (pure, tested); the model may only rephrase reasons.
 4. **Public images are always signed and face-blurred**; originals never reach the browser.
 
 ### Built on Cloudinary
@@ -121,11 +122,11 @@ After `pnpm demo:reset`, all 58 archive photos are Verified with no hard flag, a
 | Quality gates (`docs/quality-gates.md`) | **171 of 187 checks**: Lighthouse desktop 85–100 performance and 98–100 accessibility, axe clean, five browsers, reduced-motion and low-power modes, 136 fps scrolling the landing |
 | Open | Mobile LCP under Lighthouse's simulated slow 4G; the review page's 1280 px photo on a throttled network (both recorded in the gates) |
 
-The engineering journal (decisions, issues, evidence for every number above): [ENGINEERING.md](ENGINEERING.md). The developer guide (rules, folders, the provider pattern, gotchas): [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+The engineering journal (decisions, issues, evidence for every number above): [docs/ENGINEERING.md](docs/ENGINEERING.md). The developer guide (rules, folders, the provider pattern, gotchas): [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ## What's real and what's a prototype
 
-The app runs on mock providers until the live services are connected ([docs/MANUAL_STEPS.md](docs/MANUAL_STEPS.md)). Mock-derived numbers are tagged in development and **never shown in production** (`lib/provenance.ts`). The preview build behind the videos (`DEMO_PREVIEW=1`) shows values computed on this machine badged "Prototype measurement", and withholds anything a mock AI made up ("AI reading pending"). Photos, locations, fingerprints and rules are real; AI checks and litter masks are prototypes until the live pipeline is connected.
+The app runs on mock providers until the live services are connected ([docs/MANUAL_STEPS.md](docs/MANUAL_STEPS.md)). Mock-derived numbers are tagged in development and **never shown in production** (`src/lib/provenance.ts`). The preview build behind the videos (`DEMO_PREVIEW=1`) shows values computed on this machine badged "Prototype measurement", and withholds anything a mock AI made up ("AI reading pending"). Photos, locations, fingerprints and rules are real; AI checks and litter masks are prototypes until the live pipeline is connected.
 
 ## Commands
 

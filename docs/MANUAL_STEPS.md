@@ -112,6 +112,15 @@ are throttled harder. Nobody has set one yet: the repo has no `APP_CONTACT_EMAIL
 5. Check with `pnpm services:check` (with `APP_URL` and the Inngest keys in your env): "Inngest endpoint
    /api/inngest: serving".
 
+## 5b. Abuse and spend limits (5 min)
+
+1. In Vercel's environment settings also set:
+   - `WALL_OPERATOR_SECRET`: a fresh random value, only for `/witness?operator=<it>` (Wall rehearsals). Keep it apart from `DEMO_ADMIN_SECRET`; it ends up in browser history on the venue screen.
+   - `UPLOAD_DAILY_CAP` (optional, default 500): uploads per day that enter the paid pipeline, counted in the database so it holds across instances.
+2. In the OpenAI dashboard: **Settings → Limits**, set a monthly budget on the project's key.
+3. In Cloudinary: **Settings → Security**, enable Strict Transformations (unsigned and edited URLs are refused), and check the plan's usage alerts.
+4. Rate limits are in memory, per serverless instance. They slow one client down but are not a global quota; the daily cap and the spend limits above are the ceiling. For a shared limiter, put Upstash Redis behind `src/lib/ratelimit.ts`.
+
 ## 6. Demo data in production (10 min)
 
 With the production `DATABASE_URL` and Cloudinary keys in your env:

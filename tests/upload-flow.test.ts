@@ -88,7 +88,8 @@ describe("capture → ticket → upload → confirm → pipeline (mock provider,
     expect(response.public_id).toMatch(/^saakshi\/evidence\//);
 
     // The browser forwards the provider response; a forged context in it must not matter.
-    const forged = { ...response, context: { custom: { ...response.context.custom, device_accuracy_m: "1", project: "elsewhere" } } };
+    // Nor do the analysis fields: only public_id and version are signed.
+    const forged = { ...response, phash: "ffffffffffffffff", etag: "forged", width: 1, height: 1, media_metadata: { GPSLatitude: "0", DateTimeOriginal: "2001:01:01 00:00:00" }, context: { custom: { ...response.context.custom, device_accuracy_m: "1", project: "elsewhere" } } };
     const confirmed = await (await routes.confirm(json({ provider: "mock", response: forged }))).json();
     expect(confirmed).toMatchObject({ created: true, source: "witness", attested: true, reasons: [] });
     // Confirm is idempotent (the webhook may deliver the same upload again).
@@ -100,6 +101,9 @@ describe("capture → ticket → upload → confirm → pipeline (mock provider,
     const db = await lib.getDb();
     const [a] = await db.select().from(lib.schema.assets).where(eq(lib.schema.assets.id, confirmed.assetId));
     expect(a).toMatchObject({ assignmentMethod: "capture_hint", deviceAccuracyM: 8, exifSource: "none" });
+    expect(a.phash).not.toBe("ffffffffffffffff");
+    expect(a.etag).not.toBe("forged");
+    expect(a.width).toBeGreaterThan(1);
     expect(a.spotId).toBeTruthy();
     expect(a.capture?.deviceFix).toMatchObject({ lat: 17.46421, lng: 78.37361, accuracyM: 8 }); // from the stored ticket
     // All three times are kept: device shutter, server ticket (the anchor), server confirm.

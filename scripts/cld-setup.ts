@@ -5,10 +5,10 @@
  * the requests without sending them (works with no keys). Plan: lib/providers/cloudinary/setup.ts.
  */
 import "./_env";
-import { getConfig } from "../lib/config";
-import { CloudinaryClient } from "../lib/providers/cloudinary/client";
-import { PRESET_NAME, planSetup, type ExistingState } from "../lib/providers/cloudinary/setup";
-import { ProviderHttpError } from "../lib/providers/http";
+import { getConfig } from "../src/lib/config";
+import { CloudinaryClient } from "../src/lib/providers/cloudinary/client";
+import { PRESET_NAME, planSetup, type ExistingState } from "../src/lib/providers/cloudinary/setup";
+import { ProviderHttpError } from "../src/lib/providers/http";
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");

@@ -5,7 +5,7 @@
  * baselines. --reanalyze also re-runs the analysis, AI and embedding steps where their mode differs.
  */
 import "./_env";
-import { runDemoRemeasure } from "../lib/demo/run";
+import { runDemoRemeasure } from "../src/lib/demo/run";
 import { runCli } from "./_demo-cli";
 
 void runCli("demo:remeasure", () =>

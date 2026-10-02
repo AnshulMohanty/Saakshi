@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEMO_DATASET, type DemoDatasetConfig } from "@/data/demo-dataset.config";
+import { DEMO_DATASET, type DemoDatasetConfig } from "../data/demo-dataset.config";
 import { buildDemoDataset, pairability, preference, stageHint } from "@/lib/archive/build";
 import { commonsUserAgent, packageRepoUrl } from "@/lib/archive/commons";
 import { demoProjectId, uuidv5 } from "@/lib/demo/common";

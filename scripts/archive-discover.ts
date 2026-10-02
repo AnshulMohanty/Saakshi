@@ -8,12 +8,12 @@ import "./_env";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { DEMO_DATASET, DISCOVERY_QUERIES } from "../data/demo-dataset.config";
-import { dbscan } from "../lib/archive/cluster";
-import { CommonsClient, packageRepoUrl } from "../lib/archive/commons";
-import { buildDemoDataset, clusterPairability } from "../lib/archive/build";
-import { isUsable, rejectReasons, type CommonsFile } from "../lib/archive/parse";
-import { toCandidate, type ArchiveCandidates, type Candidate } from "../lib/archive/candidates";
-import { MockGeocoder } from "../lib/providers/geocoder/mock";
+import { dbscan } from "../src/lib/archive/cluster";
+import { CommonsClient, packageRepoUrl } from "../src/lib/archive/commons";
+import { buildDemoDataset, clusterPairability } from "../src/lib/archive/build";
+import { isUsable, rejectReasons, type CommonsFile } from "../src/lib/archive/parse";
+import { toCandidate, type ArchiveCandidates, type Candidate } from "../src/lib/archive/candidates";
+import { MockGeocoder } from "../src/lib/providers/geocoder/mock";
 
 const OUT = path.join(process.cwd(), "data", "archive-candidates.json");
 

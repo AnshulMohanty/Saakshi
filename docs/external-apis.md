@@ -19,7 +19,7 @@ redirects there.
 |---|------|------------------|-----------|
 | C1 | Signed **on-the-fly** transformations of `authenticated` assets. `control_access_to_media` says they can't be made ("only … eager transformations"), while `delivery_url_signatures` shows exactly such a URL. | `CLD_DELIVERY_TYPE=private` (private + Strict Transformations: signed URLs only). `CLD_EAGER=1` pre-generates THUMB, PREVIEW and VIEW. | services:check: "On-the-fly signed transformation of an evidence asset" |
 | C2 | `type=authenticated` sent as an Upload API **body** parameter. The reference says `type` is "part of the endpoint URL when using the REST API", yet the documented endpoint is `POST /:resource_type/upload`. The SDKs send it in the body. | none needed if the upload returns `type: authenticated`; otherwise upload through the SDK. | services:check: "Stored as delivery type authenticated" and "Unsigned evidence URL is refused" |
-| C3 | In `e_extract` **mask mode, white = selected**. The docs only say "grayscale mask of the extracted area(s)". | `lib/measure/cover.ts` thresholds at `MASK_THRESHOLD`; if masks come back inverted, add `invert_true` to `maskTransform`. | Phase 10: view one real mask |
+| C3 | In `e_extract` **mask mode, white = selected**. The docs only say "grayscale mask of the extracted area(s)". | `src/lib/measure/cover.ts` thresholds at `MASK_THRESHOLD`; if masks come back inverted, add `invert_true` to `maskTransform`. | Phase 10: view one real mask |
 | C4 | Delivery URL for **raw authenticated** files (`/raw/authenticated/s--sig--/v1/<id>.pdf`). It follows the generic `<asset_type>/<delivery_type>` form, but the docs show no raw example. | `CLD_PDF_DELIVERY=download` (Download API URL). | services:check: "Raw PDF upload + signed delivery" |
 | C5 | Exactly which parameters the **Download API** signs (only the SDK method is documented). | We sign every query parameter except `api_key`/`signature`, as for uploads. | services:check with `CLD_PDF_DELIVERY=download` |
 | C6 | Whether the **Analyze API** can fetch a signed authenticated URL as `source.uri`. | `source.asset_id` is documented as the alternative (not wired yet: it needs the stored `cld_asset_id`). | services:check: the three Analyze checks |
@@ -52,10 +52,12 @@ Items the earlier plan listed as uncertain that are now **settled**:
 | `tags` comma list, `context` `k=v|k2=v2` | `=` and `|` escaped with `\`, no empty keys or values, values ≤ 1024 characters (`image_upload_api_reference_context`) | VERIFIED |
 | `media_metadata`, `phash`, `quality_analysis`, `faces` = true | The response carries `image_metadata` (for `media_metadata=true`), `phash` (a hex string), `faces` `[[x,y,w,h]]` and `quality_analysis.focus` (0–1). | VERIFIED |
 | `moderation=manual` | The asset joins the manual queue, so `/review` decisions can set `moderation_status`. | VERIFIED |
+| Browser tickets: `overwrite=false`, `allowed_formats=jpg,jpeg,png,webp,heic,heif` | Signed into every direct-upload ticket, so a ticket can't replace a photo after it was scored and only takes images (`upload_parameters`: overwrite, allowed_formats). | VERIFIED |
 | `overwrite=true`, `invalidate=true` | Replace a probe/QR/composite and invalidate the CDN copy. The docs warn that overwriting may clear tags and metadata. | VERIFIED (`upload_parameters` "Replacing existing assets") |
 | `file` as a remote https URL | Commons originals upload by reference. | VERIFIED (`upload_parameters` "Upload from a remote URL") |
 | `eager` (pipe list) | `CLD_EAGER=1`: THUMB, PREVIEW, VIEW. Server composites: the labels. | VERIFIED; `f_auto` in eager is C9 |
 | `notification_url` | On browser tickets and the preset → `/api/webhooks/cloudinary` | VERIFIED |
+| `destroy()` (sandbox sweep) | `POST …/image/destroy` signed, with `public_id`, `type` and `invalidate=true`; answers `{"result":"ok"|"not found"}` (`image_upload_api_reference` destroy). | VERIFIED |
 | Raw upload | `POST …/raw/upload`; the public id keeps its extension. | VERIFIED |
 | Limits | Free plan: images ≤ 10 MB and 25 MP, raw ≤ 10 MB. The Upload API has no rate limit. | VERIFIED |
 
@@ -75,6 +77,7 @@ HTTP Basic `api_key:api_secret` on `https://api.cloudinary.com/v1_1/<cloud>/…`
 |-----|---------|--------|
 | `exists()` | `GET resources/image/<type>/<public_id>`. A missing asset returns 404 `{"error":{"message":"Resource not found - …"}}` (not retried). | VERIFIED |
 | Review decision | `POST resources/image/<type>/<public_id>` with `moderation_status=approved|rejected` | VERIFIED |
+| `resource()` (upload confirm) | `GET resources/image/<type>/<public_id>?media_metadata=true&phash=true&faces=true&quality_analysis=true`: the stored image's pHash, size, faces, quality and metadata, read server-side so confirm never trusts the browser's copy (`admin_api` "Get details of a single resource"). 404 means none. | VERIFIED |
 | `cld:setup` fields | `GET metadata_fields`; `POST metadata_fields` (JSON: `external_id`, `label`, `type` string/integer/date/enum, `datasource.values[{external_id,value}]`) | VERIFIED |
 | `cld:setup` preset | `GET upload_presets/<name>`; `POST upload_presets` (`name`, `unsigned=false`, upload params); `PUT upload_presets/<name>` | VERIFIED |
 | services:check | `GET usage` → `plan`, `credits.{usage,limit,used_percent}` | VERIFIED (`admin_api_usage`) |
@@ -89,7 +92,7 @@ HTTP Basic `api_key:api_secret` on `https://api.cloudinary.com/v1_1/<cloud>/…`
 | Masks | `e_extract:prompt_(<p1>;<p2>)[;multiple_true];mode_mask`. It counts as **75 transformations**, is not available in the **Asia Pacific** data center, and not on fetched images. It may answer **423** while generating (retried with backoff). Images are downscaled to 2048² for processing. | VERIFIED; C3 for white = selected |
 | Image layer | `l_authenticated:<id with / as :>/<layer transformations>/fl_layer_apply,g_east`. It works only when the whole URL is signed. Effects such as `e_blur_faces` go in their own component before `fl_layer_apply`, not inside `l_`. | VERIFIED |
 | Text layer | `l_text:Arial_28_bold:<text>` with `co_rgb:`, `b_rgb:`. Commas, slashes and `%` are double-encoded. | VERIFIED |
-| `e_blur_faces[:1–2000]`, `c_fill`/`c_pad`/`c_limit`, `g_auto`, `f_auto`, `q_auto` | as compiled by `lib/media/transform.ts` | VERIFIED |
+| `e_blur_faces[:1–2000]`, `c_fill`/`c_pad`/`c_limit`, `g_auto`, `f_auto`, `q_auto` | as compiled by `src/lib/media/transform.ts` | VERIFIED |
 | Raw authenticated URL | `/raw/authenticated/s--sig--/v1/<id>.pdf` | UNVERIFIED (C4) |
 | Download API | `https://api.cloudinary.com/v1_1/<cloud>/<resource_type>/download?public_id&format&type&timestamp&expires_at&api_key&signature`. `type` defaults to private and `expires_at` to 1 h. Not CDN-cached, and billed at twice the bandwidth. | VERIFIED shape; signed params are C5 |
 | Free plan PDFs | "Allow delivery of PDF and ZIP files" must be on (Settings → Security) | VERIFIED |
@@ -114,7 +117,7 @@ with the SDK's `verifyNotificationSignature` and valid for 2 h. **VERIFIED**.
 ### Plans (`billing_and_plans`, `developer_onboarding_faq_free_plan`)
 
 25 credits per month; 1 credit = 1,000 transformations, 1 GB storage or 1 GB bandwidth. Paid
-add-on tiers need a paid base plan. **VERIFIED**. Cost estimates in `lib/pricing.ts` count
+add-on tiers need a paid base plan. **VERIFIED**. Cost estimates in `src/lib/pricing.ts` count
 transformations; they don't convert to dollars.
 
 ---
@@ -127,7 +130,7 @@ Auth: `Authorization: Bearer <key>` (the `OpenAI-Organization`/`OpenAI-Project` 
 |-----|---------|--------|
 | Endpoint | `POST https://api.openai.com/v1/responses`. The migration guide recommends Responses for new projects. | VERIFIED |
 | `describePhoto` | `input: [{role:"developer", content}, {role:"user", content:[{type:"input_text"}, {type:"input_image", image_url:"data:image/jpeg;base64,…", detail:"high"}]}]`. The image goes as a data URL (whether a signed Cloudinary URL can be fetched is undocumented, and base64 sidesteps it). Faces are blurred before sending. | VERIFIED |
-| Structured output | `text.format = {type:"json_schema", name, schema, strict:true}`. The root must be an object, every property listed in `required`, and `additionalProperties:false` everywhere. Optional values are `["type","null"]`. No `allOf`/`not`/`if`. `lib/providers/ai/json-schema.ts` enforces this and a test walks the schema. | VERIFIED |
+| Structured output | `text.format = {type:"json_schema", name, schema, strict:true}`. The root must be an object, every property listed in `required`, and `additionalProperties:false` everywhere. Optional values are `["type","null"]`. No `allOf`/`not`/`if`. `src/lib/providers/ai/json-schema.ts` enforces this and a test walks the schema. | VERIFIED |
 | `detail` | `low` fits 512², `high` fits 2048² with 2,500 patches, and `auto` behaves like `original` on GPT-5.6 models (large and expensive), so `auto` is never sent. Cost is ceil(w/32)·ceil(h/32) patches × 1.2 for gpt-5.6-*. | VERIFIED; gpt-6-* cost is O1 |
 | `reasoning.effort` | `none`/`low`/`medium` (default)/`high`/… on gpt-5.6-luna; we send `low` (`OPENAI_REASONING_EFFORT`). | VERIFIED |
 | `store: false` | Opts out of response storage | VERIFIED |
@@ -158,7 +161,7 @@ Batch and Flex cost 50% of Standard; the $0.10/$0.60 figure a search snippet giv
 
 | Item | Status |
 |------|--------|
-| `serve({ client, functions })` from `inngest/next`, exporting GET, POST and PUT in `app/api/inngest/route.ts` | VERIFIED |
+| `serve({ client, functions })` from `inngest/next`, exporting GET, POST and PUT in `src/app/api/inngest/route.ts` | VERIFIED |
 | `new Inngest({ id, isDev, checkpointing })`: v4 defaults to **cloud mode**, so local dev needs `isDev`/`INNGEST_DEV=1` | VERIFIED |
 | `createFunction({ id, triggers:[{event}], concurrency }, handler)` (the two-argument v4 form) | VERIFIED |
 | `step.run(id, fn)`: return values are JSON-serialized; each step has its own retry counter | VERIFIED |
@@ -200,7 +203,7 @@ Neither is set in this repo yet (MANUAL_STEPS step 0).
 
 | Item | Status |
 |------|--------|
-| `pnpm land:dots` downloads `ne_50m_land.geojson` once from the tagged repo (`nvkelso/natural-earth-vector` **v5.1.2**, raw.githubusercontent.com) through `lib/providers/http.ts`, caches it in `.data/geo/` and writes `data/land-dots.json` (7,660 dots). The app never calls it at runtime. | VERIFIED: public domain (naturalearthdata.com/about/terms-of-use), file shape is a GeoJSON FeatureCollection of Polygon/MultiPolygon land features |
+| `pnpm land:dots` downloads `ne_50m_land.geojson` once from the tagged repo (`nvkelso/natural-earth-vector` **v5.1.2**, raw.githubusercontent.com) through `src/lib/providers/http.ts`, caches it in `.data/geo/` and writes `data/land-dots.json` (7,660 dots). The app never calls it at runtime. | VERIFIED: public domain (naturalearthdata.com/about/terms-of-use), file shape is a GeoJSON FeatureCollection of Polygon/MultiPolygon land features |
 
 ## Rendering and tooling
 

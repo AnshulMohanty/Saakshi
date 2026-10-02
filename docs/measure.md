@@ -4,7 +4,7 @@
 
 This caveat appears on every comparison card, spot trend and report.
 
-## Pairing (`lib/measure/pairing.ts`, pure)
+## Pairing (`src/lib/measure/pairing.ts`, pure)
 
 A pair is two photos that are:
 
@@ -32,7 +32,7 @@ every candidate with the reason each reject failed.
   returns 422 with the reasons;
 - `remeasure` computes the pair again from fresh masks.
 
-## Measuring (`lib/measure/measure.ts`, `cover.ts`)
+## Measuring (`src/lib/measure/measure.ts`, `cover.ts`)
 
 Both photos are measured on the **same frame**: `c_fill,g_auto,w_800,h_600`. A mask and the view
 the slider shows are the same crop, so the tinted mask lines up with the photo.
@@ -54,7 +54,7 @@ compared with the baseline in the `measure` step, under the same pairing rules, 
 `checkin` comparison. On the live stage, the first photo (the littered table) becomes the
 baseline, and the second (cleaned, minutes later) is measured against it.
 
-**Composite** (`lib/media/composite.ts`, built by `MediaProvider.composite()`). By default
+**Composite** (`src/lib/media/composite.ts`, built by `MediaProvider.composite()`). By default
 (`CLD_COMPOSITE_MODE=layer`) the side-by-side is a single signed Transform on the before photo:
 
 - each half is filled into the same frame and face-blurred;

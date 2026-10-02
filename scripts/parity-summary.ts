@@ -17,7 +17,7 @@ interface Pair {
   pass: boolean;
 }
 
-/** Why a run differs, where it does (each also in ENGINEERING.md's journal). */
+/** Why a run differs, where it does (each also in docs/ENGINEERING.md's journal). */
 const NOTES: Record<string, string> = {
   "demo-entry/default": "The prototype scatters the manager loop's tiles with Math.random (DE:471) and this is a real-time scroll capture: the scatter differs every run (issue G6). The deterministic still is `reduced`.",
   "demo-entry/loops": "Frames 0–1.5 s show the prototype's Math.random scatter (G6); from 2 s, 0–0.1%.",

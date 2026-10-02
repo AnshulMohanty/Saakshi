@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { eq, inArray, isNull } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { DEMO_DATASET } from "@/data/demo-dataset.config";
+import { DEMO_DATASET } from "../data/demo-dataset.config";
 import { buildDemoDataset } from "@/lib/archive/build";
 import type { Candidate } from "@/lib/archive/candidates";
 import { verifyAllChains, verifyChain, verifySystem } from "@/lib/audit";

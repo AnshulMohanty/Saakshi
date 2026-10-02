@@ -94,10 +94,10 @@ describe("grayscale32 (the browser's preview path, B5.2)", () => {
   });
 });
 
-describe("lib/phash-core is browser-safe", () => {
+describe("src/lib/phash-core is browser-safe", () => {
   it("imports nothing (no sharp, no node:)", () => {
-    const src = readFileSync(path.join(__dirname, "..", "lib", "phash-core.ts"), "utf8");
+    const src = readFileSync(path.join(__dirname, "..", "src", "lib", "phash-core.ts"), "utf8");
     expect(src.match(/^\s*import\s/m)).toBeNull();
-    expect(readFileSync(path.join(__dirname, "..", "lib", "client", "phash.ts"), "utf8").match(/from\s+"([^"]+)"/g)).toEqual(['from "../phash-core"']);
+    expect(readFileSync(path.join(__dirname, "..", "src", "lib", "client", "phash.ts"), "utf8").match(/from\s+"([^"]+)"/g)).toEqual(['from "../phash-core"']);
   });
 });

@@ -12,7 +12,7 @@ import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { oklchCssToHex, parseHex, reconcile } from "../lib/color/oklch";
+import { oklchCssToHex, parseHex, reconcile } from "../src/lib/color/oklch";
 import { BINDINGS, CHECKLIST, COMPONENTS, MANUAL, type ItemType, type ManualRow, type Priority } from "../design/inventory.manual";
 
 type Status = "todo" | "built" | "verified" | "verified-with-note";
@@ -28,16 +28,16 @@ interface Row extends ManualRow {
 const ROOT = process.cwd();
 /** Pages that are built (B2). Specs and reference pages contribute manual rows only. */
 const PAGES: Record<string, { route: string; component: string; file: string }> = {
-  "saakshi-landing": { route: "/", component: "components/landing/landing.tsx", file: "Saakshi Landing.html" },
-  "witness-wall": { route: "/witness", component: "components/witness/wall.tsx", file: "Witness Wall.html" },
-  "how-it-works": { route: "/how-it-works", component: "components/how/how-it-works.tsx", file: "How It Works.html" },
-  "demo-entry": { route: "/demo", component: "components/demo/demo-entry.tsx", file: "Demo Entry.html" },
-  "evidence-page": { route: "/e/[assetId]", component: "components/evidence/evidence-page.tsx", file: "Evidence Page.html" },
-  "spot-page": { route: "/spots/[slug]", component: "components/spot/spot-page.tsx", file: "Spot Page.html" },
-  "report-page": { route: "/r/[reportId]", component: "components/report/report-page.tsx", file: "Report Page.html" },
-  "qr-poster": { route: "/spots/[slug]/poster", component: "components/poster/qr-poster.tsx", file: "QR Poster.html" },
-  capture: { route: "/capture", component: "components/capture/capture-screen.tsx", file: "Capture.html" },
-  "saakshi-app": { route: "/library (+ /review, /projects/[id], /studio)", component: "components/app/app-shell.tsx", file: "Saakshi App.html" },
+  "saakshi-landing": { route: "/", component: "src/components/landing/landing.tsx", file: "Saakshi Landing.html" },
+  "witness-wall": { route: "/witness", component: "src/components/witness/wall.tsx", file: "Witness Wall.html" },
+  "how-it-works": { route: "/how-it-works", component: "src/components/how/how-it-works.tsx", file: "How It Works.html" },
+  "demo-entry": { route: "/demo", component: "src/components/demo/demo-entry.tsx", file: "Demo Entry.html" },
+  "evidence-page": { route: "/e/[assetId]", component: "src/components/evidence/evidence-page.tsx", file: "Evidence Page.html" },
+  "spot-page": { route: "/spots/[slug]", component: "src/components/spot/spot-page.tsx", file: "Spot Page.html" },
+  "report-page": { route: "/r/[reportId]", component: "src/components/report/report-page.tsx", file: "Report Page.html" },
+  "qr-poster": { route: "/spots/[slug]/poster", component: "src/components/poster/qr-poster.tsx", file: "QR Poster.html" },
+  capture: { route: "/capture", component: "src/components/capture/capture-screen.tsx", file: "Capture.html" },
+  "saakshi-app": { route: "/library (+ /review, /projects/[id], /studio)", component: "src/components/app/app-shell.tsx", file: "Saakshi App.html" },
 };
 const REFERENCE_ONLY = ["saakshi-concept-board", "saakshi-index", "landing-viewports"];
 const P1_SECTIONS = new Set(["07 It keeps watching", "08 Try to fool it"]);

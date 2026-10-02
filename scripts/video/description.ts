@@ -8,8 +8,8 @@ import "../_env";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { and, asc, eq, isNotNull } from "drizzle-orm";
-import { closeDb, getDb } from "../../lib/db/client";
-import { assets, projects } from "../../lib/db/schema";
+import { closeDb, getDb } from "../../src/lib/db/client";
+import { assets, projects } from "../../src/lib/db/schema";
 import { END_NOTE } from "./render";
 
 async function main() {

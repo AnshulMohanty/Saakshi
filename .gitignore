@@ -48,6 +48,5 @@ next-env.d.ts
 /video/preview/*.mp4
 /video/preview/*.m4a
 /video/preview/*.jpg
-/brag-output/*.mp4
-/brag-output/*.jpg
-/brag-output/work/
+/video/launch-film/*.mp4
+/video/launch-film/*.jpg

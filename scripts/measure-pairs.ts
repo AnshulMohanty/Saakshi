@@ -4,13 +4,13 @@
  */
 import "./_env";
 import { eq } from "drizzle-orm";
-import { getConfig } from "../lib/config";
-import { closeDb, getDb } from "../lib/db/client";
-import { DatabaseLockedError } from "../lib/db/lock";
-import { assets, comparisons, projects } from "../lib/db/schema";
-import { autoPairProject, METRIC_LABEL } from "../lib/measure/measure";
-import { pairingLines } from "../lib/measure/report";
-import { getMediaProvider } from "../lib/providers/media";
+import { getConfig } from "../src/lib/config";
+import { closeDb, getDb } from "../src/lib/db/client";
+import { DatabaseLockedError } from "../src/lib/db/lock";
+import { assets, comparisons, projects } from "../src/lib/db/schema";
+import { autoPairProject, METRIC_LABEL } from "../src/lib/measure/measure";
+import { pairingLines } from "../src/lib/measure/report";
+import { getMediaProvider } from "../src/lib/providers/media";
 
 async function main() {
   const db = await getDb();

@@ -7,10 +7,10 @@ follow the [API etiquette](https://www.mediawiki.org/wiki/API:Etiquette).
 
 1. **Discover** (`pnpm archive:discover`). This runs the queries in `data/demo-dataset.config.ts`.
    - Sources: CirrusSearch terms restricted to geotagged files near India (`nearcoord:1800km,22.5,79`), plus Commons categories.
-   - Parsing: each file's `imageinfo`, `extmetadata` and `commonmetadata` go through `lib/archive/parse.ts`.
+   - Parsing: each file's `imageinfo`, `extmetadata` and `commonmetadata` go through `src/lib/archive/parse.ts`.
    - Filter: JPEG or PNG, at least 1024 px wide, licensed CC0, public domain, CC BY or CC BY-SA.
    - Output: usable files are written to `data/archive-candidates.json`, one per line. The file is committed, so imports are reproducible.
-2. **Build** (pure, `lib/archive/build.ts`), per project rule:
+2. **Build** (pure, `src/lib/archive/build.ts`), per project rule:
    - Keep geotagged files whose title or description matches the rule's relevance pattern.
    - DBSCAN at 1.5 km, then pick the largest cluster. Ties go to more spots, then the tighter cluster.
    - Centre = the cluster centroid.

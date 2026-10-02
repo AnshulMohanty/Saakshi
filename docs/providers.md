@@ -1,7 +1,7 @@
 # Providers
 
-Each provider lives in `lib/providers/<name>/`: `index.ts` (interface + factory), `mock.ts`,
-`real.ts`. `lib/config.ts` picks the real implementation only when every variable it needs is
+Each provider lives in `src/lib/providers/<name>/`: `index.ts` (interface + factory), `mock.ts`,
+`real.ts`. `src/lib/config.ts` picks the real implementation only when every variable it needs is
 set. `/dev/status` shows the current selection.
 
 | Provider | Real (needs) | Mock |
@@ -19,23 +19,23 @@ Every provider method has a real implementation. No `NotConfiguredError` remains
 response shapes, and what is still UNVERIFIED, are in [external-apis.md](external-apis.md). The
 contract tests (`tests/contracts.test.ts`) build each outgoing request offline.
 
-- **One HTTP layer** (`lib/providers/http.ts`), used by every real provider:
+- **One HTTP layer** (`src/lib/providers/http.ts`), used by every real provider:
   - timeout per call;
   - up to 3 retries on network errors, 408, 409, 423 and 5xx, with exponential backoff and jitter;
   - `Retry-After` is honoured;
   - no retry on errors that need a human (OpenAI `insufficient_quota` and friends).
-  - Every call is logged to `provider_usage`: provider, operation, model, tokens or units, latency, cost where documented (`lib/pricing.ts`), attempts, and the asset it served. The pipeline runner and the report/search routes flush it.
-- **Cloudinary media** (`lib/providers/media/real.ts` on `lib/providers/cloudinary/client.ts`):
+  - Every call is logged to `provider_usage`: provider, operation, model, tokens or units, latency, cost where documented (`src/lib/pricing.ts`), attempts, and the asset it served. The pipeline runner and the report/search routes flush it.
+- **Cloudinary media** (`src/lib/providers/media/real.ts` on `src/lib/providers/cloudinary/client.ts`):
   - signed server upload: full-path `public_id` + `asset_folder`; evidence is `authenticated` with `moderation=manual`; QR codes and logos are `upload`;
   - `exists` via the Admin API;
   - metadata write-back: structured fields + context + tags;
   - `setModeration`;
   - raw PDFs;
   - masks, derived fetches (423 retried) and before/after composites.
-- **Cloudinary analysis** (`lib/providers/analysis/real.ts`): Analyze API `ai_vision_tagging` (≤ 10 definitions per call), `ai_vision_moderation` and `watermark_detection`, on a signed, size-limited derivative.
-- **OpenAI** (`lib/providers/ai/real.ts`):
+- **Cloudinary analysis** (`src/lib/providers/analysis/real.ts`): Analyze API `ai_vision_tagging` (≤ 10 definitions per call), `ai_vision_moderation` and `watermark_detection`, on a signed, size-limited derivative.
+- **OpenAI** (`src/lib/providers/ai/real.ts`):
   - Responses API with a base64 `input_image` (`detail: high`, faces blurred first);
-  - strict `json_schema` built from the zod schemas (`lib/providers/ai/json-schema.ts`);
+  - strict `json_schema` built from the zod schemas (`src/lib/providers/ai/json-schema.ts`);
   - prose re-asked with the issues when a draft breaks the placeholder rule;
   - search parsing with the live vocabulary;
   - embeddings with `dimensions: 1536`.
@@ -71,7 +71,7 @@ The browser then posts the provider's response to `/api/uploads/confirm`, which 
 
 ## What the mocks do (and don't)
 
-**Media.** Real pHash (`lib/phash.ts`), real EXIF (`lib/media/exif.ts`), and Cloudinary-style
+**Media.** Real pHash (`src/lib/phash.ts`), real EXIF (`src/lib/media/exif.ts`), and Cloudinary-style
 `media_metadata` strings. Real dimensions and an MD5 etag. Face count is derived from
 people-related words (there's no face detection). Quality score is a heuristic from resolution,
 entropy and sharpness. HEIC is rejected with a clear message, because sharp's prebuilt binaries
@@ -81,7 +81,7 @@ can't decode HEVC. Delivery applies the same `Transform` objects with sharp:
 - Blur, pixelate, sharpen, grayscale, improve, text layers (SVG), image layers, rotation.
 - `f_auto` gives WebP when the browser accepts it.
 - `blur_faces` / `pixelate_faces` blur the **whole image** when the asset has faces, and do nothing when it has none (as Cloudinary does).
-- `e_extract` uses colour-index masks (`lib/media/mask.ts`): ExG for vegetation, and
+- `e_extract` uses colour-index masks (`src/lib/media/mask.ts`): ExG for vegetation, and
   saturated or near-white non-green pixels for litter. This is a proxy that also flags sky, clothing and signs.
 - Unknown steps are ignored and logged.
 

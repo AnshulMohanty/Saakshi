@@ -11,16 +11,16 @@
  */
 import "./_env";
 import sharp from "sharp";
-import { getConfig, type ProviderStatus } from "../lib/config";
-import { openPostgres, rowsOf } from "../lib/db/client";
-import { buildCloudinaryUrl } from "../lib/media/transform";
-import { getAIProvider } from "../lib/providers/ai";
-import { getAnalysisProvider } from "../lib/providers/analysis";
-import { PRESET_NAME, STRUCTURED_FIELD_IDS } from "../lib/providers/cloudinary/setup";
-import { callWithRetry } from "../lib/providers/http";
-import { getMediaProvider } from "../lib/providers/media";
-import { CloudinaryMediaProvider } from "../lib/providers/media/real";
-import { flushUsage } from "../lib/usage";
+import { getConfig, type ProviderStatus } from "../src/lib/config";
+import { openPostgres, rowsOf } from "../src/lib/db/client";
+import { buildCloudinaryUrl } from "../src/lib/media/transform";
+import { getAIProvider } from "../src/lib/providers/ai";
+import { getAnalysisProvider } from "../src/lib/providers/analysis";
+import { PRESET_NAME, STRUCTURED_FIELD_IDS } from "../src/lib/providers/cloudinary/setup";
+import { callWithRetry } from "../src/lib/providers/http";
+import { getMediaProvider } from "../src/lib/providers/media";
+import { CloudinaryMediaProvider } from "../src/lib/providers/media/real";
+import { flushUsage } from "../src/lib/usage";
 
 type Status = "ok" | "fail" | "warn" | "skip";
 const results: Array<{ group: string; name: string; status: Status; detail: string }> = [];

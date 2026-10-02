@@ -4,7 +4,7 @@
  * `--include-witness` also deletes witness photos in demo projects (full wipe).
  */
 import "./_env";
-import { runDemoReset } from "../lib/demo/run";
+import { runDemoReset } from "../src/lib/demo/run";
 import { runCli } from "./_demo-cli";
 
 void runCli("demo:reset", () => runDemoReset({ inline: true, offline: !process.argv.includes("--online"), includeWitness: process.argv.includes("--include-witness"), log: (m) => console.log(m) }));

@@ -167,6 +167,23 @@ describe("CloudinaryMediaProvider contract", () => {
     expect(r.calls).toHaveLength(2); // a 404 is an answer, not retried
   });
 
+  it("resource: Admin API GET with media_metadata, phash, faces and quality_analysis; 404 means none", async () => {
+    const r = recorder((c) => (c.url.includes("missing") ? json({ error: { message: "Resource not found - missing" } }, 404) : json({ public_id: "saakshi/evidence/a", asset_id: "aid", etag: "e1", phash: "0123456789ABCDEF", width: 1600, height: 1200, format: "jpg", bytes: 10, faces: [[1, 2, 3, 4]], quality_analysis: { focus: 0.8 }, image_metadata: { Make: "NIKON" } })));
+    const p = cld(r.deps);
+    const a = await p.resource("saakshi/evidence/a");
+    expect(a).toMatchObject({ phash: "0123456789abcdef", width: 1600, facesCount: 1, qualityScore: 0.8, mediaMetadata: { Make: "NIKON" } });
+    expect(await p.resource("saakshi/evidence/missing")).toBeNull();
+    expect(r.calls[0].url).toBe("https://api.cloudinary.com/v1_1/demo/resources/image/authenticated/saakshi/evidence/a?media_metadata=true&phash=true&faces=true&quality_analysis=true");
+  });
+
+  it("destroy: signed Upload API POST image/destroy with the delivery type and CDN invalidation", async () => {
+    const r = recorder(() => json({ result: "ok" }));
+    await cld(r.deps).destroy("saakshi/sandbox/x");
+    expect(r.calls[0].url).toBe("https://api.cloudinary.com/v1_1/demo/image/destroy");
+    expect(r.calls[0].form).toMatchObject({ public_id: "saakshi/sandbox/x", type: "authenticated", invalidate: "true" });
+    expect(r.calls[0].form.signature).toBe(formSignature(r.calls[0].form));
+  });
+
   it("updateMetadata: structured metadata, merged context, tags added in one call, one remove per tag", async () => {
     const r = recorder(() => json({ public_ids: ["saakshi/evidence/abc"] }));
     await cld(r.deps).updateMetadata("saakshi/evidence/abc", { source: "witness", trust_score: "85", trust_band: "VERIFIED", project_id: "p1", captured_at: "2025-03-14T04:00:00.000Z" }, { tags: ["saakshi", "band-verified"], removeTags: ["band-needs-review", "band-flagged"] });

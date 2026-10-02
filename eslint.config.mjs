@@ -19,7 +19,6 @@ const eslintConfig = defineConfig([
     "design/actual/**",
     "design/parity/**",
     "video/**",
-    "brag-output/**",
   ]),
 ]);
 

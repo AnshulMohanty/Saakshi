@@ -56,16 +56,16 @@ interface Pair {
 
 /** Design page → its product page keys (scripts/quality-gates.ts) and the model + test that bind its data. */
 const PAGE: Record<string, { product: string[]; model: string; test: string; motionTest?: string }> = {
-  "saakshi-landing": { product: ["landing"], model: "lib/landing/view.ts", test: "tests/demo.test.ts", motionTest: "tests/motion-landing.test.ts" },
-  "witness-wall": { product: ["witness"], model: "lib/wall/view.ts", test: "tests/phase7-apis.test.ts", motionTest: "tests/motion-wall.test.ts" },
-  "how-it-works": { product: ["how-it-works"], model: "lib/how/view.ts", test: "tests/page-views.test.ts" },
-  "demo-entry": { product: ["demo"], model: "lib/demo-entry/view.ts", test: "tests/page-views.test.ts" },
-  "evidence-page": { product: ["evidence"], model: "lib/evidence-page.ts", test: "tests/page-views.test.ts" },
-  "spot-page": { product: ["spot"], model: "lib/spot-page.ts", test: "tests/measure-db.test.ts" },
-  "report-page": { product: ["report"], model: "lib/report-page.ts + lib/report/numbers.ts", test: "tests/report.test.ts, tests/report-numbers.test.ts" },
-  "qr-poster": { product: ["poster"], model: "lib/poster.ts", test: "tests/page-views.test.ts" },
-  capture: { product: ["capture"], model: "lib/capture/screen-data.ts + /api/assets/[id]/status", test: "tests/capture.test.ts, tests/capture-hud.test.ts", motionTest: "tests/motion-capture.test.ts" },
-  "saakshi-app": { product: ["library", "review", "project", "studio"], model: "lib/app/view.ts", test: "tests/app-view.test.ts, tests/app-chips.test.ts, tests/app-map.test.ts" },
+  "saakshi-landing": { product: ["landing"], model: "src/lib/landing/view.ts", test: "tests/demo.test.ts", motionTest: "tests/motion-landing.test.ts" },
+  "witness-wall": { product: ["witness"], model: "src/lib/wall/view.ts", test: "tests/phase7-apis.test.ts", motionTest: "tests/motion-wall.test.ts" },
+  "how-it-works": { product: ["how-it-works"], model: "src/lib/how/view.ts", test: "tests/page-views.test.ts" },
+  "demo-entry": { product: ["demo"], model: "src/lib/demo-entry/view.ts", test: "tests/page-views.test.ts" },
+  "evidence-page": { product: ["evidence"], model: "src/lib/evidence-page.ts", test: "tests/page-views.test.ts" },
+  "spot-page": { product: ["spot"], model: "src/lib/spot-page.ts", test: "tests/measure-db.test.ts" },
+  "report-page": { product: ["report"], model: "src/lib/report-page.ts + lib/report/numbers.ts", test: "tests/report.test.ts, tests/report-numbers.test.ts" },
+  "qr-poster": { product: ["poster"], model: "src/lib/poster.ts", test: "tests/page-views.test.ts" },
+  capture: { product: ["capture"], model: "src/lib/capture/screen-data.ts + /api/assets/[id]/status", test: "tests/capture.test.ts, tests/capture-hud.test.ts", motionTest: "tests/motion-capture.test.ts" },
+  "saakshi-app": { product: ["library", "review", "project", "studio"], model: "src/lib/app/view.ts", test: "tests/app-view.test.ts, tests/app-chips.test.ts, tests/app-map.test.ts" },
 };
 
 /** Page-level differences, from design/PARITY.md and the journal. */
@@ -170,7 +170,7 @@ async function main() {
   const texts = JSON.parse(await readFile(TEXTS, "utf8")) as { fixture: Record<string, string>; product: Record<string, string> };
   const summary = JSON.parse(await readFile(path.join(ROOT, "design", "parity", "summary.json"), "utf8")) as { gate: number; pairs: Pair[] };
   const quality = existsSync(path.join(ROOT, "design", "quality", "results.json")) ? (JSON.parse(await readFile(path.join(ROOT, "design", "quality", "results.json"), "utf8")) as Record<string, { rows: Array<{ page: string; profile: string; value: string; pass: boolean }> }>) : {};
-  const fontsCss = await readFile(path.join(ROOT, "app", "fonts.css"), "utf8");
+  const fontsCss = await readFile(path.join(ROOT, "src", "app", "fonts.css"), "utf8");
   // Our source, for copy that only shows in a state no capture reaches (errors, toasts, empty states).
   const sources: Array<{ file: string; text: string }> = [];
   const walk = async (dir: string): Promise<void> => {
@@ -180,10 +180,10 @@ async function main() {
       else if (/\.(tsx?|css)$/.test(e.name) && !/fixture|parity/.test(p)) sources.push({ file: p.replaceAll("\\", "/"), text: norm((await readFile(path.join(ROOT, p), "utf8")).replace(/\\'/g, "'")) });
     }
   };
-  for (const d of ["components", "lib", "app"]) await walk(d);
+  for (const d of ["src/components", "src/lib", "src/app"]) await walk(d);
   const inSource = (frag: string) => sources.find((x) => x.text.includes(frag))?.file ?? null;
   const STYLE_VALUE = /^(\d[\d.]*(px)? |rgba?\(|'[A-Z][\w ]+',|\d{3} \d+px )/;
-  const globalsCss = await readFile(path.join(ROOT, "app", "globals.css"), "utf8");
+  const globalsCss = await readFile(path.join(ROOT, "src", "app", "globals.css"), "utf8");
   const boxes: Record<string, { rows: Array<{ key: string; worst: number }>; tolerance: number }> = {};
   for (const page of Object.keys(PAGE))
     for (const w of [1440, 390]) {

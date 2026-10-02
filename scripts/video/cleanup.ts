@@ -5,8 +5,8 @@
  */
 import "../_env";
 import { and, eq, gte } from "drizzle-orm";
-import { closeDb, getDb } from "../../lib/db/client";
-import { assets } from "../../lib/db/schema";
+import { closeDb, getDb } from "../../src/lib/db/client";
+import { assets } from "../../src/lib/db/schema";
 
 async function main() {
   const i = process.argv.indexOf("--since");

@@ -1,6 +1,6 @@
 # Trust Engine
 
-`lib/trust` turns what we know about a photo into a **score (0–100)**, a **band** and a **ledger
+`src/lib/trust` turns what we know about a photo into a **score (0–100)**, a **band** and a **ledger
 of reasons**. It is pure TypeScript: no I/O, no AI, no server imports (a test walks its import
 graph). The same code runs in the pipeline, in re-scoring and in the browser.
 
@@ -11,7 +11,7 @@ scoreAsset(signals, project, spot | null, duplicates, config = defaultTrustConfi
 
 Every point added or removed is a reason `{code, signal, kind, points, detail}`, and so is every
 flag. The ledger always adds up to the score. `describeReason()` turns a reason into a fixed
-English sentence; no LLM writes any of it. All numbers live in `lib/trust/config.ts`.
+English sentence; no LLM writes any of it. All numbers live in `src/lib/trust/config.ts`.
 
 ## Rules
 
@@ -56,13 +56,13 @@ A project has two periods:
 
 - The **event window** (`start_date`–`end_date`) is when the activity happened. For archive
   projects it is the densest run of capture dates, with gaps of at most 7 days, padded by 7 days
-  on each side (`lib/dates.ts eventWindow`, pure and tested). One stray photo years later no
+  on each side (`src/lib/dates.ts eventWindow`, pure and tested). One stray photo years later no
   longer stretches the window.
 - The **monitoring period** runs from the end of the window until `monitoring_ends_at`, or
   open-ended when that is null. It exists because spots are revisited: a photo in it, taken at a
   monitored spot, is a check-in (+20). The same photo away from any spot is outside (−20).
 
-Assignment (`lib/pipeline/assign.ts`) tries the event window first and then the monitoring
+Assignment (`src/lib/pipeline/assign.ts`) tries the event window first and then the monitoring
 period, and records which one matched (`detail.period`).
 
 **Date precision.** `captured_at_precision` is `second | minute | hour | day | month | year`,
@@ -79,7 +79,7 @@ possible gap:
 
 ## Duplicates
 
-Every upload gets a 64-bit DCT pHash (`lib/phash.ts`). Hamming distance ≤ 8 is a match, ≤ 4 is
+Every upload gets a 64-bit DCT pHash (`src/lib/phash.ts`). Hamming distance ≤ 8 is a match, ≤ 4 is
 strong, and an identical etag is exact. `findMatches` scans every other photo. That's fine at
 demo scale (thousands); the scale-up path is a BK-tree over the hashes, which answers "all
 within 8 bits" in roughly log time. Photos are ordered by capture time, then upload time, then
@@ -98,7 +98,7 @@ location, the stamp is checked against the site centre. The tests cover 12+ form
 
 ## Where it runs
 
-- **Pipeline step `score`** (`lib/pipeline/score.ts`): gathers signals, finds duplicates, scores,
+- **Pipeline step `score`** (`src/lib/pipeline/score.ts`): gathers signals, finds duplicates, scores,
   and writes the result back:
   - the asset row: `trust_score`, `trust_band`, `trust_reasons`, `scored_at`, and `status`
     (`ready` for VERIFIED, `flagged` otherwise);

@@ -411,7 +411,7 @@ describe("reasons", () => {
   });
 });
 
-describe("lib/trust is browser-safe", () => {
+describe("src/lib/trust is browser-safe", () => {
   it("imports only pure modules (no server-only, node:, db, providers)", () => {
     const root = path.resolve(__dirname, "..");
     const seen = new Set<string>();
@@ -424,9 +424,9 @@ describe("lib/trust is browser-safe", () => {
         visit(path.resolve(path.dirname(file), spec) + ".ts");
       }
     };
-    visit(path.join(root, "lib/trust/index.ts"));
+    visit(path.join(root, "src/lib/trust/index.ts"));
     const files = [...seen].map((f) => path.relative(root, f).replaceAll("\\", "/")).sort();
-    expect(files.every((f) => f.startsWith("lib/trust/") || ["lib/geo.ts", "lib/hamming.ts", "lib/dates.ts"].includes(f)), files.join(", ")).toBe(true);
+    expect(files.every((f) => f.startsWith("src/lib/trust/") || ["src/lib/geo.ts", "src/lib/hamming.ts", "src/lib/dates.ts"].includes(f)), files.join(", ")).toBe(true);
   });
 });
 

@@ -4,7 +4,7 @@
  * --prod loads .env.production* files, like `next build`.
  */
 import "./_env";
-import { verifyEnv } from "../lib/verify-env";
+import { verifyEnv } from "../src/lib/verify-env";
 
 const prod = process.argv.includes("--prod");
 const { ok, checks } = verifyEnv(process.env, { prod });

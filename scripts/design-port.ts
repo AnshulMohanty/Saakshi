@@ -19,8 +19,8 @@
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { parseFragment } from "parse5";
-import { parseHex, reconcile, type Rgb } from "../lib/color/oklch";
-import { oklchCssToHex } from "../lib/color/oklch";
+import { parseHex, reconcile, type Rgb } from "../src/lib/color/oklch";
+import { oklchCssToHex } from "../src/lib/color/oklch";
 import { handoffTokens } from "./design-tokens";
 
 type Mode = "light" | "dark" | "night";
@@ -286,7 +286,7 @@ export function port(html: string, o: PortOptions): { tsx: string; unmapped: Map
 
 /** Extra variables in app/globals.css: "--name: #hex;" → { HEX: name }. */
 export async function extrasFromGlobals(root = process.cwd()): Promise<Record<string, string>> {
-  const css = await readFile(path.join(root, "app/globals.css"), "utf8");
+  const css = await readFile(path.join(root, "src/app/globals.css"), "utf8");
   const out: Record<string, string> = {};
   for (const m of css.matchAll(/--([a-z0-9-]+):\s*(#[0-9a-fA-F]{3,6})\s*;/g)) {
     const rgb = parseHex(m[2])!;

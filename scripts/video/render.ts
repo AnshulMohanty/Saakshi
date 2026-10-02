@@ -18,8 +18,8 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { FONT_PRELOADS } from "../../app/font-preloads";
-import { glyphSvg, LOGO_BITS } from "../../lib/glyph";
+import { FONT_PRELOADS } from "../../src/app/font-preloads";
+import { glyphSvg, LOGO_BITS } from "../../src/lib/glyph";
 import { launchBrowser } from "../_capture";
 
 const ROOT = process.cwd();

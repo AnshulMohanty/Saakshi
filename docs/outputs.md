@@ -5,9 +5,9 @@
 1. `AIProvider.parseSearch` reads the query into free text plus raw filters (project, band,
    source, activity, from, to) and a list of **rewrites**: Hinglish ("paudhe" → saplings, "nadi ke
    kinare ka kachra" → river bank garbage) and typos ("sapplings" → saplings, within 1–2 edits).
-   The mock uses `lib/search/normalize.ts`; the real model gets the same rules and the allowed
-   values in its prompt (`lib/ai/prompts.ts`).
-2. `lib/search` **validates every filter** against the allowed values. Unknown values (a project
+   The mock uses `src/lib/search/normalize.ts`; the real model gets the same rules and the allowed
+   values in its prompt (`src/lib/ai/prompts.ts`).
+2. `src/lib/search` **validates every filter** against the allowed values. Unknown values (a project
    slug that doesn't exist, a band like "PLATINUM", a date like "2021-13-45", or `to` before
    `from`) are rejected and shown as "Ignored …" chips, never silently used.
 3. Ranking: with a real model, cosine distance on the embedding (pgvector). With the mock, Postgres
@@ -27,14 +27,14 @@
   receipt.
 - Near-duplicates (linked), before/after comparisons it belongs to, and **every edit made to this
   photo**. That covers the edits stored on it (planted inputs record theirs) and every derivative
-  Saakshi delivers, each step in plain words next to its URL segment (`lib/media/describe.ts`),
+  Saakshi delivers, each step in plain words next to its URL segment (`src/lib/media/describe.ts`),
   with a note that signed URLs make edits unforgeable.
 - The audit timeline with "History intact" (the chain is re-walked on every view), credits for
   archive photos, and a "Test input" tag for planted inputs.
 
 ## Claims ledger and Impact Report
 
-`lib/report/claims.ts` builds claims **only from SQL** for a project and period (default: the
+`src/lib/report/claims.ts` builds claims **only from SQL** for a project and period (default: the
 project's dates). Each claim is `{id, label, value, unit, method, asset_ids, confidence?, detail?}`:
 
 | Claim | How |

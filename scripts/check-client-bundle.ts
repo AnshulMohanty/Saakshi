@@ -13,7 +13,7 @@ import { randomBytes } from "node:crypto";
 import { createRequire } from "node:module";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
-import { findBundleLeaks } from "../lib/bundle-secrets";
+import { findBundleLeaks } from "../src/lib/bundle-secrets";
 
 async function walk(dir: string): Promise<string[]> {
   const out: string[] = [];

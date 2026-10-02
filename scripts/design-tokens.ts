@@ -38,8 +38,8 @@ async function main() {
     `/* One mode's colour used inside another. */\n:root {\n${aliases.join("\n")}\n}`,
     "",
   ].join("\n\n");
-  await writeFile(path.join(ROOT, "app/tokens.css"), css);
-  console.log(`app/tokens.css: ${Object.values(T).reduce((n, t) => n + Object.keys(t).length, 0)} tokens in 3 modes + ${aliases.length} aliases`);
+  await writeFile(path.join(ROOT, "src/app/tokens.css"), css);
+  console.log(`src/app/tokens.css: ${Object.values(T).reduce((n, t) => n + Object.keys(t).length, 0)} tokens in 3 modes + ${aliases.length} aliases`);
 }
 
 if (process.argv[1] && /design-tokens/.test(process.argv[1]))

@@ -1,8 +1,8 @@
 /** Shared CLI wrapper for the demo scripts: runs one action, prints the summary, closes the DB. */
-import { closeDb, getDb } from "../lib/db/client";
-import { heroProject } from "../lib/demo/hero";
-import { DatabaseLockedError } from "../lib/db/lock";
-import { projectTable, type DemoSummary } from "../lib/demo/run";
+import { closeDb, getDb } from "../src/lib/db/client";
+import { heroProject } from "../src/lib/demo/hero";
+import { DatabaseLockedError } from "../src/lib/db/lock";
+import { projectTable, type DemoSummary } from "../src/lib/demo/run";
 
 export async function runCli(name: string, action: () => Promise<DemoSummary>) {
   const started = Date.now();

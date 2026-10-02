@@ -2,3 +2,7 @@ ignoredBuiltDependencies:
   - esbuild
   - sharp
   - unrs-resolver
+
+# drizzle-kit pulls @esbuild-kit with esbuild <= 0.24.2 (GHSA-67mh-4wv8-2f99, dev server only): use a patched esbuild.
+overrides:
+  "@esbuild-kit/core-utils>esbuild": "^0.25.0"

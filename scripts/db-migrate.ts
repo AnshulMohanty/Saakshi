@@ -5,8 +5,8 @@
 import "./_env";
 import path from "node:path";
 import { sql } from "drizzle-orm";
-import { getConfig } from "../lib/config";
-import { openPglite, openPostgres, rowsOf, type DB } from "../lib/db/client";
+import { getConfig } from "../src/lib/config";
+import { openPglite, openPostgres, rowsOf, type DB } from "../src/lib/db/client";
 
 async function main() {
   const { env } = getConfig();

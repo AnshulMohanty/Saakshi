@@ -27,8 +27,8 @@ describe("APIs for Phase 7", () => {
     await ctx?.close();
   });
 
-  async function witness(at: string) {
-    const up = await ctx.media.upload({ file: await litterScene(0.1, 3), folder: "saakshi/evidence", context: { filename: "ghat-checkin.jpg" } });
+  async function witness(at: string, scene: [number, number] = [0.1, 3]) {
+    const up = await ctx.media.upload({ file: await litterScene(scene[0], scene[1]), folder: "saakshi/evidence", context: { filename: "ghat-checkin.jpg" } });
     const capture: CaptureInfo = { tokenId: null, clientCapturedAt: at, ticketIssuedAt: at, serverReceivedAt: at, deviceFix: { lat: SITE.lat, lng: SITE.lng, accuracyM: 6 }, uploaderLocation: null, attested: true, reasons: [] };
     const [w] = await ctx.db
       .insert(assets)
@@ -37,7 +37,7 @@ describe("APIs for Phase 7", () => {
     return w.id;
   }
 
-  it("SSE: an arrival, then a status event once the witness photo is scored", async () => {
+  it("SSE: a witness photo arrives once moderated (never before), then reaches its score", async () => {
     const abort = new AbortController();
     const reader = liveStream(ctx.db, ctx.media, { since: new Date(Date.now() - 1000), pollMs: 40, signal: abort.signal }).getReader();
     const events: Array<{ event: string; data: LiveEvent }> = [];
@@ -59,19 +59,35 @@ describe("APIs for Phase 7", () => {
       }
     })();
     const id = await witness(new Date().toISOString());
+    // Not moderated yet: a venue screen must not show it.
+    await new Promise((r) => setTimeout(r, 300));
+    expect(events.some((e) => e.data.id === id)).toBe(false);
     const deadline = Date.now() + 8000;
-    while (!events.some((e) => e.data.id === id) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 30));
     await runPipeline(ctx.deps, id);
     while (!events.some((e) => e.data.id === id && e.data.band) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 30));
     abort.abort();
     await read;
     const mine = events.filter((e) => e.data.id === id);
-    expect(mine[0]).toMatchObject({ event: "arrival", data: { status: "processing", band: null, attested: true } });
+    expect(mine[0]).toMatchObject({ event: "arrival", data: { attested: true } });
     const scored = mine.find((e) => e.data.band);
-    expect(scored).toMatchObject({ event: "status", data: { band: "VERIFIED", status: "ready" } });
+    expect(scored).toMatchObject({ data: { band: "VERIFIED", status: "ready" } });
     expect(scored!.data.location).toEqual(SITE);
     // Pipeline steps touch updated_at many times; only real changes are sent.
     expect(mine.length).toBeLessThanOrEqual(3);
+  });
+
+  it("photos flagged as unsafe, or rejected by a reviewer, never reach the live feed or the Wall", async () => {
+    // A different scene: the same file would be a near-duplicate and re-score the other photo.
+    const id = await witness(new Date().toISOString(), [0.45, 41]);
+    await runPipeline(ctx.deps, id);
+    const [a] = await ctx.db.select().from(assets).where(eq(assets.id, id));
+    await ctx.db.update(assets).set({ moderation: { ...a.moderation!, answers: { ...a.moderation!.answers, unsafe_content: true } }, updatedAt: new Date() }).where(eq(assets.id, id));
+    const r = await liveSince(ctx.db, ctx.media, new Date(Date.now() - 60_000));
+    expect(r.events.some((e) => e.id === id)).toBe(false);
+    const { wallView } = await import("@/lib/wall/view");
+    const w = await wallView(ctx.db, ctx.media, { appUrl: "https://x", policy: { production: false, minConfidence: 0.5 }, operator: false });
+    expect(w.arrivals.some((x) => x.id === id)).toBe(false);
+    await ctx.db.delete(assets).where(eq(assets.id, id));
   });
 
   it("?since= fallback returns the latest state once per photo, with a cursor", async () => {

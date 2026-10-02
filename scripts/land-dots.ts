@@ -7,8 +7,8 @@ import "./_env";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { LAND_BOUNDS, LAND_STEP, landDots, type LandGeometry } from "../lib/land";
-import { callWithRetry } from "../lib/providers/http";
+import { LAND_BOUNDS, LAND_STEP, landDots, type LandGeometry } from "../src/lib/land";
+import { callWithRetry } from "../src/lib/providers/http";
 
 export const NATURAL_EARTH_URL = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_50m_land.geojson";
 
