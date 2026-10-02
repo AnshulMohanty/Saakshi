@@ -1,0 +1,91 @@
+1
+00:00:03,400 --> 00:00:08,000
+Saakshi: proof, not just photos
+Anyone can post a clean-up photo. How does a funder know it's real?
+
+2
+00:00:08,400 --> 00:00:13,650
+Saakshi reads each photo: where, when, what is in it, and its fingerprint.
+
+3
+00:00:14,400 --> 00:00:23,650
+Chaos to order
+The demo archive: Wikimedia Commons photos, sorted onto the map by place and project.
+
+4
+00:00:24,400 --> 00:00:32,650
+The library: every photo on the map, with its band. Search with plain chips.
+
+5
+00:00:33,400 --> 00:00:40,650
+Open any photo and take it apart into its evidence layers.
+
+6
+00:00:41,400 --> 00:00:46,500
+The catch
+Four fakes are planted in the archive.
+
+7
+00:00:46,800 --> 00:00:53,650
+Each is flagged by a fixed rule, with its reason. The fingerprint shows the reused photo.
+
+8
+00:00:54,400 --> 00:01:00,650
+Flagged photos go to a reviewer: a note, then a decision on the record.
+
+9
+00:01:01,400 --> 00:01:09,650
+Rules decide, not the model: the same published weights for every photo.
+
+10
+00:01:10,400 --> 00:01:18,650
+Proof to story
+Before and after, the litter mask counts the pixels.
+
+11
+00:01:19,400 --> 00:01:27,650
+The project overview: every count is a database total, threaded to its photos.
+
+12
+00:01:28,400 --> 00:01:37,650
+Every number has a thread to the photos behind it.
+
+13
+00:01:38,400 --> 00:01:47,650
+The public report: click a number, see its photos.
+
+14
+00:01:48,400 --> 00:01:56,650
+Each photo's evidence page: its layers, its ledger, and a history chain anyone can check.
+
+15
+00:01:57,400 --> 00:02:05,650
+Studio: the report and posts for the campaign, faces blurred.
+
+16
+00:02:06,300 --> 00:02:13,650
+Can't un-blur
+Edit a public link to remove the blur and the server refuses it: signed transformations.
+
+17
+00:02:14,400 --> 00:02:18,600
+It keeps watching
+At the spot, the phone shows its location fix and the spot's ring.
+
+18
+00:02:19,000 --> 00:02:23,650
+Simulated camera
+The camera here is simulated with an archive photo, so Saakshi sends it to review: the identical file was already submitted.
+
+19
+00:02:24,400 --> 00:02:34,650
+Operator rehearsal
+The check-in lands on the Witness Wall with its score.
+
+20
+00:02:35,400 --> 00:02:42,650
+The spot page: its litter trend, measured photo by photo, and where check-ins land.
+
+21
+00:02:43,400 --> 00:02:49,650
+One A4 poster per spot. Built for Swachhata Hi Seva drives and the funders who back them.

@@ -150,7 +150,8 @@ With the production `DATABASE_URL` and Cloudinary keys in your env:
 1. **Music licence.** The videos use "Happy Beats / Business Moves" Vols. 1, 10 and 11 by ende.app,
    bundled with the brag skill without written licence terms. Check the terms at https://ende.app/en
    and put them in video/preview/DESCRIPTION.md; if they don't allow it, swap the track in
-   `scripts/video/render.ts` and run `pnpm video:render`.
+   `scripts/video/render.ts` and run `pnpm video:render`. The tracks and their `cues/` folder are read
+   from `BRAG_MUSIC_DIR` (default `.data/music`): copy them there from the brag skill's `assets/music`.
 2. **Android vibration.** On an Android phone, take a photo on `/capture`: a short buzz on the shutter
    and a double buzz on the score (iOS has no vibration API). It has only run in emulation.
 3. **Re-record with real data** once the live providers are connected and `pnpm demo:remeasure` has

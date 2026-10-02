@@ -1,142 +1,150 @@
+<div align="center">
+
 # Saakshi · साक्षी
 
-**Field photos in, verified proof of impact out.** Saakshi ("witness") ingests photos from NGOs
-and community groups, checks them with a rule-based Trust Engine, measures before/after change,
-and produces reports where every number links back to the photo it came from.
+### Proof, not just photos.
 
-Code Cubicle 6.0 · PS02 · Cloudinary track.
+**Saakshi ("witness") turns field photos from NGOs and community groups into verified, measured, traceable proof of impact.**
+Every number in a report links to the photo behind it.
+
+Code Cubicle 6.0 · PS02 · Cloudinary track
+
+<img src="docs/media/saakshi-layers.gif" alt="One field photo taken apart into its evidence layers: the photo, where and when, its fingerprint, what the AI sees, what was measured" width="720">
+
+**[▶ Launch film (88 s)](docs/media/saakshi-launch-preview.mp4)** · **[▶ 3-minute walkthrough](docs/media/saakshi-demo-3min-preview.mp4)** · [What's real in the videos](video/preview/DESCRIPTION.md)
+
+</div>
+
+---
+
+## The problem
+
+Anyone can post a clean-up photo. A funder, a CSR team or a city partner has no way to tell whether it was taken at the site, on the day, or whether it's a stock photo, a reused photo from last year's drive, or a photo from another city with a location stamp drawn on. Reports are a folder of photos and a number someone typed.
+
+## What Saakshi does
+
+| | |
+|---|---|
+| <img src="docs/media/catch.jpg" alt="The catch: four planted fakes, each flagged with its reason"> | **It catches what isn't real.** Every photo is read for where and when it was taken, fingerprinted (pHash) and checked by a **rule-based Trust Engine**: fixed, published rules with a reason for every point. A reused photo, a stock watermark, a photo taken 715 km from the site and a drawn-on location stamp are each flagged with their reason. |
+| <img src="docs/media/measured.jpg" alt="Before and after with the litter mask"> | **It measures change, it doesn't guess it.** Before/after pairs follow fixed rules (same spot, in time order, a minimum gap). Both photos are segmented into a litter (or green-cover) mask on the same frame, and cover is a count of mask pixels. |
+| <img src="docs/media/threads.jpg" alt="Every number has a thread to its photos"> | **Every number has a thread.** Report numbers are database aggregates, never model output. Hover or tap one and threads run to the photos it counted; each photo opens its evidence page with its ledger and a hash-chained history. |
+| <img src="docs/media/edited-link.jpg" alt="Removing the signature from a public link: the server refuses it"> | **Faces stay blurred, even if you edit the link.** Public images are signed, face-blurred Cloudinary transformations. Remove the blur or the signature from the URL and the CDN refuses it (401). |
+| <img src="docs/media/witness-wall.jpg" alt="The Witness Wall: a check-in lands on the map"> | **Anyone can be a witness.** A QR poster at each spot opens the capture page: live GPS ring, the spot's radius, shutter, and the photo is checked and scored in seconds. Check-ins land on the Witness Wall and on the spot's trend. |
+| <img src="docs/media/review.jpg" alt="Review: a reviewer's note and decision"> | **People decide what rules flag.** Flagged photos go to a review queue with the closest near-duplicate side by side. Every decision needs a note and joins the audit chain. |
+
+<details>
+<summary><b>More screens</b>: library, evidence drawer, public report, evidence page, phone capture</summary>
+
+| Library: map, grid, search chips | Evidence drawer, taken apart |
+|---|---|
+| <img src="docs/media/library.jpg" alt="Library"> | <img src="docs/media/drawer.jpg" alt="Evidence drawer"> |
+| **Public report** | **Evidence page** |
+| <img src="docs/media/report.jpg" alt="Public report"> | <img src="docs/media/evidence.jpg" alt="Evidence page"> |
+
+<img src="docs/media/capture.jpg" alt="Capture on a phone: the HUD at the spot and the pipeline sheet" width="260">
+
+</details>
+
+## How it works
+
+```mermaid
+flowchart LR
+  A[Field photo<br/>phone · archive · upload] --> B[Cloudinary ingest<br/>authenticated · EXIF · pHash · faces]
+  B --> C[Understand<br/>AI tags, captions, moderation<br/>always ai_estimated + confidence]
+  C --> D[Trust Engine<br/>fixed rules → score + reasons]
+  D --> E[Measure<br/>e_extract masks → cover %]
+  E --> F[Reports & pages<br/>SQL claims · threads to photos]
+  D --> G[Review queue<br/>notes on the audit chain]
+```
+
+The pipeline runs as idempotent steps keyed by asset id (parse metadata → analyze → understand → embed → assign → score → measure → finalize), each writing one audit row. Four rules hold everywhere:
+
+1. **Totals and KPIs are database aggregates**, never LLM output.
+2. **The LLM never writes digits.** Prose references numbers only as `{{claim:id}}`, and every generated text is validated.
+3. **Trust scores come only from the rules** in `lib/trust` (pure, tested); the model may only rephrase reasons.
+4. **Public images are always signed and face-blurred**; originals never reach the browser.
+
+### Built on Cloudinary
+
+| Job | What Saakshi uses |
+|---|---|
+| Intake forensics | Upload to `authenticated` storage with `media_metadata`, `phash`, `faces`, `quality_analysis` |
+| Perception | Analyze API: AI vision tagging, moderation, watermark detection (each value AI-estimated, with a confidence) |
+| Measurement | `e_extract` segmentation masks at a fixed threshold; cover counted from mask pixels |
+| Privacy | `e_blur_faces` on every public copy, delivered as signed URLs (Strict Transformations) |
+| Provenance | Versioned public ids and signatures, so a report always opens the exact file it counted |
+
+Every request, its documentation and its verification status: [docs/external-apis.md](docs/external-apis.md).
 
 ## Quick start
 
-No accounts or keys needed. Every external service has a local mock.
+No accounts or keys needed: every external service (media, analysis, AI, database, queue, geocoder) has a deterministic local mock, and a provider turns real only when all of its variables are set.
 
 ```bash
 pnpm i
-pnpm db:migrate    # creates ./.data/pglite (Postgres in WASM, with pgvector)
-pnpm demo:import   # 58 real Wikimedia Commons photos → 3 auto-built projects (a few minutes the first time)
-pnpm demo:plant    # 4 labelled test inputs (reused, stock, location mismatch, stamp mismatch)
+pnpm db:migrate    # PGlite (Postgres in WASM, with pgvector) in ./.data/pglite
+pnpm demo:reset    # 58 Wikimedia Commons photos → 3 auto-built projects + 4 planted fakes (offline, from the cache)
 pnpm dev           # http://localhost:3000
 ```
 
-- `/library`: every photo on a map or grid, with filters. Click one for provenance, AI output, pipeline steps and audit trail.
-- `/review`: photos the Trust Engine did not verify, with its reasons. Approve or reject with a note (keys J/K/A/R).
-- `/projects/<slug>`: before/after cards (slider, the measured mask, values, method, confidence).
-- `/spots/<slug>`: a spot's public page with its trend and a check-in link. `/spots/<slug>/poster` is a printable A4 QR poster.
-- `/capture?project=<slug>`: Witness Capture (live camera and GPS, capture token, attestation).
-- `/e/<assetId>`: a photo's public evidence page (proof strip, ledger, every edit, audit chain). `/r/<reportId>`: a public Impact Report, where every number links to its photos, with the PDF and an Instagram campaign kit (generate one from a project page).
-- Search in `/library`: natural language, Hinglish and typos (“verified paudhe in 2021”), with “Understood as” chips.
-- `/dev/status`: which providers are mocked or real, and a **Run demo import** button that works while `pnpm dev` is running.
+| Page | What it is |
+|---|---|
+| `/` | The story: one photo taken apart, chaos to order, the catch, measured, threads, faces stay blurred, try to fool it, be a witness |
+| `/demo` | Pick a role: volunteer, manager, funder |
+| `/library` · `/review` · `/projects/<slug>` · `/studio` | The app: map and grid with search chips, the review queue, project overview, report and campaign studio |
+| `/capture?spot=<slug>` | Witness Capture on a phone (camera + GPS need HTTPS: `pnpm tunnel`) |
+| `/witness` | The Witness Wall for a venue screen |
+| `/e/<assetId>` · `/r/<reportId>` · `/spots/<slug>` · `/spots/<slug>/poster` | Public evidence page, report, spot page, A4 QR poster |
+| `/how-it-works` | The trust simulator and the pipeline, as we really call it |
 
-PGlite allows one process at a time, so run the `demo:*` scripts with `pnpm dev` stopped, or use the button.
+PGlite allows one process at a time: run `demo:*` scripts with `pnpm dev` stopped, or use **Run demo import** on `/dev/status`.
+
+## The demo data
+
+The demo archive is built from Wikimedia Commons by fixed rules (`data/demo-dataset.config.ts`, [docs/demo-data.md](docs/demo-data.md)). Every photo keeps its author, licence and source link.
+
+| Project | Type | Photos |
+|---|---|---|
+| River clean-up, Tiruppur North | clean-up | 23 + 3 planted |
+| Tree planting, Pimpri-Chinchwad | plantation | 20 |
+| Lake clean-up, Hyderabad | water | 15 + 1 planted |
+
+After `pnpm demo:reset`, all 58 archive photos are Verified with no hard flag, and each planted input is Flagged for its own reason: reused (30), stock watermark (35), location mismatch (25), stamp mismatch (40).
+
+## Evidence that it works
+
+| Check | Result |
+|---|---|
+| Tests (`pnpm test`, offline, all providers mocked) | **549 passing** in 57 files |
+| Design parity (`design/PARITY.md`): each page against the design export, frame by frame | **144 runs, 142 within 1.5%**; both others explained (a random scatter in the prototype) |
+| Design inventory (`design/INVENTORY.md`) | **1,859 items**: 744 verified, 1,115 verified with a note; all 28 ship-checklist items done |
+| Quality gates (`docs/quality-gates.md`) | **171 of 187 checks**: Lighthouse desktop 85–100 performance and 98–100 accessibility, axe clean, five browsers, reduced-motion and low-power modes, 136 fps scrolling the landing |
+| Open | Mobile LCP under Lighthouse's simulated slow 4G; the review page's 1280 px photo on a throttled network (both recorded in the gates) |
+
+The engineering journal (decisions, issues, evidence for every number above): [ENGINEERING.md](ENGINEERING.md). The developer guide (rules, folders, the provider pattern, gotchas): [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+
+## What's real and what's a prototype
+
+The app runs on mock providers until the live services are connected ([docs/MANUAL_STEPS.md](docs/MANUAL_STEPS.md)). Mock-derived numbers are tagged in development and **never shown in production** (`lib/provenance.ts`). The preview build behind the videos (`DEMO_PREVIEW=1`) shows values computed on this machine badged "Prototype measurement", and withholds anything a mock AI made up ("AI reading pending"). Photos, locations, fingerprints and rules are real; AI checks and litter masks are prototypes until the live pipeline is connected.
 
 ## Commands
 
 | Command | What it does |
 | --- | --- |
-| `pnpm dev` | Dev server |
-| `pnpm test` | Unit and integration tests (offline) |
-| `pnpm lint` / `pnpm typecheck` / `pnpm build` | ESLint / TypeScript / production build |
-| `pnpm db:migrate` / `pnpm db:studio` / `pnpm db:generate` | Migrations / Drizzle Studio / new migration |
-| `pnpm archive:discover` | Search Wikimedia Commons and print candidate stats and clusters → `data/archive-candidates.json` |
-| `pnpm demo:import` | Build the 3 demo projects and import their photos (idempotent) |
-| `pnpm demo:plant` | Add the 4 planted test inputs |
-| `pnpm demo:reset` | Rebuild archive + planted photos **offline** from the cache; witness photos are kept (`--online`, `--include-witness` for a full wipe) |
-| `pnpm measure:pairs [slug]` | Re-pair projects by the rules, measure, and print every candidate with why rejects failed |
-| `pnpm demo:stage` | Create the "Live stage demo" project at `STAGE_LAT`/`STAGE_LNG` (0 h pair gap) |
-| `pnpm tunnel` | HTTPS quick tunnel for phone testing (needs `cloudflared`) |
-| `pnpm demo:remeasure` | Measure the demo again with the configured providers (`--all`, `--reanalyze`) |
-| `pnpm verify:env [--prod]` | What a deployment is missing (production needs every real service) |
-| `pnpm cld:setup [--dry-run]` | Create the Cloudinary metadata fields and the signed upload preset (idempotent) |
-| `pnpm services:check` | Live check of every real call with keys; what's missing without (alias `pnpm run doctor`) |
-| `pnpm check:bundle` | Build with canary secrets and scan the browser bundles for them |
-| `pnpm design:capture` / `pnpm parity:capture <route>` / `pnpm parity:report` | Design parity screenshots and the side-by-side report (design/README.md) |
-
-## Demo data
-
-`data/demo-dataset.config.ts` defines the Commons searches and the rules. `pnpm archive:discover`
-found these projects (details in [docs/demo-data.md](docs/demo-data.md)):
-
-| Project | Type | Photos | Spots |
-| --- | --- | --- | --- |
-| River clean-up, Tiruppur North | cleanup | 20 | 1 |
-| Sapling planting, Cooch Behar | plantation | 20 | 1 |
-| Lake clean-up, Hyderabad | water | 15 | 3 |
-
-All photos keep their Commons author, license and source link, shown in the library drawer.
-Downloads and API responses are cached in `./.data/archive-cache`, so resets work offline. Set
-`APP_CONTACT_EMAIL` before discovering: Wikimedia asks for contact details in the User-Agent and
-throttles anonymous clients harder.
-
-## Phone testing (camera and GPS need HTTPS)
-
-1. Install `cloudflared`. It needs no account: `winget install --id Cloudflare.cloudflared`
-   (Windows) or `brew install cloudflared` (macOS).
-2. Run `pnpm dev` in one terminal and `pnpm tunnel` in another. The tunnel is equivalent to
-   `cloudflared tunnel --url http://localhost:3000`.
-3. Open the printed `https://….trycloudflare.com/capture?project=<slug>` on your phone and allow camera and location.
-
-Media URLs are relative and `*.trycloudflare.com` is in `allowedDevOrigins`, so everything works
-through the tunnel. Photos taken there land in `/library` as `witness` assets. They're attested
-when the capture token is valid, the clock is within 2 minutes, and the GPS fix is within 100 m.
-
-## Configuration
-
-Copy `.env.example` to `.env.local` and fill in only what you want to make real: Cloudinary
-(media and analysis), OpenAI (AI), `DATABASE_URL` (Postgres/Supabase), or Inngest (queue). A
-provider becomes real only when all of its variables are set.
-
-To try real Inngest functions locally, with no account:
-
-```bash
-npx inngest-cli@latest dev -u http://localhost:3000/api/inngest
-QUEUE=inngest-dev pnpm dev
-```
-
-## Trust Engine
-
-Rule-based and deterministic (`lib/trust`, pure and browser-safe). Every point is a reason with a
-fixed sentence. Hard flags (reused, stock, location mismatch, stamp mismatch) cap the score at 40.
-Bands: VERIFIED ≥ 75 with no flags, NEEDS_REVIEW 45–74 or any review flag, FLAGGED otherwise.
-Rules, choices and demo results: [docs/trust.md](docs/trust.md). After `pnpm demo:reset`, all 58
-archive photos are VERIFIED with no hard flag, and each planted input is FLAGGED for its own reason.
-
-```
-$ pnpm test
- Test Files  34 passed (34)
-      Tests  403 passed (403)
-```
-
-## Before/after
-
-Pairs follow fixed rules: same spot, ≤ 30 m apart (≤ 150 m for approximate archive locations),
-in time order, a gap of at least the project's `min_pair_gap_hours`, and neither photo flagged.
-They are never loosened to produce a pair. Both photos are masked on the same 800×600 frame, and
-measurements are cached forever. Details and demo results: [docs/measure.md](docs/measure.md).
-
-## Outputs
-
-Search, evidence pages, the claims ledger, the Impact Report PDF, the campaign kit and the APIs
-for Phase 7 (`/api/live` SSE, `/api/stats`, `/api/assets/[id]/layers`, `/api/demo/tamper`,
-`/api/demo/try`, the evidence-pack zip) are described in [docs/outputs.md](docs/outputs.md).
+| `pnpm dev` · `pnpm build` · `pnpm start` | Dev server · production build · production server |
+| `pnpm test` · `pnpm lint` · `pnpm typecheck` | Tests (offline) · ESLint · TypeScript |
+| `pnpm demo:reset` · `demo:import` · `demo:plant` | Rebuild the demo offline · import · plant the 4 test inputs |
+| `pnpm measure:pairs [slug]` · `demo:remeasure` | Re-pair by the rules (every rejected candidate and why) · measure again with the configured providers |
+| `pnpm services:check` · `verify:env --prod` · `cld:setup` | Live checks with keys · what a deployment is missing · Cloudinary metadata fields and signed preset |
+| `pnpm quality` | The quality gates against a running build → docs/quality-gates.md |
+| `pnpm parity:capture` · `parity:report` · `parity:summary` · `design:verify` | Design parity and the inventory's evidence |
+| `pnpm video:final` | Re-record the footage and re-render both preview videos from the data as it is now |
+| `pnpm tunnel` | HTTPS quick tunnel for phone testing (`cloudflared`) |
 
 ## Stack
 
-Next.js 16 (App Router) · TypeScript · Tailwind v4 + shadcn/ui · Drizzle ORM · PGlite + pgvector
-locally / Postgres in production · Inngest · Zod · Vitest · sharp · exifr · Leaflet + OpenStreetMap.
+Next.js 16 (App Router, React 19) · TypeScript · Tailwind v4 · GSAP + Lenis · three.js (landing only) · Drizzle ORM · PGlite + pgvector locally, Postgres in production · Inngest · Zod · Vitest · Playwright · sharp · react-pdf · Cloudinary · OpenAI.
 
-## Roadmap
+## Credits
 
-1. Foundation + mock mode ✓
-2. Open-data importer (Wikimedia Commons) ✓
-3. Witness Capture + ingest pipeline ✓
-4. Trust Engine + review ✓
-5. Before/after + monitoring ✓
-6. Search + outputs (reports, evidence pages) ✓
-7. Finish the build: real-service code checked against the docs, provenance guard, ops scripts, parity tooling ✓
-8. Build the design exports 1:1 ← next
-9. Accounts, keys, deploy ([docs/MANUAL_STEPS.md](docs/MANUAL_STEPS.md))
-10. Fix whatever breaks on real services (`pnpm services:check`)
-
-Engineering journal (decisions, issue log, evidence): [ENGINEERING.md](ENGINEERING.md). Every
-external call and its status: [docs/external-apis.md](docs/external-apis.md). Contributor and
-agent guide: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Providers: [docs/providers.md](docs/providers.md).
+Photos: Wikimedia Commons contributors, credited on every page that shows them and in [video/preview/DESCRIPTION.md](video/preview/DESCRIPTION.md). Fonts: Anek Latin and Anek Devanagari (The Anek Project Authors), IBM Plex (IBM), SIL Open Font License 1.1. Saakshi is an independent project, not affiliated with the Swachhata Hi Seva campaign.

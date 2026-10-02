@@ -823,3 +823,56 @@ Newest last. After every phase or fix: what changed, why, the evidence, any new 
     - the landing is still 0% mean in all six runs;
     - the poster is 0% at 1440 and 0.1% at 390, after the font-order revert above.
   - `pnpm test`: 549 passing in 57 files; lint and typecheck clean.
+- **Phase 8, part D: the preview videos** (2 Oct; `pnpm video:record`, `video:render`, `video:description`, `video:cleanup`, `video:final`)
+  - **Data policy (`DEMO_PREVIEW=1`, `lib/provenance.ts`):**
+    - `DisplayPolicy.preview` turns production's "hide mock-derived values" into a "Prototype measurement" badge: `numberPolicy`, `hidesMock`, `mockLabel`.
+    - `aiPending` replaces anything a mock AI made up (captions, tags, moderation answers) with "AI reading pending": the landing hero, evidence page layers and the app's titles and layer art.
+    - Every page model takes the badge text from the policy, not a hard-coded "Mock output": report numbers, campaign templates, spot, evidence, capture status, trust meter.
+    - Tests: `tests/provenance.test.ts`; a preview case in `tests/app-view.test.ts`.
+    - **Real:** the Commons photos, their places and dates, pHash and duplicate matches, distances, the trust rules and scores.
+    - **Prototype:** the colour-heuristic masks.
+    - **Labelled on screen:** planted fakes ("Test input"), the Wall rehearsal, the simulated camera.
+  - **Footage (`scripts/video/record.ts`): 19 clips, all frame-stepped.** Playwright's fake clock is paused and moved 1/60 s per frame.
+    - GSAP, Lenis, timers and the WebGL loop follow that clock.
+    - CSS animations and transitions don't, so they are held from document start and set per frame through `document.getAnimations()`. Without that, the ink-drop intro was over before frame 0.
+    - Screenshots stream as JPEG into ffmpeg at 60 fps.
+    - **Two capture-harness bugs found:**
+      - a lazy image far below the fold never loads, so waiting on its `decode()` hung. The fix waits only for images near the viewport, in the capture harness too, with a 4 s real-time cap;
+      - backslashes lost in a shell edit broke the poster-coordinate regex.
+    - **Capture:** Chromium's fake camera showing the hero photo, at the spot's own coordinates. Saakshi answered "65, Needs review: the identical file was already submitted", and the videos label the camera as simulated. `pnpm video:cleanup` then deletes the check-in.
+    - **The Wall rehearsal** needs `?operator=<DEMO_ADMIN_SECRET>` in production.
+  - **Data before recording:**
+    - the local DB had synthetic test check-ins from earlier development (solid-green test images on the Tiruppur spot); `pnpm demo:reset --include-witness` removed them;
+    - the hero report was regenerated (`POST /api/reports`; react-pdf can't run under the scripts' `react-server` condition);
+    - the review clip rejects the first flagged photo, a planted fake, with a note. An earlier take had approved it; the reset reverted that.
+  - **Renders (`scripts/video/render.ts`):**
+    - **Launch film:** 87.6 s, 12 shots cut on the beat grid of "Happy Beats / Business Moves Vol. 11" (bundled with brag; the brag-slim workflow, plan in brag-output/brag-plan.md). Captions are drawn in Anek and IBM Plex by Chromium; the end card carries the preview note; the poster (the catch) is baked in as frame 0.
+    - **Walkthrough:** 180.0 s following the master plan's demo script (§12). 41 burned-in captions with a matching .srt; the music bed alone in .music.m4a for a later voiceover.
+    - **Masters:** 60 fps in video/preview/, not committed.
+    - **Web copies:** 30 fps in docs/media/ (9.8 MB and 16.9 MB), with 12 README stills and a 2.1 MB GIF taken from the footage.
+    - **Description:** video/preview/DESCRIPTION.md credits all 58 Commons photos.
+  - **Open:** the bundled music's licence terms aren't documented in the bundle (docs/MANUAL_STEPS.md §9).
+- **Phase 8 roll-up**
+  - **Design conflicts (B5) and how each was resolved:**
+
+    | B5 | Conflict | Resolution |
+    |---|---|---|
+    | 1 | The prototype's trust weights (bands 80/40, screen photo a hard fail) | Every meter, ledger, band, simulator and preset uses `lib/trust` (bands 75/45, our reasons, screen photo a review flag) |
+    | 2 | Sample fingerprints | Glyphs from our pHash; "N of 64 cells differ" is the real Hamming distance; capture previews a browser port of the hash, then the server value |
+    | 3 | The prototype's sample archive | Only on /dev/parity fixtures; product routes bind to our DB and credits |
+    | 4 | Numbers and names in design copy | Bound to data; missing data shows a designed empty state, never a sample |
+    | 5 | Chapter 10's parameters | What we really call (docs/external-apis.md) |
+    | 6 | Chapter 6's edited link | `/api/demo/tamper` removes any chip and returns the real status |
+    | 7 | Chapter 8's browser hash | `/api/demo/try`: the real pipeline in a sandbox |
+    | 8 | Simulated arrivals | Real arrivals from `/api/live`; simulation only in operator mode, labelled "Rehearsal: simulated arrival" |
+    | 9 | "History intact" | `GET /api/audit/chain`, recomputed in the browser with Web Crypto; the server chain is authoritative |
+    | 10 | The map's dot field | Regenerated from Natural Earth land for India; land dots only, never boundaries |
+    | 11 | Review annotations and preview props | Never ship; motion is auto-detected (dev `?motion=`), states are real (dev `?state=`, `?theme=`) |
+    | 12 | Offline capture | IndexedDB queue, unattested, labelled "Taken offline" |
+    | 13 | Spot framing copy | `spots.framing_note`, else "Stand where this photo was taken" with the baseline |
+    | 14 | Google Fonts | Self-hosted (OFL). Anek Latin keeps its `wdth` axis; the Anek Devanagari subsets are pinned at the default width the Devanagari text uses (LCP, above) |
+
+  - **Inventory:** 1,859 items: 744 verified, 1,115 verified with a note, 0 todo. All 28 checklist items verified.
+  - **Parity:** 144 runs on 10 pages, 142 within 1.5%, 0 unexplained.
+  - **Quality gates:** 171 of 187 checks pass; the 16 open are LCP (above).
+  - **Videos:** above.

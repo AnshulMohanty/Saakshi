@@ -28,7 +28,10 @@ pnpm verify:env --prod     # what a deployment is missing
 pnpm cld:setup --dry-run   # Cloudinary metadata fields + signed preset (idempotent)
 pnpm services:check        # live checks with keys; what's missing without (alias: pnpm run doctor)
 pnpm check:bundle          # canary-secret build, browser bundles scanned
-pnpm design:capture        # design parity: also parity:capture <route>, parity:report
+pnpm design:capture        # design parity: also parity:capture <route>, parity:report, parity:summary
+pnpm design:verify         # inventory statuses from evidence (--collect: fixture texts, needs /dev/parity)
+pnpm quality               # quality gates vs a running build → docs/quality-gates.md (--only, --headed for fps)
+pnpm video:final           # preview videos: build, record (frame-stepped), cleanup, render, description
 ```
 
 **After every phase or fix, append to ENGINEERING.md what changed, why, the evidence (test counts,

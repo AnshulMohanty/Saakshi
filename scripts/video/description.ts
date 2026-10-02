@@ -42,6 +42,7 @@ async function main() {
     "- **Prototype:** litter masks come from a colour heuristic until the segmentation service is connected; they are badged \"Prototype measurement\". AI captions, tags and moderation answers are not shown (\"AI reading pending\").",
     "- **Test inputs:** four planted fakes (a reused photo, a stock-site watermark, a photo taken far from the site, a drawn-on location stamp) are labelled \"Test input\".",
     "- **Operator rehearsal:** the Witness Wall arrival is a rehearsal replay, labelled on screen.",
+    "- **Simulated camera:** the capture scene uses the browser's fake camera, showing an archive photo at the spot's own coordinates (labelled). Saakshi sends it to review because the identical file was already submitted; the check-in is deleted after recording.",
     "",
     "All footage is the real product, recorded frame by frame from the production build. No stock footage, no AI-generated images, no voiceover.",
     "",

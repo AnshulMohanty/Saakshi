@@ -4,7 +4,7 @@ design exports and the tooling that checks the app against them.
 
 | Folder | What goes in it | In git |
 | --- | --- | --- |
-| `export/` | design exports, **file names kept as exported** (`Saakshi Landing.html`, `Spot Page.html`, …) | yes |
+| `export/` | The design exports, **file names kept as exported** (`Saakshi Landing.html`, `Spot Page.html`, …). The parity record, inventory and tokens in this folder were made from them | no (kept with the team) |
 | `handoff/` | Handoff notes: specs, tokens, decisions, anything a designer tells us | yes |
 | `reference/` | `pnpm design:capture` output: `<page>/<width>/<step>.png`, `<page>/manifest.json`, `<page>/video.webm` | no (regenerate) |
 | `actual/` | `pnpm parity:capture <route>` output, same layout | no |

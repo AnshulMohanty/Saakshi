@@ -47,7 +47,8 @@
     "video:record": "tsx scripts/video/record.ts",
     "video:render": "tsx scripts/video/render.ts",
     "video:final": "tsx scripts/video/final.ts",
-    "video:description": "tsx --conditions=react-server scripts/video/description.ts"
+    "video:description": "tsx --conditions=react-server scripts/video/description.ts",
+    "video:cleanup": "tsx --conditions=react-server scripts/video/cleanup.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

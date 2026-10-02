@@ -244,7 +244,7 @@ async function captureVariant(browser: Browser, o: { name: string; url: string; 
         // decode. A real-time wait would let a page's own real-time work drift.
         await page.evaluate(`(async () => {
           for (let i = 0; i < 2; i++) await new Promise((r) => { const c = new MessageChannel(); c.port1.onmessage = () => r(0); c.port2.postMessage(0); });
-          await Promise.all([...document.images].map((im) => (im.complete ? 0 : im.decode().catch(() => 0))));
+          await Promise.all([...document.images].filter((im) => { if (im.complete) return false; const r = im.getBoundingClientRect(); return im.loading !== "lazy" || (r.bottom > -innerHeight && r.top < 2 * innerHeight); }).map((im) => im.decode().catch(() => 0)));
         })()`);
         await shoot(i, 0, "step", `t=${at}s`);
       }

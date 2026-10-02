@@ -1,6 +1,6 @@
 # Saakshi: launch film plan (/brag-slim)
 
-Built with the /brag-slim workflow (this model runs the slim variant), with the Phase 8 direction in place of its 15–25 s default: a documentary launch film of 60–90 s, real footage only.
+Built with the /brag-slim workflow, with the Phase 8 direction in place of its 15–25 s default: a documentary launch film of 60–90 s, real footage only.
 
 ## The questions
 

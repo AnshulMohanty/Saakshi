@@ -65,10 +65,12 @@ export const CLIPS: Clip[] = [
   { id: "measured", shows: "Chapter 4: the litter mask sweeps the before and after photos, with the measured cover", path: "/", seconds: 8, scroll: { section: "#ch4" } },
   { id: "threads", shows: "Chapter 5: every number on the report has a thread to its photos", path: "/", seconds: 9, scroll: { section: "#ch5", to: 0.75 }, events: [{ t: 6, js: hover("#ch5 [data-num]") }] },
   { id: "edited-link", shows: "Chapter 6: remove the signature from a public link and the server refuses it (401)", path: "/", seconds: 7, at: "#ch6", events: [{ t: 2, js: `document.querySelector('#ch6 button[aria-label^="Remove signature"]')?.click()` }] },
-  { id: "wall-arrival", shows: "Witness Wall, operator rehearsal (labelled): a check-in lands on the map with its score", path: "/witness?operator=rehearsal", seconds: 9, ready: "!!document.querySelector('[data-wall-ready]')", events: [{ t: 0.5, js: "window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }))" }] },
+  // In production the operator key is DEMO_ADMIN_SECRET (B5.8); in development any value works.
+  { id: "wall-arrival", shows: "Witness Wall, operator rehearsal (labelled): a check-in lands on the map with its score", path: () => `/witness?operator=${encodeURIComponent(process.env.DEMO_ADMIN_SECRET ?? "rehearsal")}`, seconds: 9, ready: "!!document.querySelector('[data-wall-ready]')", events: [{ t: 0.5, js: "window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }))" }] },
   { id: "library", shows: "Library: the dot-field map with band pins, then a search chip", path: "/library", seconds: 7, events: [{ t: 3, js: `(() => { const i = document.querySelector('input[aria-label="Search photos"]'); if (!i) return; i.focus(); i.value = "flagged"; i.dispatchEvent(new Event("input", { bubbles: true })); i.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); })()` }] },
   { id: "drawer", shows: "Evidence drawer: the photo taken apart into its layers", path: "/library", seconds: 6, events: [{ t: 0.5, js: click("#lib-grid button") }, { t: 2.5, js: clickText("aside button", "Take it apart") }] },
-  { id: "review-seal", shows: "Review: a reviewer's note, approve, and the seal", path: "/review", seconds: 5, events: [{ t: 0.8, js: `(() => { const t = document.querySelector("textarea"); if (!t) return; const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set; set.call(t, "Checked on site: same bridge, same morning."); t.dispatchEvent(new Event("input", { bubbles: true })); })()` }, { t: 2.2, js: "window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }))" }] },
+  // The queue is flagged first: the first item is a planted fake, so the reviewer rejects it, with a note.
+  { id: "review-seal", shows: "Review: the first flagged photo, a reviewer's note, rejected on the record", path: "/review", seconds: 5, events: [{ t: 0.8, js: `(() => { const t = document.querySelector("textarea"); if (!t) return; const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set; set.call(t, "Checked against the reason shown: not from this clean-up."); t.dispatchEvent(new Event("input", { bubbles: true })); })()` }, { t: 2.2, js: "window.dispatchEvent(new KeyboardEvent('keydown', { key: 'r', bubbles: true }))" }] },
   { id: "project", shows: "Project overview: KPI threads and the mask sweep", path: "/projects/demo-hero-cleanup", seconds: 7, events: [{ t: 2.5, js: hover("[data-kpi]") }] },
   { id: "report", shows: "Public report: numbers with threads to their photos", path: (i) => `/r/${i.report}`, seconds: 8, events: [{ t: 2, js: hover('[data-num="photos_verified"]') }, { t: 5, js: hover('[data-num="photos_flagged"]') }] },
   { id: "evidence", shows: "Public evidence page: layers, the trust ledger and the history chain", path: (i) => `/e/${i.asset}`, seconds: 7, events: [{ t: 2, js: click('button[aria-pressed]') }] },
@@ -76,9 +78,10 @@ export const CLIPS: Clip[] = [
   { id: "poster", shows: "The spot's QR poster (one A4 sheet): scan, photograph the spot, watch it count", path: "/spots/demo-hero-cleanup-spot-1/poster", seconds: 4 },
   { id: "studio", shows: "Studio: the A4 report and the posts, faces blurred, every number from the report", path: "/studio", seconds: 7, events: [{ t: 3, js: hover("[data-num]") }] },
   { id: "how", shows: "How it works: the trust simulator", path: "/how-it-works", seconds: 7, at: "#sim", events: [{ t: 1.5, js: clickText("#sim button", "Google image") }, { t: 4.5, js: clickText("#sim button", "Real witness photo") }] },
-  // The camera is Chromium's fake device playing a demo photo; the location is the spot's own. The photo is a real Commons
-  // photo already in the archive, so the pipeline may well flag it as reused: whatever it decides is what the clip shows.
-  { id: "capture", shows: "Capture on a phone at the demo spot: the HUD with the GPS ring, the shutter, the pipeline sheet", path: "/capture?spot=demo-hero-cleanup-spot-1", seconds: 10, phone: true, events: [{ t: 3, js: click('button[aria-label="Take photo"]') }] },
+  // The camera is Chromium's fake device showing the hero photo (an archive photo) and the location is the spot's own, so
+  // this is a simulated capture: the clip shows the HUD, the shutter and the pipeline steps, and the videos label it. The
+  // check-in it creates is deleted after recording (pnpm video:cleanup, which video:final runs).
+  { id: "capture", shows: "Capture on a phone (simulated camera) at the demo spot: the HUD with the GPS ring, the shutter, the pipeline steps", path: "/capture?spot=demo-hero-cleanup-spot-1", seconds: 6, phone: true, events: [{ t: 2.5, js: click('button[aria-label="Take photo"]') }] },
 ];
 
 async function ids(): Promise<Ids> {
@@ -89,15 +92,16 @@ async function ids(): Promise<Ids> {
   const hero = (/id="hero-still" src="([^"]+)"/.exec(html)?.[1] ?? "").replaceAll("&amp;", "&");
   // The spot's coordinates, as its poster prints them ("19.1351° N, 72.8146° E").
   const poster = await fetch(`${BASE}/spots/demo-hero-cleanup-spot-1/poster`).then((r) => r.text());
-  const c = /(d+.d+)° ([NS]), (d+.d+)° ([EW])/.exec(poster);
+  const c = /(\d+\.\d+)°\s([NS]),\s(\d+\.\d+)°\s([EW])/.exec(poster);
   const spot = c ? { lat: Number(c[1]) * (c[2] === "S" ? -1 : 1), lng: Number(c[3]) * (c[4] === "W" ? -1 : 1) } : null;
+  console.log(`ids: evidence ${asset}, report ${report}, spot ${spot ? `${spot.lat}, ${spot.lng}` : "not found"}`);
   return { asset, report, hero, spot };
 }
 
 /** Run queued work without moving any clock, then wait for images (as scripts/_capture.ts timelines do). */
 const SETTLE = `(async () => {
   for (let i = 0; i < 2; i++) await new Promise((r) => { const c = new MessageChannel(); c.port1.onmessage = () => r(0); c.port2.postMessage(0); });
-  await Promise.all([...document.images].map((im) => (im.complete ? 0 : im.decode().catch(() => 0))));
+  await Promise.all([...document.images].filter((im) => { if (im.complete) return false; const r = im.getBoundingClientRect(); return im.loading !== "lazy" || (r.bottom > -innerHeight && r.top < 2 * innerHeight); }).map((im) => im.decode().catch(() => 0)));
 })()`;
 
 /** A short MJPEG of the hero still for Chromium's fake camera. */
@@ -109,6 +113,28 @@ async function fakeCamera(I: Ids): Promise<string> {
   await new Promise<void>((res, rej) => spawn("ffmpeg", ["-y", "-loglevel", "error", "-loop", "1", "-i", jpg, "-t", "4", "-r", "30", "-vf", "scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720", "-q:v", "3", "-f", "mjpeg", mjpeg]).on("close", (c) => (c === 0 ? res() : rej(new Error("ffmpeg: camera")))));
   return mjpeg;
 }
+
+/**
+ * CSS animations and transitions run on real time, not the fake clock: hold every one from
+ * document start, then set each to its own start + the clip's elapsed time on every frame.
+ */
+const CSS_CLOCK = `(() => {
+  const st = document.createElement("style");
+  st.textContent = "*, *::before, *::after { animation-play-state: paused !important; }";
+  const put = () => { const r = document.head || document.documentElement; if (!r) return false; r.appendChild(st); return true; };
+  if (!put()) { const mo = new MutationObserver(() => { if (put()) mo.disconnect(); }); mo.observe(document, { childList: true, subtree: true }); }
+  const seen = new Map();
+  window.__stepCss = (t) => {
+    for (const a of document.getAnimations()) {
+      if (!seen.has(a)) { seen.set(a, { base: Number(a.currentTime) || 0, t0: t }); a.pause(); }
+      const s = seen.get(a);
+      a.currentTime = s.base + (t - s.t0);
+    }
+  };
+})()`;
+
+/** SETTLE, but never longer than 4 s of real time (Node's clock, not the page's fake one). */
+const settle = (page: Page) => Promise.race([page.evaluate(SETTLE).catch(() => undefined), new Promise((r) => setTimeout(r, 4000))]);
 
 async function record(clip: Clip, I: Ids) {
   const camera = clip.phone ? await fakeCamera(I) : null;
@@ -127,6 +153,7 @@ async function record(clip: Clip, I: Ids) {
     });
     if (!clip.firstVisit) await context.addInitScript(`try{localStorage.setItem("saakshi-intro-seen","1")}catch(e){}`);
     if (clip.init) await context.addInitScript({ content: clip.init });
+    await context.addInitScript({ content: CSS_CLOCK });
     const page = await context.newPage();
     page.on("pageerror", (e) => errors.push(e.message.split("\n")[0]));
     await page.clock.install({ time: new Date("2026-10-02T10:00:00+05:30") });
@@ -150,7 +177,7 @@ async function record(clip: Clip, I: Ids) {
       await page.evaluate(`window.scrollTo(0, ${Math.round(from)})`);
       await page.clock.runFor(600);
     }
-    await page.evaluate(SETTLE);
+    await settle(page);
 
     const ff = spawn("ffmpeg", ["-y", "-loglevel", "error", "-f", "image2pipe", "-framerate", String(FPS), "-c:v", "mjpeg", "-i", "-", "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", "-movflags", "+faststart", file], { stdio: ["pipe", "inherit", "inherit"] });
     const done = new Promise<void>((res, rej) => ff.on("close", (code) => (code === 0 ? res() : rej(new Error(`ffmpeg exited ${code}`)))));
@@ -169,9 +196,11 @@ async function record(clip: Clip, I: Ids) {
       const next = Math.round(((f + 1) * 1000) / FPS);
       await page.clock.runFor(next - elapsed);
       elapsed = next;
-      await page.evaluate(SETTLE);
+      await page.evaluate(`window.__stepCss?.(${elapsed})`);
+      await settle(page);
       const jpg = await page.screenshot({ type: "jpeg", quality: 90 });
       if (!ff.stdin.write(jpg)) await new Promise((r) => ff.stdin.once("drain", r));
+      if ((f + 1) % 120 === 0) process.stdout.write(` ${f + 1}`);
     }
     ff.stdin.end();
     await done;

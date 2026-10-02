@@ -36,6 +36,7 @@ async function main() {
   if (await fetch(BASE).then(() => true, () => false)) throw new Error(`${BASE} is already serving: stop it (pnpm dev holds the PGlite lock).`);
   const env = { ...process.env, ...(real ? {} : { DEMO_PREVIEW: "1" }) };
   if (!process.argv.includes("--no-build")) await sh("pnpm", ["build"], env);
+  const recordingSince = new Date().toISOString();
   const server = spawn("pnpm", ["start"], { stdio: "inherit", shell: process.platform === "win32", env });
   try {
     for (let i = 0; i < 120 && !(await fetch(BASE).then((r) => r.ok, () => false)); i++) await new Promise((r) => setTimeout(r, 1000));
@@ -43,6 +44,8 @@ async function main() {
   } finally {
     await stop(server);
   }
+  // The capture clip's simulated check-in must not stay in the data.
+  await sh("pnpm", ["-s", "video:cleanup", "--since", recordingSince]);
   await sh("pnpm", ["-s", "video:render"]);
   await sh("pnpm", ["-s", "video:description"]);
   console.log(`Done (${real ? "production" : "preview"} data): video/preview/saakshi-launch-preview.mp4, video/preview/saakshi-demo-3min-preview.mp4 (+ .srt, .music.m4a).`);

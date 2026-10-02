@@ -59,14 +59,14 @@ const FILM: Shot[] = [
   { clip: "intro", from: 0, beats: 3 },
   { clip: "hero-layers", from: 1, beats: 16, captions: [{ at: 0.6, text: "A field photo arrives.", kicker: "Saakshi" }, { at: 3.6, text: "It reads where and when it was taken, what is in it, and its fingerprint." }] },
   { clip: "chaos-to-order", from: 0.5, beats: 14, captions: [{ at: 0.6, text: "Every photo in the archive finds its place and its project." }] },
-  { clip: "the-catch", from: 0.5, beats: 20, captions: [{ at: 0.6, text: "Some photos aren't what they claim." }, { at: 4.4, text: "Each one is caught by a fixed rule, with its reason." }] },
+  { clip: "the-catch", from: 0.5, beats: 20, captions: [{ at: 0.6, text: "Four fakes are planted in the archive." }, { at: 4.4, text: "Each one is caught by a fixed rule, with its reason." }] },
   { clip: "measured", from: 0.5, beats: 14, captions: [{ at: 0.6, text: "Change is measured from the pixels, before and after." }] },
   { clip: "threads", from: 1.2, beats: 14, captions: [{ at: 0.6, text: "Every number has a thread to its photos." }] },
   { clip: "report", from: 1, beats: 12, captions: [{ at: 0.6, text: "Reports a funder can check, number by number." }] },
   { clip: "edited-link", from: 0.3, beats: 12, captions: [{ at: 0.4, text: "Faces stay blurred. Edit the link and the server refuses it." }] },
-  { clip: "capture", from: 0.5, beats: 16, captions: [{ at: 0.6, text: "Be a witness: stand at the spot and take the photo.", kicker: "Capture" }] },
+  { clip: "capture", from: 0.5, beats: 16, captions: [{ at: 0.6, text: "Be a witness: stand at the spot and take the photo.", kicker: "Capture, simulated camera" }] },
   { clip: "wall-arrival", from: 0.2, beats: 16, captions: [{ at: 0.6, text: "It lands on the Witness Wall with its score.", kicker: "Operator rehearsal" }] },
-  { clip: "review-seal", from: 0.3, beats: 8, captions: [{ at: 0.5, text: "A person settles what the rules can't." }] },
+  { clip: "review-seal", from: 0.3, beats: 8, captions: [{ at: 0.5, text: "A person reviews every flag, with a note on the record." }] },
   { clip: "end" },
 ];
 
@@ -75,24 +75,24 @@ const WALK_TRACKS = ["happy-beats-business-moves-vol-1-by-ende-dot-app", "happy-
 const WALK: Shot[] = [
   { clip: "intro", seconds: 3 },
   { clip: "hero-layers", seconds: 10, hold: 1, captions: [{ at: 0.4, until: 5, text: "Anyone can post a clean-up photo. How does a funder know it's real?", kicker: "Saakshi: proof, not just photos" }, { at: 5.4, text: "Saakshi reads each photo: where, when, what is in it, and its fingerprint." }] },
-  { clip: "chaos-to-order", seconds: 9, captions: [{ at: 0.4, text: "The demo archive: Wikimedia Commons photos, sorted onto the map by place and project.", kicker: "Chaos to order" }] },
+  { clip: "chaos-to-order", seconds: 9, hold: 1, captions: [{ at: 0.4, text: "The demo archive: Wikimedia Commons photos, sorted onto the map by place and project.", kicker: "Chaos to order" }] },
   { clip: "library", seconds: 7, hold: 2, captions: [{ at: 0.4, text: "The library: every photo on the map, with its band. Search with plain chips." }] },
   { clip: "drawer", seconds: 6, hold: 2, captions: [{ at: 0.4, text: "Open any photo and take it apart into its evidence layers." }] },
-  { clip: "the-catch", seconds: 11, captions: [{ at: 0.4, until: 5.5, text: "Four fakes are planted in the archive.", kicker: "The catch" }, { at: 5.8, text: "Each is flagged by a fixed rule, with its reason. The fingerprint shows the reused photo." }] },
-  { clip: "review-seal", seconds: 5, hold: 2, captions: [{ at: 0.4, text: "Anything the rules can't settle goes to review: a note, then a decision on the record." }] },
+  { clip: "the-catch", seconds: 11, hold: 2, captions: [{ at: 0.4, until: 5.5, text: "Four fakes are planted in the archive.", kicker: "The catch" }, { at: 5.8, text: "Each is flagged by a fixed rule, with its reason. The fingerprint shows the reused photo." }] },
+  { clip: "review-seal", seconds: 5, hold: 2, captions: [{ at: 0.4, text: "Flagged photos go to a reviewer: a note, then a decision on the record." }] },
   { clip: "how", seconds: 7, hold: 2, captions: [{ at: 0.4, text: "Rules decide, not the model: the same published weights for every photo." }] },
   { clip: "measured", seconds: 8, hold: 1, captions: [{ at: 0.4, text: "Before and after, the litter mask counts the pixels.", kicker: "Proof to story" }] },
   { clip: "project", seconds: 7, hold: 2, captions: [{ at: 0.4, text: "The project overview: every count is a database total, threaded to its photos." }] },
-  { clip: "threads", seconds: 9, captions: [{ at: 0.4, text: "Every number has a thread to the photos behind it." }] },
+  { clip: "threads", seconds: 9, hold: 1, captions: [{ at: 0.4, text: "Every number has a thread to the photos behind it." }] },
   { clip: "report", seconds: 8, hold: 2, captions: [{ at: 0.4, text: "The public report: click a number, see its photos." }] },
   { clip: "evidence", seconds: 7, hold: 2, captions: [{ at: 0.4, text: "Each photo's evidence page: its layers, its ledger, and a history chain anyone can check." }] },
   { clip: "studio", seconds: 7, hold: 2, captions: [{ at: 0.4, text: "Studio: the report and posts for the campaign, faces blurred." }] },
   { clip: "edited-link", seconds: 7, hold: 1, captions: [{ at: 0.3, text: "Edit a public link to remove the blur and the server refuses it: signed transformations.", kicker: "Can't un-blur" }] },
-  { clip: "capture", seconds: 10, captions: [{ at: 0.4, text: "A volunteer scans the poster and takes the photo at the spot.", kicker: "It keeps watching" }] },
-  { clip: "wall-arrival", seconds: 9, captions: [{ at: 0.4, text: "The check-in lands on the Witness Wall with its score.", kicker: "Operator rehearsal" }] },
-  { clip: "spot", seconds: 6, hold: 2, captions: [{ at: 0.4, text: "The spot page: every check-in compared with the baseline." }] },
+  { clip: "capture", seconds: 6, hold: 4, captions: [{ at: 0.4, until: 4.6, text: "At the spot, the phone shows its location fix and the spot's ring.", kicker: "It keeps watching" }, { at: 5, text: "The camera here is simulated with an archive photo, so Saakshi sends it to review: the identical file was already submitted.", kicker: "Simulated camera" }] },
+  { clip: "wall-arrival", seconds: 9, hold: 2, captions: [{ at: 0.4, text: "The check-in lands on the Witness Wall with its score.", kicker: "Operator rehearsal" }] },
+  { clip: "spot", seconds: 6, hold: 2, captions: [{ at: 0.4, text: "The spot page: its litter trend, measured photo by photo, and where check-ins land." }] },
   { clip: "poster", seconds: 4, hold: 3, captions: [{ at: 0.4, text: "One A4 poster per spot. Built for Swachhata Hi Seva drives and the funders who back them." }] },
-  { clip: "end", seconds: 8 },
+  { clip: "end", seconds: 10 },
 ];
 
 const run = (args: string[]) =>
@@ -215,10 +215,13 @@ async function cut(name: string, shots: Shot[], o: { film: boolean; total?: numb
       const chain = [base];
       caps.forEach((cap, k) => {
         const a = cap.at;
-        const b = Math.min(cap.until ?? len - 0.35, len - 0.2);
+        // A caption ends before the next one starts (stagger, never a double exposure), else near the cut.
+        const next = caps[k + 1];
+        const b = Math.min(cap.until ?? (next ? next.at - 0.3 : len - 0.35), len - 0.2);
         chain.push(`[${k + 1}:v]format=rgba,fade=t=in:st=${a.toFixed(3)}:d=0.35:alpha=1,fade=t=out:st=${Math.max(a + 0.4, b - 0.35).toFixed(3)}:d=0.35:alpha=1[c${k}]`);
         chain.push(`[b${k}][c${k}]overlay=0:0:shortest=1[b${k + 1}]`);
-        srt.push(`${srt.length + 1}\n${stamp(at + a)} --> ${stamp(at + b)}\n${cap.kicker ? `${cap.kicker}: ` : ""}${cap.text}\n`);
+        srt.push(`${srt.length + 1}\n${stamp(at + a)} --> ${stamp(at + b)}\n${cap.kicker ? `${cap.kicker}
+` : ""}${cap.text}\n`);
       });
       chain.push(`[b${caps.length}]format=yuv420p[v]`);
       await run([...inputs, "-filter_complex", chain.join(";"), "-map", "[v]", "-t", len.toFixed(3), "-c:v", "libx264", "-crf", "18", "-preset", "medium", "-pix_fmt", "yuv420p", "-r", String(FPS), seg]);

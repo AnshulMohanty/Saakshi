@@ -4,7 +4,7 @@ Every item of the design export that the build must match (Phase 8, part B). Gen
 
 Notes on files (B1): the exports were already in `design/export/` (moved in Phase 7, commit c36aa63, names kept with spaces), and no `Saakshi_Design_System.html` (v2) exists, so nothing was archived.
 
-**1859 items.** Status: todo 0, built 0, verified 744, verified-with-note 1115.
+**1859 items.** Status: todo 1, built 0, verified 744, verified-with-note 1114.
 
 | Type | P0 | P1 | Total |
 |---|---|---|---|
@@ -37,7 +37,7 @@ Notes on files (B1): the exports were already in `design/export/` (moved in Phas
 | C13 | P0 | Studio: A4 report preview, three 4:5 templates, caption, export | D-1348, D-1349 | verified |
 | C14 | P0 | Public evidence, spot and report pages | D-0848, D-0849, D-0850, D-0988, D-1082 | verified |
 | C15 | P0 | QR poster per spot | D-1156 | verified |
-| C16 | P0 | Signed URLs with e_blur_faces on every public image | D-1854 | verified |
+| C16 | P0 | Signed URLs with e_blur_faces on every public image | D-1860 | todo |
 | C17 | P0 | Credits for every demo photo | D-0085 | verified |
 | C18 | P0 | Only allowed metrics; samples removed or marked | D-1347, D-1855 | verified |
 | C19 | P0 | Light and dark themes | D-0001, D-0002, D-1326 | verified |
@@ -2011,7 +2011,7 @@ Notes on files (B1): the exports were already in `design/export/` (moved in Phas
 
 | id | section | type | item | source | frames | pri | route + component | data binding | status |
 |---|---|---|---|---|---|---|---|---|---|
-| D-1854 | Privacy | data | Signed URLs with e_blur_faces on every public image | DH checklist; docs/DEVELOPMENT.md rule 5 | design/reference/*/{1440,390} | P0 | all · `lib/media/transform.ts` |  | verified-with-note: Cross-page rule; see its component. |
+| D-1860 | Privacy | data | Signed URLs with e_blur_faces on every public image | DH checklist; docs/DEVELOPMENT.md rule 5 | design/reference/*/{1440,390} | P0 | all · `lib/media/transform.ts` |  | todo |
 | D-1855 | Metrics | data | Only allowed metrics; samples removed or marked | DH checklist | design/reference/*/{1440,390} | P0 | all · `lib/provenance.ts` | B5.4 + B5.11: no sample values ship; missing data → designed empty state | verified-with-note: B5.4 + B5.11: no sample values ship; missing data → designed empty state |
 | D-1856 | Performance | effect | 60 fps desktop, 30+ fps mid-range Android | DH checklist; LS Budget | design/reference/*/{1440,390} | P0 | /, /witness · `scripts/quality-gates.ts` |  | verified-with-note: Quality gates (docs/quality-gates.md): landing desktop 1440, headed Chromium (GPU): 136.3 fps mean; witness desktop 1920, headed Chromium (GPU), idle: 144 fps mean; landing Pixel 7 emulation, 4× CPU throttle, headed Chromium (GPU): 87.7 fps mean; witness Pixel 7 emulation, 4× CPU throttle, headed Chromium (GPU), idle: 144 fps mean. |
 
