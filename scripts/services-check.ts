@@ -187,6 +187,7 @@ async function appChecks() {
   if (providers.queue.mode === "real" && env.INNGEST_SIGNING_KEY) {
     await check(g, "Inngest endpoint /api/inngest", async () => {
       const r = await get(`${env.APP_URL}/api/inngest`);
+      if (r.status === 401) return "serving (cloud mode: unsigned requests refused, as expected)";
       if (r.status !== 200) throw new Error(`HTTP ${r.status}`);
       return "serving";
     }, "deploy, then sync the app in Inngest (the Vercel integration syncs on every deploy)");
