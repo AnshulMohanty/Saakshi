@@ -27,9 +27,12 @@ const analysisOf = (body: unknown): Analysis => {
   return b?.data?.analysis ?? b?.analysis ?? {};
 };
 
+/** Cloudinary tag names allow only lower-case letters, digits and hyphens; ours use underscores. */
+const apiTagName = (name: string) => name.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+
 /** Pure request builders and response readers (contract tests use these). */
 export const analyzeRequests = {
-  tagging: (uri: string, taxonomy: TaxonomyEntry[]) => ({ source: { uri }, tag_definitions: taxonomy.map((t) => ({ name: t.name, description: t.description })) }),
+    tagging: (uri: string, taxonomy: TaxonomyEntry[]) => ({ source: { uri }, tag_definitions: taxonomy.map((t) => ({ name: apiTagName(t.name), description: t.description })) }),
   moderation: (uri: string, questions: ModerationQuestion[]) => ({ source: { uri }, rejection_questions: questions.map((q) => q.text) }),
   watermark: (uri: string) => ({ source: { uri } }),
 };
@@ -37,7 +40,7 @@ export const analyzeRequests = {
 export function readTags(body: unknown, taxonomy: TaxonomyEntry[]): string[] {
   const tags = analysisOf(body).tags;
   const names = new Set((Array.isArray(tags) ? tags : []).map((t) => (typeof t === "string" ? t : (t as { name?: string })?.name)).filter(Boolean));
-  return taxonomy.filter((t) => names.has(t.name)).map((t) => t.name);
+    return taxonomy.filter((t) => names.has(apiTagName(t.name)) || names.has(t.name)).map((t) => t.name);
 }
 
 /** "yes" → true, "no" and "unknown" → false. Matched by prompt text, falling back to order. */

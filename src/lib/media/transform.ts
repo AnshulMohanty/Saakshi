@@ -126,13 +126,13 @@ export type DeliveryStep = z.infer<typeof DeliveryStep>;
 // ---------------------------------------------------------------------------------------------
 // Compile
 
-/** URL-encode overlay text the way Cloudinary expects: commas and slashes double-escaped. */
+/** URL-encode overlay text the way Cloudinary expects: commas, slashes and plus signs double-escaped. */
 export function encodeLayerText(text: string): string {
-  return encodeURIComponent(text).replace(/%2C/gi, "%252C").replace(/%2F/gi, "%252F");
+  return encodeURIComponent(text).replace(/%2C/gi, "%252C").replace(/%2F/gi, "%252F").replace(/%3A/gi, "%253A").replace(/%2B/gi, "%252B");
 }
 
 function decodeLayerText(encoded: string): string {
-  return decodeURIComponent(encoded.replace(/%252C/gi, "%2C").replace(/%252F/gi, "%2F"));
+  return decodeURIComponent(encoded.replace(/%252C/gi, "%2C").replace(/%252F/gi, "%2F").replace(/%253A/gi, "%3A").replace(/%252B/gi, "%2B"));
 }
 
 const colorParam = (c: string) => (c.startsWith("#") ? `rgb:${c.slice(1).toUpperCase()}` : c);
