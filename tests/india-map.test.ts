@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
-import { clampView, dotsInside, fitView, gridStep, INDIA_BOUNDS, insideOutline, panView, ringArea, simplifyRing, unfit, viewAround, viewFor, visibleBounds, zoomView, type IndiaMapData, type Polygon, type Ring } from "@/lib/map/india";
+import { clampView, dotsInside, fitView, gridStep, INDIA_BOUNDS, insideOutline, panView, ringArea, simplifyRing, unfit, viewAround, labelSides, viewFor, visibleBounds, zoomView, type IndiaMapData, type Polygon, type Ring } from "@/lib/map/india";
 
 const square = (x0: number, y0: number, s: number): Ring => [
   [x0, y0],
@@ -145,5 +145,22 @@ describe("zoom grid and visible window", () => {
     expect(vb.lng0).toBeLessThan(76);
     expect(vb.lng1).toBeGreaterThan(78);
     expect((vb.lng0 + vb.lng1) / 2).toBeCloseTo(77, 6);
+  });
+});
+
+describe("labelSides", () => {
+  it("puts a label right of its pin, left when the right is taken and the left is free, else above", () => {
+    const sides = labelSides(
+      [
+        { key: "pune", x: 80, y: 437, w: 150 },
+        { key: "hyd", x: 118, y: 447, w: 100 },
+        { key: "tir", x: 108, y: 500, w: 100 },
+        { key: "edge", x: 330, y: 200, w: 100 },
+      ],
+      350,
+    );
+    // Pune can't go right (Hyderabad's pin) or left (off the map): above.
+    expect(sides).toEqual({ pune: "above", hyd: "right", tir: "right", edge: "left" });
+    expect(labelSides([{ key: "a", x: 10, y: 10, w: 50 }], 400)).toEqual({ a: "right" });
   });
 });

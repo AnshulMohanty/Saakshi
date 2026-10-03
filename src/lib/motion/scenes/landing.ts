@@ -130,7 +130,7 @@ export const T2 = {
   mapIn: { at: 0.3, dur: 0.18 },
   gridsIn: { at: 0.87, dur: 0.06 },
   /** Leaving: while chapter 3 slides up over the fixed map, the map and its grids rise (this share of the viewport) and fade with chapter 2. */
-  exit: { lift: 0.35 },
+  exit: { lift: 0.35, end: "top 45%" },
 } as const;
 
 /**

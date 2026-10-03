@@ -248,3 +248,21 @@ export function viewFor(points: Array<{ lat: number; lng: number }>, aspect: num
   const spanLat = Math.max(o.minSpan ?? 0.4, (Math.max(...lats) - Math.min(...lats)) * (1 + pad * 2), ((Math.max(...lngs) - Math.min(...lngs)) * INDIA_COS * (1 + pad * 2)) / aspect);
   return viewAround(c, spanLat, aspect);
 }
+
+export type LabelSide = "right" | "left" | "above";
+
+/**
+ * Where each site's label goes (px, the label `w` wide): right of its pin; left when the right
+ * runs into another site or off the map and the left is clear; otherwise raised above the pin, so a
+ * label is never cut off or laid over a neighbour's pin.
+ */
+export function labelSides(points: Array<{ key: string; x: number; y: number; w: number }>, W: number, gap = 8, rowPx = 26): Record<string, LabelSide> {
+  const out: Record<string, LabelSide> = {};
+  for (const p of points) {
+    const near = (dir: 1 | -1) => points.some((t) => t !== p && (t.x - p.x) * dir >= 0 && Math.abs(t.x - p.x) < p.w + gap && Math.abs(t.y - p.y) < rowPx);
+    if (p.x + p.w <= W - 4 && !near(1)) out[p.key] = "right";
+    else if (p.x - p.w >= 4 && !near(-1)) out[p.key] = "left";
+    else out[p.key] = "above";
+  }
+  return out;
+}
