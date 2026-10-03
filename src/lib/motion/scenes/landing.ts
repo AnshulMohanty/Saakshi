@@ -129,6 +129,8 @@ export const T2 = {
   /** The India map layer under the canvas, and the DOM photo grids that take over from the tiles. */
   mapIn: { at: 0.3, dur: 0.18 },
   gridsIn: { at: 0.87, dur: 0.06 },
+  /** Leaving: while chapter 3 slides up over the fixed map, the map and its grids rise (this share of the viewport) and fade with chapter 2. */
+  exit: { lift: 0.35 },
 } as const;
 
 /**

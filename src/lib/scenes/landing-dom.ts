@@ -521,6 +521,8 @@ export function setupLanding(root: HTMLElement, d: LandingData, opts: { mode: Mo
           }
         };
         ScrollTrigger.create({ trigger: q("#ch3"), start: "top top", onEnter: () => fixedLayers(false), onLeaveBack: () => fixedLayers(true) });
+        // Meanwhile the map leaves with its chapter: it rises and fades instead of waiting, fixed, under the curtain.
+        gsap.fromTo("#c2-map .c2-mapbox", { y: 0, opacity: 1 }, { y: () => -window.innerHeight * T2.exit.lift, opacity: 0, ease: "none", immediateRender: false, scrollTrigger: { trigger: q("#ch3"), start: "top bottom", end: "top top", scrub: true, invalidateOnRefresh: true } });
         t2.to("#h-proof", { opacity: 0, duration: T2.proofOut.dur }, T2.proofOut.at)
           .to("#gl-labels", { opacity: 0, duration: T2.labelsOut.dur }, T2.labelsOut.at)
           .fromTo("#c2-t1", { opacity: 0, y: T2.t1In.y }, { opacity: 1, y: 0, duration: T2.t1In.dur, ease: "expo.out" }, T2.t1In.at)
