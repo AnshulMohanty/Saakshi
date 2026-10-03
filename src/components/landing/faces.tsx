@@ -121,7 +121,7 @@ export function FacesChapter({ data }: { data: LandingData }) {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", padding: "10px 12px", fontSize: "13px", borderTop: "1px solid var(--border)" }}>
             <span aria-live="polite" style={{ display: "flex", alignItems: "center", gap: "8px", fontFamily: "var(--font-mono)" }}>
               <AnimatePresence mode="wait" initial={false}>
-                <motion.span key={status.pending ? "p" : status.code} initial={reduce ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={fade} style={{ padding: "2px 9px", borderRadius: "999px", fontWeight: "700", background: status.pending ? "var(--muted)" : broken ? "var(--l-destructive)" : "var(--verified)", color: status.pending ? "var(--muted-foreground)" : "var(--l-card)" }}>
+                <motion.span key={status.pending ? "p" : status.code} initial={reduce ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={fade} style={{ padding: "2px 9px", borderRadius: "999px", fontWeight: "700", background: status.pending ? "var(--muted)" : broken ? "var(--l-destructive)" : "var(--verified)", color: status.pending ? "var(--muted-foreground)" : broken ? "var(--l-card)" : "var(--n-background)" }}>
                   {status.pending ? "…" : status.code}
                 </motion.span>
               </AnimatePresence>

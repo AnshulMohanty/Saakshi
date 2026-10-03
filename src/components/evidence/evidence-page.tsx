@@ -37,7 +37,8 @@ export interface EvidencePageData {
 }
 
 const CHIP = { good: { bg: "var(--verified-tint)", fg: "var(--verified-ink)", dot: "var(--verified)" }, neutral: { bg: "var(--background)", fg: "var(--muted-foreground)", dot: "var(--neutral-dot)" }, warn: { bg: "var(--background)", fg: "var(--muted-foreground)", dot: "var(--review)" }, bad: { bg: "var(--flagged-tint)", fg: "var(--flagged-ink)", dot: "var(--flagged)" } } as const;
-const PTS = { good: "var(--verified)", neutral: "var(--neutral-dot)", warn: "var(--review)", bad: "var(--flagged)" } as const;
+// Point counts are text: the neutral tone uses the muted foreground (AA on cards), not the lighter dot colour.
+const PTS = { good: "var(--verified)", neutral: "var(--muted-foreground)", warn: "var(--review)", bad: "var(--flagged)" } as const;
 const CARD = { display: "flex", flexDirection: "column", padding: "16px", borderRadius: "12px", background: "var(--card)", border: "1px solid var(--border)" } as const;
 const H2 = { margin: "0 0 6px", fontSize: "15px", fontWeight: "600" } as const;
 
