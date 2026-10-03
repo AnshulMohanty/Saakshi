@@ -10,7 +10,7 @@ import type { LiveEvent } from "@/lib/live";
  * Chapter 9 (L:1008-1030): the QR to the witness camera, and the full map of India where real
  * Witness photos land as they arrive (/api/live, B5.8): each one drops onto its place as a
  * thumbnail with a ripple. The QR is rendered on the server (level M), dark modules on white.
- * The feed opens only while the chapter is on screen.
+ * The feed opens once, when the chapter first comes near, and stays open for the visit.
  */
 type Arrival = Pick<LiveEvent, "id" | "thumbUrl" | "place" | "band"> & { lat: number; lng: number; at: number };
 
@@ -42,15 +42,18 @@ export function WitnessChapter({ data, qrSvg, live = true }: { data: LandingData
         es = null;
       }
     };
-    const close = () => {
-      es?.close();
-      es = null;
-    };
-    const io = new IntersectionObserver((e) => (e.some((x) => x.isIntersecting) ? open() : close()), { rootMargin: "200px" });
+    // One stream per visit, opened when the chapter first comes near and kept until the page goes:
+    // reopening on every pass would start a new server stream each time (the route allows 4 per client).
+    const io = new IntersectionObserver((e) => {
+      if (!e.some((x) => x.isIntersecting)) return;
+      io.disconnect();
+      open();
+    }, { rootMargin: "400px" });
     io.observe(el);
     return () => {
       io.disconnect();
-      close();
+      es?.close();
+      es = null;
     };
   }, [live, w.spots]);
 
