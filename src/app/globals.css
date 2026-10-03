@@ -215,6 +215,14 @@
   }
 }
 
+/* The app shell on phones (components/app/app-shell.tsx): the rail is collapsed from the first paint, so the
+   collapse after hydration moves nothing (it used to animate 220 → 60 px and shift the page: CLS). */
+@media (max-width: 760px) {
+  .app-rail:not([data-touched]) {
+    width: 60px !important;
+  }
+}
+
 /* Route loading states (components/skeletons.tsx). */
 .sk {
   background: color-mix(in srgb, var(--foreground) 9%, transparent);

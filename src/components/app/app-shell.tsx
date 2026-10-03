@@ -71,6 +71,8 @@ export function AppShell({ data, screen: routeScreen, state, theme, project, rou
   const [localScreen, setLocalScreen] = useState<Screen>(routeScreen);
   const scr = routes ? routeScreen : localScreen;
   const [rail, setRail] = useState(true);
+  // Phones show the collapsed rail from the first paint (CSS, .app-rail); it widens only once the visitor opens it.
+  const [railTouched, setRailTouched] = useState(false);
   const stored = useStoredDark();
   const [forcedDark, setForcedDark] = useState<boolean | null>(theme ? theme === "dark" : null);
   const dark = forcedDark ?? stored;
@@ -197,7 +199,7 @@ export function AppShell({ data, screen: routeScreen, state, theme, project, rou
         </div>
       )}
       <div style={{ flex: "1", minHeight: "0", display: "flex" }}>
-        <nav aria-label="Main" style={{ flexShrink: "0", width: rail ? "220px" : "60px", display: "flex", flexDirection: "column", gap: "4px", padding: "12px 10px", boxSizing: "border-box", background: "var(--card)", borderRight: "1px solid var(--border)", transition: "width 200ms cubic-bezier(0.16,1,0.3,1)", overflow: "hidden" }}>
+        <nav aria-label="Main" className="app-rail" data-touched={railTouched ? "" : undefined} style={{ flexShrink: "0", width: rail ? "220px" : "60px", display: "flex", flexDirection: "column", gap: "4px", padding: "12px 10px", boxSizing: "border-box", background: "var(--card)", borderRight: "1px solid var(--border)", transition: "width 200ms cubic-bezier(0.16,1,0.3,1)", overflow: "hidden" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "4px 6px 12px" }}>
             <Glyph bits={LOGO_BITS} colors={{ on: "var(--l-primary)", off: "transparent" }} style={{ width: "24px", height: "24px", flexShrink: "0" }} />
             {rail && <span style={{ fontFamily: "var(--font-display)", fontWeight: "650", fontSize: "20px", whiteSpace: "nowrap" }}>Saakshi</span>}
@@ -221,7 +223,15 @@ export function AppShell({ data, screen: routeScreen, state, theme, project, rou
             <span style={{ width: "18px", textAlign: "center" }}>◐</span>
             {rail && <span>{dark ? "Light" : "Dark"}</span>}
           </button>
-          <button type="button" onClick={() => setRail((r) => !r)} aria-label={rail ? "Collapse the sidebar" : "Expand the sidebar"} style={RAIL_BTN}>
+          <button
+            type="button"
+            onClick={() => {
+              setRail((r) => !r);
+              setRailTouched(true);
+            }}
+            aria-label={rail ? "Collapse the sidebar" : "Expand the sidebar"}
+            style={RAIL_BTN}
+          >
             <span style={{ width: "18px", textAlign: "center" }}>{rail ? "«" : "»"}</span>
             {rail && <span>Collapse</span>}
           </button>
