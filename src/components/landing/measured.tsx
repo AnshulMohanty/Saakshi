@@ -81,7 +81,7 @@ export function MeasuredChapter({ data }: { data: LandingData }) {
                 <figcaption style={{ display: "flex", justifyContent: "space-between", gap: "12px", fontSize: "13px", color: "var(--muted-foreground)" }}>
                   <span>
                     <strong style={{ color: "var(--foreground)" }}>After.</strong>
-                    {" Same spot, same framing."}
+                    {" A later photo at the same spot."}
                   </span>
                   {m.after.src && <span>{m.after.credit}</span>}
                 </figcaption>
@@ -89,7 +89,7 @@ export function MeasuredChapter({ data }: { data: LandingData }) {
             </div>
           ) : (
             <p style={{ margin: "0", maxWidth: "720px", fontSize: "16px", lineHeight: "1.5", color: "var(--muted-foreground)" }}>
-              No measured before-and-after pair yet. When a spot has a before photo and a later photo from the same framing, its cover is measured on the pixels and shown here with its mask.
+              No measured before-and-after pair yet. When a spot has a before photo and a later photo of the same spot, its cover is measured on the pixels and shown here with its mask.
             </p>
           )}
           {m && (

@@ -44,7 +44,7 @@ export function CloudinaryChapter({ data }: { data: LandingData }) {
             <h2 style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "700", fontStretch: "92%", fontSize: "clamp(32px,4.4vw,68px)", lineHeight: "0.95", letterSpacing: "-0.02em" }}>Built on Cloudinary.</h2>
             <p style={{ margin: "0", maxWidth: "460px", fontSize: "clamp(14px,1.2vw,16px)", lineHeight: "1.5", color: "var(--muted-foreground)" }}>{`The thread is a pipeline. Every photo passes ${n === 5 ? "five" : n} stages, each one a Cloudinary feature. Scroll through them, or pick one.`}</p>
           </div>
-          <div role="tablist" aria-label="Pipeline stages" style={{ position: "relative", display: "grid", gridTemplateColumns: `repeat(${n}, minmax(0,1fr))`, gap: "8px" }}>
+          <div role="tablist" aria-label="Pipeline stages" className="c10-tabs" style={{ position: "relative", display: "grid", gridTemplateColumns: `repeat(${n}, minmax(0,1fr))`, gap: "8px" }}>
             <div aria-hidden="true" style={{ position: "absolute", left: "0", right: "0", top: "50%", height: "3px", borderRadius: "2px", background: "var(--border)" }}>
               <div id="c10-fill" style={{ position: "absolute", inset: "0", borderRadius: "2px", background: "var(--primary)", boxShadow: "0 0 16px color-mix(in srgb, var(--primary) 70%, transparent)", transformOrigin: "0 50%", transform: `scaleX(${n > 1 ? ni / (n - 1) : 1})` }} />
             </div>
@@ -52,8 +52,11 @@ export function CloudinaryChapter({ data }: { data: LandingData }) {
               const on = i === ni;
               const past = i < ni;
               return (
-                <button key={s.name} type="button" role="tab" aria-selected={on} aria-controls="c10-panel" className="focus-ring" onClick={() => pick(i)} style={{ position: "relative", display: "flex", flexDirection: "column", gap: "3px", alignItems: "flex-start", textAlign: "left", padding: "10px 12px", borderRadius: "12px", cursor: "pointer", background: on ? "var(--primary)" : past ? "color-mix(in srgb, var(--primary) 18%, var(--card))" : "var(--card)", border: `1px solid ${on ? "var(--primary)" : past ? "color-mix(in srgb, var(--primary) 50%, var(--border))" : "var(--border)"}`, color: on ? "var(--primary-foreground)" : "var(--foreground)", boxShadow: on ? "0 10px 30px color-mix(in srgb, var(--primary) 40%, transparent)" : "none", transition: "background var(--dur-ui), border-color var(--dur-ui), color var(--dur-ui)" }}>
-                  <span style={{ fontSize: "11px", fontWeight: "600", opacity: on ? 0.85 : 0.7 }}>{past ? `Stage ${i + 1} ✓` : `Stage ${i + 1}`}</span>
+                <button key={s.name} type="button" role="tab" aria-selected={on} aria-controls="c10-panel" className="focus-ring c10-tab" onClick={() => pick(i)} style={{ position: "relative", display: "flex", flexDirection: "column", gap: "3px", alignItems: "flex-start", textAlign: "left", padding: "10px 12px", borderRadius: "12px", cursor: "pointer", background: on ? "var(--primary)" : past ? "color-mix(in srgb, var(--primary) 18%, var(--card))" : "var(--card)", border: `1px solid ${on ? "var(--primary)" : past ? "color-mix(in srgb, var(--primary) 50%, var(--border))" : "var(--border)"}`, color: on ? "var(--primary-foreground)" : "var(--foreground)", boxShadow: on ? "0 10px 30px color-mix(in srgb, var(--primary) 40%, transparent)" : "none", transition: "background var(--dur-ui), border-color var(--dur-ui), color var(--dur-ui)" }}>
+                  <span style={{ fontSize: "11px", fontWeight: "600", opacity: on ? 0.85 : 0.7 }}>
+                    <span className="c10-word">Stage </span>
+                    {past ? `${i + 1} ✓` : `${i + 1}`}
+                  </span>
                   <span className="c10-name" style={{ fontFamily: "var(--font-display)", fontWeight: "650", fontSize: "clamp(14px,1.4vw,19px)", lineHeight: "1.05" }}>{s.name}</span>
                 </button>
               );

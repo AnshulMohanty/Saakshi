@@ -434,6 +434,21 @@ export function IndiaMap({ theme = "night", variant = "panel", sites = [], pins 
   const tipPin = hover?.startsWith("pin:") ? pins.find((p) => `pin:${p.id}` === hover) : null;
   const tipSite = tipPin ? { tip: tipPin.tip, lng: tipPin.lng, lat: tipPin.lat } : hover ? sites.find((s) => s.key === hover) : null;
   const glowBase = Math.max(28, Math.min(120, fit.k * 1.6));
+  // A label sits right of its pin unless it would run into another site there or off the map.
+  const labelLeft = new Set(
+    ready
+      ? sites
+          .filter((s) => {
+            if (!s.label) return false;
+            const x = fit.x(s.lng);
+            const y = fit.y(s.lat);
+            const w = 26 + 18 + 6.8 * Math.max(s.label.length, s.sub?.length ?? 0);
+            if (x + w > size.W - 4) return true;
+            return sites.some((t) => t !== s && fit.x(t.lng) >= x && fit.x(t.lng) - x < w + 8 && Math.abs(fit.y(t.lat) - y) < 26);
+          })
+          .map((s) => s.key)
+      : [],
+  );
 
   return (
     <div
@@ -486,7 +501,7 @@ export function IndiaMap({ theme = "night", variant = "panel", sites = [], pins 
                   {!calm && <span className="im-pulse" aria-hidden="true" style={{ position: "absolute", left: "50%", top: "50%", width: "22px", height: "22px", borderRadius: "50%", border: `2px solid ${tone}` }} />}
                   <span aria-hidden="true" style={{ position: "absolute", left: "50%", top: "50%", width: "11px", height: "11px", transform: "translate(-50%,-50%)", borderRadius: "50%", background: tone, boxShadow: `0 0 0 3px color-mix(in srgb, ${tone} 28%, transparent), 0 0 14px 2px color-mix(in srgb, ${tone} 70%, transparent)` }} />
                   {s.label && (
-                    <span aria-hidden="true" style={{ position: "absolute", left: "26px", top: "50%", transform: "translateY(-50%)", whiteSpace: "nowrap", display: "flex", flexDirection: "column", gap: "1px", padding: "4px 8px", borderRadius: "8px", background: "color-mix(in srgb, var(--card) 88%, transparent)", border: "1px solid var(--border)", color: "var(--foreground)", fontSize: "12px", fontWeight: "600", lineHeight: "1.25", textAlign: "left", pointerEvents: "none" }}>
+                    <span aria-hidden="true" style={{ position: "absolute", ...(labelLeft.has(s.key) ? { right: "26px" } : { left: "26px" }), top: "50%", transform: "translateY(-50%)", whiteSpace: "nowrap", display: "flex", flexDirection: "column", gap: "1px", padding: "4px 8px", borderRadius: "8px", background: "color-mix(in srgb, var(--card) 88%, transparent)", border: "1px solid var(--border)", color: "var(--foreground)", fontSize: "12px", fontWeight: "600", lineHeight: "1.25", textAlign: "left", pointerEvents: "none" }}>
                       {s.label}
                       {s.sub && <span style={{ fontWeight: "400", color: "var(--muted-foreground)" }}>{s.sub}</span>}
                     </span>
