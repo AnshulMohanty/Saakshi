@@ -659,3 +659,160 @@ html[data-boot="done"] .boot {
     display: none;
   }
 }
+
+/* Review (components/app/review-screen.tsx): one screen from 1024 px (queue | photo | decision), stacked below. */
+.rv-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.rv-queue {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.rv-qhead,
+.rv-decided {
+  display: none;
+}
+.rv-queue .rv-item {
+  flex: 0 0 230px;
+}
+.rv-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.rv-photos {
+  display: flex;
+  gap: 10px;
+}
+.rv-fig {
+  margin: 0;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.rv-frame {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 12px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--foreground) 6%, var(--muted));
+}
+.rv-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(22px) brightness(0.62) saturate(1.1);
+  transform: scale(1.12);
+}
+.rv-panel {
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+.rv-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+}
+.rv-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: 0 -8px 24px color-mix(in srgb, var(--ink-black) 14%, transparent);
+}
+@media (hover: none) {
+  .rv-hints {
+    display: none !important;
+  }
+}
+@media (min-width: 1024px) {
+  .rv-layout {
+    height: 100%;
+    min-height: 520px;
+    display: grid;
+    grid-template-columns: minmax(210px, 260px) minmax(0, 1fr) minmax(300px, 350px);
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "queue stage panel"
+      "queue stage actions";
+    gap: 0 16px;
+  }
+  .rv-queue {
+    grid-area: queue;
+  }
+  .rv-stage {
+    grid-area: stage;
+  }
+  .rv-queue {
+    flex-direction: column;
+    overflow: auto;
+    min-height: 0;
+    padding: 0 4px 0 0;
+  }
+  .rv-qhead {
+    display: block;
+  }
+  .rv-decided {
+    display: flex;
+  }
+  .rv-queue .rv-item {
+    flex: 0 0 auto;
+  }
+  .rv-stage {
+    min-height: 0;
+  }
+  .rv-photos {
+    flex: 1;
+    min-height: 0;
+  }
+  .rv-photos figure .rv-frame {
+    flex: 1;
+    min-height: 0;
+    aspect-ratio: auto;
+  }
+  .rv-panel {
+    grid-area: panel;
+    min-height: 0;
+    overflow: hidden;
+    border-bottom: 0;
+    border-radius: 12px 12px 0 0;
+  }
+  .rv-panel-body {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+  }
+  .rv-actions {
+    grid-area: actions;
+    position: static;
+    box-shadow: none;
+    border-radius: 0 0 12px 12px;
+  }
+}
+@media (max-width: 640px) {
+  .rv-photos {
+    flex-direction: column;
+  }
+  .rv-fig {
+    flex: none;
+  }
+}
