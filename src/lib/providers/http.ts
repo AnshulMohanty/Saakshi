@@ -4,7 +4,8 @@
  * is the same for Cloudinary and OpenAI, and contract tests can swap `fetch` for a recorder.
  *
  * Retried: network errors, 408, 409, 423 (Cloudinary "derived asset being generated"), 429 and
- * 5xx, except errors that need a human (OpenAI insufficient_quota and friends).
+ * 5xx, except errors that need a human (OpenAI insufficient_quota and friends) or that won't clear
+ * for weeks (Cloudinary AI Vision's monthly token quota, MA_00008).
  */
 import { recordUsage, type UsageEntry } from "../usage";
 
@@ -45,8 +46,12 @@ export class ProviderHttpError extends Error {
   }
 }
 
-/** OpenAI error codes that retrying won't fix (docs: error codes, rate limits). */
-const NEEDS_A_HUMAN = /insufficient_quota|billing_hard_limit_reached|credit_balance_exhausted|account_deactivated|invalid_api_key/;
+/**
+ * Error codes that retrying won't fix: OpenAI billing and key errors (docs: error codes, rate
+ * limits), and Cloudinary AI Vision's monthly token quota (429 MA_00008, which the analysis
+ * fallback switches on).
+ */
+const NEEDS_A_HUMAN = /insufficient_quota|billing_hard_limit_reached|credit_balance_exhausted|account_deactivated|invalid_api_key|MA_00008/;
 
 export const isRetryableStatus = (status: number) => status === 408 || status === 409 || status === 423 || status === 429 || status >= 500;
 

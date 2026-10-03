@@ -11,9 +11,10 @@ import { providerUsage } from "@/lib/db/schema";
 import { cloudinarySignature } from "@/lib/media/transform";
 import { openAiCost } from "@/lib/pricing";
 import { strictJsonSchema } from "@/lib/providers/ai/json-schema";
-import { OpenAIProvider, OpenAIRefusalError } from "@/lib/providers/ai/real";
+import { OpenAIProvider, OpenAIRefusalError, VISION_FALLBACK_PROMPT } from "@/lib/providers/ai/real";
 import { ParsedSearch, PhotoAnalysisOutput } from "@/lib/providers/ai/schemas";
-import { CloudinaryAnalysisProvider, readModeration, readWatermark } from "@/lib/providers/analysis/real";
+import { isAiVisionQuotaError } from "@/lib/providers/analysis/fallback";
+import { apiTagName, CloudinaryAnalysisProvider, readModeration, readTags, readWatermark } from "@/lib/providers/analysis/real";
 import { CloudinaryClient, signUploadParams, stringToSign } from "@/lib/providers/cloudinary/client";
 import { callWithRetry, ProviderHttpError, type FetchLike } from "@/lib/providers/http";
 import { CloudinaryMediaProvider, mediaAssetFromUpload, type CloudinaryOptions } from "@/lib/providers/media/real";
@@ -308,6 +309,38 @@ describe("CloudinaryAnalysisProvider contract (Analyze API)", () => {
     await new CloudinaryAnalysisProvider(new CloudinaryClient(CREDS, r.deps), url).tag("saakshi/a", [{ name: "x", description: "y" }]);
     expect(r.usage[0].units).toEqual({ requests: 1, ai_vision_tokens: 3, ai_vision_remaining: 497 });
   });
+
+  it("tag names go out hyphenated (MA_00003: lower-case letters, digits, hyphens) and map back to ours", async () => {
+    expect(apiTagName("litter_or_waste")).toBe("litter-or-waste");
+    expect(apiTagName("Saplings_Or_Young_Trees")).toBe("saplings-or-young-trees");
+    const taxonomy = [
+      { name: "litter_or_waste", description: "Visible litter" },
+      { name: "saplings_or_young_trees", description: "Newly planted saplings" },
+      { name: "water_body", description: "A lake or canal" },
+    ];
+    const r = recorder(() => json({ data: { analysis: { tags: [{ name: "litter-or-waste" }, { name: "water-body" }] } } }));
+    expect(await new CloudinaryAnalysisProvider(new CloudinaryClient(CREDS, r.deps), url).tag("saakshi/a", taxonomy)).toEqual(["litter_or_waste", "water_body"]);
+    const sent = (r.calls[0].json as { tag_definitions: { name: string }[] }).tag_definitions.map((t) => t.name);
+    expect(sent).toEqual(["litter-or-waste", "saplings-or-young-trees", "water-body"]);
+    for (const n of sent) expect(n).toMatch(/^[a-z0-9-]+$/);
+    // A response that echoes our own names still maps.
+    expect(readTags({ data: { analysis: { tags: ["saplings_or_young_trees"] } } }, taxonomy)).toEqual(["saplings_or_young_trees"]);
+  });
+
+  it("429 MA_00008 (the monthly AI Vision token quota) is not retried: the fallback takes over", async () => {
+    const r = recorder(() => json({ error: { message: "Monthly AI Vision token quota exceeded", code: "MA_00008" } }, 429));
+    const err = await new CloudinaryAnalysisProvider(new CloudinaryClient(CREDS, r.deps), url).tag("saakshi/a", [{ name: "x", description: "y" }]).catch((e) => e);
+    expect(err).toBeInstanceOf(ProviderHttpError);
+    expect(err).toMatchObject({ provider: "cloudinary", status: 429, retryable: false });
+    expect(isAiVisionQuotaError(err)).toBe(true);
+    expect(r.calls).toHaveLength(1);
+    expect(r.sleeps).toEqual([]);
+    // An ordinary Cloudinary 429 is still retried.
+    let n = 0;
+    const r2 = recorder(() => (n++ === 0 ? json({ error: { message: "Rate limit exceeded" } }, 429, { "retry-after": "1" }) : json({ data: { analysis: { tags: [] } } })));
+    await new CloudinaryAnalysisProvider(new CloudinaryClient(CREDS, r2.deps), url).tag("saakshi/a", [{ name: "x", description: "y" }]);
+    expect(r2.calls).toHaveLength(2);
+  });
 });
 
 const ANALYSIS = { caption: "Volunteers clearing litter from a canal bank.", activity: "cleanup", stage: "during", visibleCounts: [{ label: "litter bags", count: 6, confidence: 0.7 }], visualSignals: ["gloves", "sacks"], sdgs: [11, 14], childrenVisible: false, textInImage: null, confidence: 0.8 };
@@ -340,6 +373,45 @@ describe("OpenAIProvider contract", () => {
     expect(out).toMatchObject({ ...ANALYSIS, method: "ai_estimated", model: "gpt-5.6-luna", providerMode: "real" });
     expect(r.usage[0]).toMatchObject({ provider: "openai", model: "gpt-5.6-luna", units: { input_tokens: 1000, output_tokens: 100, cached_tokens: 0 } });
     expect(r.usage[0].costUsd).toBeCloseTo((1000 * 0.2 + 100 * 1.2) / 1e6, 12);
+  });
+
+  it("visionLabels (the AI Vision fallback): one call, fast model, detail low, strict vision_labels schema, metered", async () => {
+    const taxonomy = [
+      { name: "litter_or_waste", description: "Visible litter" },
+      { name: "water_body", description: "A lake or canal" },
+    ];
+    const questions = [
+      { id: "watermark_or_stock", text: "Is there a visible watermark?" },
+      { id: "unsafe_content", text: "Is there nudity, gore or violence?" },
+    ];
+    const answer = { tags: ["litter_or_waste", "litter_or_waste", "made_up"], answers: { watermark_or_stock: false, unsafe_content: false } };
+    const r = recorder(() => json(responsesBody(JSON.stringify(answer), { usage: { input_tokens: 400, input_tokens_details: { cached_tokens: 0 }, output_tokens: 30, output_tokens_details: { reasoning_tokens: 0 }, total_tokens: 430 } })));
+    const out = await new OpenAIProvider(OPTIONS, { ...r.deps, loadImage }).visionLabels("https://res.cloudinary.com/demo/image/authenticated/s--x--/c_limit,w_1600,h_1600/v1/a", taxonomy, questions, { assetId: null });
+    expect(out).toEqual({ tags: ["litter_or_waste"], answers: answer.answers, model: "gpt-5.6-luna" }); // unknown names dropped, duplicates merged
+    expect(r.calls).toHaveLength(1);
+    const body = r.calls[0].json as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any -- asserting a JSON request body
+    expect(r.calls[0].url).toBe("https://api.openai.com/v1/responses");
+    expect(body).toMatchObject({ model: "gpt-5.6-luna", store: false, reasoning: { effort: "low" } });
+    expect(body.input[0]).toEqual({ role: "developer", content: VISION_FALLBACK_PROMPT });
+    expect(body.input[1].content[0].text).toBe("Tags:\n- litter_or_waste: Visible litter\n- water_body: A lake or canal\nQuestions:\n- watermark_or_stock: Is there a visible watermark?\n- unsafe_content: Is there nudity, gore or violence?");
+    expect(body.input[1].content[1]).toEqual({ type: "input_image", image_url: `data:image/jpeg;base64,${Buffer.from("fakejpeg").toString("base64")}`, detail: "low" });
+    expect(body.text.format).toMatchObject({ type: "json_schema", name: "vision_labels", strict: true });
+    const schema = body.text.format.schema;
+    expect(schema.required).toEqual(["tags", "answers"]);
+    expect(schema.properties.tags.items.enum).toEqual(["litter_or_waste", "water_body"]);
+    expect(schema.properties.answers).toMatchObject({ type: "object", additionalProperties: false, required: ["watermark_or_stock", "unsafe_content"] });
+    expect(r.usage[0]).toMatchObject({ provider: "openai", operation: "vision_fallback", model: "gpt-5.6-luna", units: { input_tokens: 400, output_tokens: 30 } });
+    expect(r.usage[0].costUsd).toBeCloseTo(openAiCost("gpt-5.6-luna", 400, 30)!, 12);
+  });
+
+  it("visionLabels: an answer missing a question id is an error; insufficient_quota is never retried", async () => {
+    const q = [{ id: "unsafe_content", text: "Unsafe?" }];
+    const r1 = recorder(() => json(responsesBody(JSON.stringify({ tags: [], answers: {} }))));
+    await expect(new OpenAIProvider(OPTIONS, { ...r1.deps, loadImage }).visionLabels("data:image/png;base64,AA==", [], q)).rejects.toThrow();
+    const r2 = recorder(() => json({ error: { code: "insufficient_quota", message: "You exceeded your current quota" } }, 429));
+    await expect(new OpenAIProvider(OPTIONS, { ...r2.deps, loadImage }).visionLabels("data:image/png;base64,AA==", [], q)).rejects.toMatchObject({ status: 429, retryable: false });
+    expect(r2.calls).toHaveLength(1);
+    expect(r2.sleeps).toEqual([]);
   });
 
   it("reads output[] message → output_text (output_text on the root is SDK-only); refusals and incomplete responses throw", async () => {

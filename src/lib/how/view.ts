@@ -7,6 +7,8 @@ import { and, desc, eq, isNotNull } from "drizzle-orm";
 import type { HowData } from "@/components/how/how-it-works";
 import type { DB } from "../db/client";
 import { assets } from "../db/schema";
+import { perceptionCode } from "../ai/perception-copy";
+import { getConfig } from "../config";
 import { heroProject } from "../demo/hero";
 import { placeShort } from "../landing/copy";
 import { FRAME, PREVIEW } from "../media/derivatives";
@@ -33,7 +35,7 @@ export async function howView(db: DB, media: MediaProvider): Promise<HowData> {
       : null,
     stages: [
       { n: 1, name: "Intake forensics", what: "Reads the camera file and fingerprints the pixels.", code: "media_metadata: true, phash: true, faces: true, quality_analysis: true", writes: "location, time, device, fingerprint, faces, quality" },
-      { n: 2, name: "Perception", what: "Finds watermarks, screens and what is in the frame.", code: "analyze/ai_vision_tagging, ai_vision_moderation, watermark_detection", writes: "tags, moderation answers, watermark, each AI-estimated" },
+      { n: 2, name: "Perception", what: "Finds watermarks, screens and what is in the frame.", code: perceptionCode(getConfig().cloudinary.aiVision), writes: "tags, moderation answers, watermark, each AI-estimated" },
       { n: 3, name: "Measurement", what: "Segments litter into a mask.", code: compileTransform(maskTransform(LITTER_PROMPTS, { multiple: true, frame: FRAME })), writes: `mask image, cover above ${MASK_THRESHOLD}/255, provider` },
       { n: 4, name: "Privacy", what: "Blurs faces on a signed public copy.", code: `${compileTransform(PREVIEW)}, signed`, writes: "public URL, signature" },
       { n: 5, name: "Provenance", what: "Pins the version and logs every edit.", code: "type: authenticated, v1, s--signature--", writes: "audit entry, history hash" },

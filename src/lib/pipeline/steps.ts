@@ -45,7 +45,7 @@ export type Step = (deps: PipelineDeps, asset: Asset) => Promise<StepResult>;
 export const STEP_ORDER: PipelineStepName[] = ["parseMetadata", "analyze", "understand", "embed", "assign", "score", "measure", "finalize"];
 
 /** Signed, w_1024 derivative sent to the vision model (never the original). */
-/** What the vision model sees: long side ≤ 1024 px, faces blurred (nothing identifying leaves for a third party). */
+/** What the vision model sees for understand: long side ≤ 1024 px, faces blurred. (The AI Vision fallback reads ANALYZE_SOURCE, like Cloudinary does.) */
 export const UNDERSTAND_TRANSFORM = [{ width: 1024, crop: "limit" as const }, { effect: "blur_faces" as const }, { format: "jpg" as const, quality: "auto" as const }];
 
 const ingestOf = (a: Asset) => (a.pipeline?.ingest ?? {}) as NonNullable<MetadataInput["ingest"]> & {
@@ -77,13 +77,15 @@ const analyze: Step = async (deps, asset) => {
     deps.analysis.moderate(asset.cldPublicId, MODERATION_QUESTIONS),
     deps.analysis.detectWatermark(asset.cldPublicId),
   ]);
+  // Who answered tags and moderation for this image (Cloudinary, or the OpenAI vision fallback).
+  const provider = deps.analysis.providerFor?.(asset.cldPublicId) ?? deps.analysis.id;
   return {
-    output: { tags, answers, watermark, provider: deps.analysis.id, mode: deps.analysis.kind },
+    output: { tags, answers, watermark, provider, mode: deps.analysis.kind },
     patch: {
       cldTags: tags,
       moderation: { status: "pending", answers, checkedAt: new Date().toISOString() },
       watermark,
-      provenance: { ...asset.provenance, analysis: { mode: deps.analysis.kind, provider: deps.analysis.id } },
+      provenance: { ...asset.provenance, analysis: { mode: deps.analysis.kind, provider } },
     },
   };
 };

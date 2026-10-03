@@ -229,3 +229,30 @@ describe("mock URLs", () => {
     expect(parseDeliveryPath("image/upload/v1/../secret")).toBeNull();
   });
 });
+
+describe("text layers with colons and plus signs (Cloudinary refused a signed l_text with an unescaped colon: 401)", () => {
+  const text = "GPS Map Camera\nAndheri, Mumbai\nLat 19.0988° Long 72.8267°\n14/03/2025 10:42 AM GMT +05:30, ok/fine";
+
+  it("double-escapes ':' and '+' like ',' and '/'", () => {
+    const enc = encodeLayerText(text);
+    expect(enc).toContain("%253A");
+    expect(enc).toContain("%252B");
+    expect(enc).toContain("%252C");
+    expect(enc).toContain("%252F");
+    expect(enc).not.toMatch(/%3A|%2B|%2C|%2F/i);
+  });
+
+  it("round-trips through compile and parse: , / : + ° and newlines", () => {
+    const t: TransformT = [{ overlay: { text, font: "Arial", size: 28 }, gravity: "south_west", x: 20, y: 20 }];
+    const compiled = compileTransform(t);
+    expect(compiled).toContain("10%253A42");
+    expect(compiled).toContain("GMT%20%252B05%253A30");
+    expect(parseTransformation(compiled)).toEqual(t);
+  });
+
+  it("a signed URL carries the double-escaped colon", () => {
+    const url = buildCloudinaryUrl({ cloudName: "demo", publicId: "saakshi/x", transforms: [{ overlay: { text: "10:42", font: "Arial", size: 20 } }], apiSecret: "abcd", deliveryType: "authenticated" });
+    expect(url).toContain("10%253A42");
+    expect(url).toMatch(/\/s--[A-Za-z0-9_-]{8}--\//);
+  });
+});

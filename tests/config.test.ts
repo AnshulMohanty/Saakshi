@@ -61,6 +61,16 @@ describe("loadConfig", () => {
     expect(getMockMediaSigningKey(c)).not.toContain("yyyy");
   });
 
+  it("CLD_AI_VISION: auto by default, on/off accepted, anything else refused; off without OpenAI warns", () => {
+    expect(loadConfig({}).cloudinary.aiVision).toBe("auto");
+    expect(loadConfig({ CLD_AI_VISION: "" }).cloudinary.aiVision).toBe("auto");
+    expect(loadConfig({ CLD_AI_VISION: "on" }).cloudinary.aiVision).toBe("on");
+    expect(loadConfig({ CLD_AI_VISION: "off" }).cloudinary.aiVision).toBe("off");
+    expect(() => loadConfig({ CLD_AI_VISION: "yes" })).toThrow(/CLD_AI_VISION/);
+    expect(loadConfig({ CLD_AI_VISION: "off", CLOUDINARY_API_SECRET: "s" }).warnings.join()).toMatch(/CLD_AI_VISION=off needs OPENAI_API_KEY/);
+    expect(loadConfig({ CLD_AI_VISION: "off", CLOUDINARY_API_SECRET: "s", OPENAI_API_KEY: "sk" }).warnings.join()).not.toMatch(/CLD_AI_VISION/);
+  });
+
   it("rejects malformed values", () => {
     expect(() => loadConfig({ DATABASE_URL: "mysql://x" })).toThrow(/DATABASE_URL/);
     expect(() => loadConfig({ EXIF_DEFAULT_UTC_OFFSET: "IST" })).toThrow(/EXIF_DEFAULT_UTC_OFFSET/);

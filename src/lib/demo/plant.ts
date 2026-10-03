@@ -51,7 +51,8 @@ export function stampText(city: { name: string; lat: number; lng: number }, loca
   const pad = (n: number) => String(n).padStart(2, "0");
   const h = d.getUTCHours();
   const time = `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()} ${pad(((h + 11) % 12) + 1)}:${pad(d.getUTCMinutes())} ${h < 12 ? "AM" : "PM"}`;
-  return [`GPS Map Camera`, city.name, `Lat ${city.lat.toFixed(6)}° Long ${city.lng.toFixed(6)}°`, `${time} IST`].join("\n");
+  // "GMT +05:30" like a real GPS Map Camera stamp: text layers double-escape ":" and "+" (media/transform.ts).
+  return [`GPS Map Camera`, city.name, `Lat ${city.lat.toFixed(6)}° Long ${city.lng.toFixed(6)}°`, `${time} GMT +05:30`].join("\n");
 }
 
 export interface PlantPicks {

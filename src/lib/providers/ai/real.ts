@@ -9,15 +9,21 @@
  *                   issues when a draft breaks the placeholder rule
  *   parseSearch     POST /v1/responses  json_schema strict (ParsedSearch), vocabulary in the prompt
  *   embed           POST /v1/embeddings dimensions 1536 (text-embedding-3 models)
+ *   visionLabels    POST /v1/responses  the Cloudinary AI Vision fallback: tags + moderation answers
+ *                   in one call, detail low, json_schema strict (analysis/fallback.ts)
  *
  * Images go as data URLs: whether OpenAI can fetch signed Cloudinary URLs is not documented.
- * Faces are blurred before an image leaves for OpenAI (UNDERSTAND_TRANSFORM). store: false.
+ * describePhoto gets a face-blurred copy (UNDERSTAND_TRANSFORM). visionLabels gets the same signed,
+ * unblurred analysis copy (ANALYZE_SOURCE) Cloudinary AI Vision reads, because "are children's
+ * faces clearly visible?" can't be answered on a blurred one (docs/providers.md). store: false.
  */
+import { z } from "zod";
 import { findProseIssues } from "../../claims";
 import { EMBEDDING_DIMENSIONS } from "../../db/schema";
 import { searchParserPrompt, type SearchVocabulary } from "../../ai/prompts";
 import { openAiCost } from "../../pricing";
 import { callWithRetry, type HttpDeps } from "../http";
+import type { ModerationQuestion, TaxonomyEntry } from "../analysis";
 import type { AIProvider, ClaimRef } from "./index";
 import { strictJsonSchema } from "./json-schema";
 import { ParsedSearch, PhotoAnalysisOutput, type PhotoAnalysis } from "./schemas";
@@ -87,6 +93,29 @@ export const PHOTO_PROMPT = [
   "confidence: 0–1 for the activity and stage reading overall. Faces are blurred on purpose.",
 ].join("\n");
 
+/** The AI Vision fallback: tags and moderation in one short call (docs/providers.md, CLD_AI_VISION). */
+export const VISION_FALLBACK_PROMPT = [
+  "You label one photo for an evidence library.",
+  "tags: the names from the list that clearly apply; none is fine.",
+  "answers: true or false for every question id; when unsure, false.",
+].join("\n");
+
+/** Tags and moderation answers for one image, from one vision call. */
+export interface VisionLabels {
+  tags: string[];
+  answers: Record<string, boolean>;
+  model: string;
+}
+
+/** What the model may return: a tag enum and one boolean per question id (strict mode needs every key). */
+function visionLabelsSchema(taxonomy: TaxonomyEntry[], questions: ModerationQuestion[]) {
+  const names = taxonomy.map((t) => t.name);
+  return z.object({
+    tags: names.length ? z.array(z.enum(names as [string, ...string[]])) : z.array(z.string()).max(0),
+    answers: z.object(Object.fromEntries(questions.map((q) => [q.id, z.boolean()]))),
+  });
+}
+
 export function prosePrompt(claims: ClaimRef[]): string {
   return [
     "You write short texts for an impact-evidence product. Rules that are checked by code:",
@@ -125,7 +154,7 @@ export class OpenAIProvider implements AIProvider {
     };
   }
 
-  private async responses(operation: string, model: string, body: unknown): Promise<ResponsesBody> {
+  private async responses(operation: string, model: string, body: unknown, meta: { assetId?: string | null } = {}): Promise<ResponsesBody> {
     const { body: out } = await callWithRetry<ResponsesBody>(
       {
         provider: "openai",
@@ -135,6 +164,7 @@ export class OpenAIProvider implements AIProvider {
         init: { method: "POST", headers: this.headers(), body: JSON.stringify(body) },
         timeoutMs: this.options.timeoutMs ?? 60_000,
         meter: responsesMeter(model),
+        assetId: meta.assetId,
       },
       this.deps,
     );
@@ -173,6 +203,44 @@ export class OpenAIProvider implements AIProvider {
     const body = await this.responses("describe_photo", this.options.modelFast, await this.describePhotoRequest(imageUrl));
     const parsed = PhotoAnalysisOutput.parse(JSON.parse(responseText(body)));
     return { ...parsed, method: "ai_estimated", model: body.model ?? this.options.modelFast, providerMode: "real" };
+  }
+
+  /**
+   * The Cloudinary AI Vision fallback: which taxonomy names apply and a yes/no per moderation
+   * question, in ONE call. The fast model, detail "low" (a fixed small token cost whatever the
+   * size), a short prompt and a small strict schema keep it near $0.0005 a photo.
+   */
+  async visionLabelsRequest(imageUrl: string, taxonomy: TaxonomyEntry[], questions: ModerationQuestion[]) {
+    const list = [
+      "Tags:",
+      ...taxonomy.map((t) => `- ${t.name}: ${t.description}`),
+      "Questions:",
+      ...questions.map((q) => `- ${q.id}: ${q.text}`),
+    ].join("\n");
+    return this.responsesRequest(
+      this.options.modelFast,
+      [
+        { role: "developer", content: VISION_FALLBACK_PROMPT },
+        {
+          role: "user",
+          content: [
+            { type: "input_text", text: list },
+            { type: "input_image", image_url: await this.imageDataUrl(imageUrl), detail: "low" },
+          ],
+        },
+      ],
+      { name: "vision_labels", schema: strictJsonSchema(visionLabelsSchema(taxonomy, questions)) },
+    );
+  }
+
+  async visionLabels(imageUrl: string, taxonomy: TaxonomyEntry[], questions: ModerationQuestion[], meta: { assetId?: string | null } = {}): Promise<VisionLabels> {
+    const body = await this.responses("vision_fallback", this.options.modelFast, await this.visionLabelsRequest(imageUrl, taxonomy, questions), meta);
+    // Lenient on tags (an unknown name is dropped, never an error), strict on the answers.
+    const parsed = z
+      .object({ tags: z.array(z.string()), answers: z.object(Object.fromEntries(questions.map((q) => [q.id, z.boolean()]))) })
+      .parse(JSON.parse(responseText(body)));
+    const names = new Set(taxonomy.map((t) => t.name));
+    return { tags: [...new Set(parsed.tags.filter((t) => names.has(t)))], answers: parsed.answers as Record<string, boolean>, model: body.model ?? this.options.modelFast };
   }
 
   async writeWithPlaceholders(instruction: string, claims: ClaimRef[]): Promise<string> {

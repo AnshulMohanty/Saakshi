@@ -24,7 +24,7 @@ redirects there.
 | C5 | Exactly which parameters the **Download API** signs (only the SDK method is documented). | We sign every query parameter except `api_key`/`signature`, as for uploads. | services:check with `CLD_PDF_DELIVERY=download` |
 | C6 | Whether the **Analyze API** can fetch a signed authenticated URL as `source.uri`. | `source.asset_id` is documented as the alternative (not wired yet: it needs the stored `cld_asset_id`). | services:check: the three Analyze checks |
 | C7 | Where the Analyze **moderation and watermark** responses sit (`data.analysis.*` vs `analysis.*`). The docs are inconsistent, and three shapes are shown for token usage. | Readers accept both nestings and all three usage shapes. | doctor output + `provider_usage.units` |
-| C8 | **Free-plan quotas** for the AI Vision and AI Content Analysis add-ons (Console only). | — | MANUAL_STEPS: read them in the Console |
+| C8 | **Free-plan quotas** for the AI Vision and AI Content Analysis add-ons (Console only). AI Vision's is now known to be tokens: it ran out in production (429 `MA_00008`) after roughly 30 to 40 photos at 1600 px. | `CLD_AI_VISION=auto`: OpenAI vision for tags and moderation once it's used up. | MANUAL_STEPS: read them in the Console |
 | C9 | `f_auto` inside **eager** transformations (used only with `CLD_EAGER=1`). | Leave `CLD_EAGER=0` unless C1 fails. | services:check with `CLD_EAGER=1` |
 | C10 | `asset_folder` on an account in legacy **fixed folder** mode. New accounts use dynamic folders, where it is documented. | The full path is always in `public_id` as well, so both modes place the asset. | Console: Settings → Upload |
 | O1 | **Image token cost** of `gpt-6-luna` / `gpt-6-sol`: both are missing from the vision sizing and multiplier tables. | The default vision model is `gpt-5.6-luna` (documented multiplier 1.2). | — |
@@ -91,7 +91,7 @@ HTTP Basic `api_key:api_secret` on `https://api.cloudinary.com/v1_1/<cloud>/…`
 | Strict Transformations | New derivatives only via eager, signed URLs, allowed named transformations or allowed referrers; anything else 404. Signed URLs are always allowed. | VERIFIED |
 | Masks | `e_extract:prompt_(<p1>;<p2>)[;multiple_true];mode_mask`. It counts as **75 transformations**, is not available in the **Asia Pacific** data center, and not on fetched images. It may answer **423** while generating (retried with backoff). Images are downscaled to 2048² for processing. | VERIFIED; C3 for white = selected |
 | Image layer | `l_authenticated:<id with / as :>/<layer transformations>/fl_layer_apply,g_east`. It works only when the whole URL is signed. Effects such as `e_blur_faces` go in their own component before `fl_layer_apply`, not inside `l_`. | VERIFIED |
-| Text layer | `l_text:Arial_28_bold:<text>` with `co_rgb:`, `b_rgb:`. Commas, slashes and `%` are double-encoded. | VERIFIED |
+| Text layer | `l_text:Arial_28_bold:<text>` with `co_rgb:`, `b_rgb:`. Commas, slashes, colons and plus signs are double-encoded (`%252C`, `%252F`, `%253A`, `%252B`); everything else is URL-encoded once (`%` → `%25`). | VERIFIED. In production, a signed URL whose text layer held a single-escaped `:` (the stamp's "GMT +05:30") was refused with **401**; the double-escaped form is served. |
 | `e_blur_faces[:1–2000]`, `c_fill`/`c_pad`/`c_limit`, `g_auto`, `f_auto`, `q_auto` | as compiled by `src/lib/media/transform.ts` | VERIFIED |
 | Raw authenticated URL | `/raw/authenticated/s--sig--/v1/<id>.pdf` | UNVERIFIED (C4) |
 | Download API | `https://api.cloudinary.com/v1_1/<cloud>/<resource_type>/download?public_id&format&type&timestamp&expires_at&api_key&signature`. `type` defaults to private and `expires_at` to 1 h. Not CDN-cached, and billed at twice the bandwidth. | VERIFIED shape; signed params are C5 |
@@ -104,10 +104,12 @@ HTTP Basic `api_key:api_secret` on `https://api.cloudinary.com/v1_1/<cloud>/…`
 | Use | Body → response | Status |
 |-----|-----------------|--------|
 | `tag()` | `ai_vision_tagging`: `tag_definitions[{name,description}]` (≤ 10, so chunked) → `data.analysis.tags[{name}]`, **no confidence** | VERIFIED |
+| Tag names | Only lower-case letters, digits and hyphens. Underscores are refused with code **`MA_00003`**. We send `litter-or-waste` for `litter_or_waste` and map the answer back (`apiTagName`). | VERIFIED in production |
 | `moderate()` | `ai_vision_moderation`: `rejection_questions[]` (≤ 10) → `responses[{prompt, value: yes|no|unknown}]`. "unknown" counts as no. | VERIFIED; nesting is C7 |
 | `detectWatermark()` | `watermark_detection` → `analysis.detections[{name, confidence}]`; counted at confidence ≥ 0.5 | VERIFIED; nesting is C7 |
 | Source image | a signed `c_limit,w_1600,h_1600/f_jpg` derivative (not face-blurred: moderation must see what is there) | C6 |
 | Usage | `limits.addons_quota[{type, used_by_request, remaining}]` (also shown as `limits.items` and `limits.usage`) | C7 |
+| Quota used up | AI Vision's free quota is counted in tokens. When it runs out, tagging and moderation answer **HTTP 429 with code `MA_00008`**. It isn't retried (a monthly quota won't clear in seconds); with `CLD_AI_VISION=auto` the OpenAI vision fallback takes over (`visionLabels` below). Watermark detection is a separate add-on. | VERIFIED in production |
 
 ### Webhooks (`notification_signatures`)
 
@@ -130,6 +132,7 @@ Auth: `Authorization: Bearer <key>` (the `OpenAI-Organization`/`OpenAI-Project` 
 |-----|---------|--------|
 | Endpoint | `POST https://api.openai.com/v1/responses`. The migration guide recommends Responses for new projects. | VERIFIED |
 | `describePhoto` | `input: [{role:"developer", content}, {role:"user", content:[{type:"input_text"}, {type:"input_image", image_url:"data:image/jpeg;base64,…", detail:"high"}]}]`. The image goes as a data URL (whether a signed Cloudinary URL can be fetched is undocumented, and base64 sidesteps it). Faces are blurred before sending. | VERIFIED |
+| `visionLabels` (AI Vision fallback) | One call per photo, operation `vision_fallback`: model `OPENAI_MODEL_FAST`, a three-line developer prompt, then a user `input_text` listing the tag names and question ids, and the signed `ANALYZE_SOURCE` copy as a data URL with `detail:"low"`. `text.format` is a strict `json_schema` named `vision_labels`: `{tags: enum[] of TAXONOMY names, answers: {<question id>: boolean}}`. `store: false`. Unknown tag names are dropped; a missing answer is an error. Not face-blurred, like the Cloudinary AI Vision source it replaces. | VERIFIED (the same documented Responses, image-input and Structured Outputs primitives); real tokens and cost: `pnpm services:check --full` |
 | Structured output | `text.format = {type:"json_schema", name, schema, strict:true}`. The root must be an object, every property listed in `required`, and `additionalProperties:false` everywhere. Optional values are `["type","null"]`. No `allOf`/`not`/`if`. `src/lib/providers/ai/json-schema.ts` enforces this and a test walks the schema. | VERIFIED |
 | `detail` | `low` fits 512², `high` fits 2048² with 2,500 patches, and `auto` behaves like `original` on GPT-5.6 models (large and expensive), so `auto` is never sent. Cost is ceil(w/32)·ceil(h/32) patches × 1.2 for gpt-5.6-*. | VERIFIED; gpt-6-* cost is O1 |
 | `reasoning.effort` | `none`/`low`/`medium` (default)/`high`/… on gpt-5.6-luna; we send `low` (`OPENAI_REASONING_EFFORT`). | VERIFIED |
@@ -168,6 +171,7 @@ Batch and Flex cost 50% of Standard; the $0.10/$0.60 figure a search snippet giv
 | Env: `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY`, `INNGEST_SIGNING_KEY_FALLBACK`, `INNGEST_DEV` | VERIFIED |
 | Checkpointing: on by default in v4. Set `maxRuntime` a little below the platform limit: we use `240s` with `maxDuration = 300` on the route. | VERIFIED |
 | Vercel integration sets both keys and syncs on every deploy; Deployment Protection must be off or bypassed | VERIFIED |
+| An unsigned `GET /api/inngest` in cloud mode answers **401** `{"message":"Unauthorized"}`. services:check reads 401 as serving, 404 as not enabled, anything else as a failure. | VERIFIED on the production deploy |
 | Manual `curl -X PUT` sync | I1 |
 
 ## Supabase Postgres

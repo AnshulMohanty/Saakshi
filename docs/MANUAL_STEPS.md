@@ -30,7 +30,11 @@ are throttled harder. Nobody has set one yet: the repo has no `APP_CONTACT_EMAIL
 3. Console → **Add-ons**: register the free tier of **Cloudinary AI Vision** (tagging and moderation
    questions) and **Cloudinary AI Content Analysis** (watermark detection). The Analyze API
    returns an error without them. Write down the free monthly quota the Console shows for each; the
-   docs don't publish it (external-apis.md C8).
+   docs don't publish it (external-apis.md C8). AI Vision's free quota is counted in **tokens**, and
+   at our 1600 px analysis copy it covers roughly 30 to 40 photos a month. When it runs out, the
+   Analyze API answers 429 `MA_00008`. Production therefore defaults to `CLD_AI_VISION=auto`:
+   from that point tags and moderation come from OpenAI vision. Leave it unset (or set `auto`) in
+   Vercel. `on` means no photo is scored once the quota is gone (see section 1b).
 4. Console → **Settings → Security**:
    - Turn **Strict Transformations** on. Only signed URLs then produce images, so an unsigned or
      edited URL can't reveal an original or an unblurred face.
@@ -45,6 +49,22 @@ are throttled harder. Nobody has set one yet: the repo has no `APP_CONTACT_EMAIL
    The switches are explained in docs/providers.md. Add `--no-extract` to skip the mask probe:
    one `e_extract` counts as 75 transformations.
 
+## 1b. Cloudinary findings from the first production import (no action needed)
+
+These came up when `pnpm demo:reset --online` first ran against production. All three are
+fixed in code; they are noted here in case the Console or an older deploy shows them.
+
+- **Tag names (`MA_00003`).** AI Vision tag names may contain only lower-case letters, digits
+  and hyphens. Saakshi's taxonomy uses underscores, so names go out hyphenated
+  (`litter_or_waste` → `litter-or-waste`) and are mapped back.
+- **Colons and plus signs in text layers (401).** A signed `l_text` layer containing a `:` was
+  refused with 401. Text layers now double-escape `:` → `%253A` and `+` → `%252B`, like `,` and
+  `/`. The planted GPS-camera stamp reads "GMT +05:30" again.
+- **AI Vision token quota (`MA_00008`).** See step 1.3: `CLD_AI_VISION=auto` switches tags and
+  moderation to OpenAI vision for the rest of the process, and logs it once. Watermark detection
+  stays on Cloudinary. `pnpm services:check` shows the active path. When the quota resets next
+  month, auto goes back to Cloudinary after the next deploy or cold start.
+
 ## 2. OpenAI (10 min)
 
 1. <https://platform.openai.com>: create a project and an API key for it → `OPENAI_API_KEY`.
@@ -56,7 +76,9 @@ are throttled harder. Nobody has set one yet: the repo has no `APP_CONTACT_EMAIL
 4. The defaults are `gpt-5.6-luna` for vision, prose and search (`OPENAI_MODEL_FAST`), and
    `text-embedding-3-small` for embeddings. `OPENAI_MODEL_SMART` (default: the same as fast) can
    be set to `gpt-5.6-terra` for report prose. Make sure the project may use those models.
-5. Check with `pnpm services:check` (add `--full` to make one real vision call on the probe image).
+5. Check with `pnpm services:check`. Add `--full` to make two real image calls on the probe image:
+   the photo description, and the one AI Vision fallback call, which prints its tags, answers,
+   tokens and cost.
 
 ## 3. Supabase Postgres (10 min)
 
@@ -110,7 +132,10 @@ are throttled harder. Nobody has set one yet: the repo has no `APP_CONTACT_EMAIL
 4. Redeploy, then check Inngest → **Apps**: `saakshi` is synced with the function
    `evidence-pipeline`. If it isn't, use **Sync app** with `<APP_URL>/api/inngest`.
 5. Check with `pnpm services:check` (with `APP_URL` and the Inngest keys in your env): "Inngest endpoint
-   /api/inngest: serving".
+   /api/inngest: serving (cloud mode: unsigned requests refused, as expected)".
+   - Inngest SDK v4 in cloud mode answers an unsigned GET with **401** `{"message":"Unauthorized"}`.
+     That is by design and means the route is serving.
+   - A 404 means the route isn't deployed (a warning). Any other status is a failure.
 
 ## 5b. Abuse and spend limits (5 min)
 

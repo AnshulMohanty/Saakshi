@@ -6,6 +6,9 @@
  *   - on-the-fly signed transformations of authenticated assets (the docs contradict each other)
  *   - l_authenticated layers, e_extract masks (75 transformations; --no-extract skips), raw PDF delivery
  *   - the Analyze API add-ons, structured metadata, OpenAI models and embeddings
+ *   - which service answers tags and moderation (CLD_AI_VISION). The AI Vision probes always go
+ *     to Cloudinary itself, never through the fallback; only --full makes the ONE fallback call
+ *     (tags + answers for the probe image, with its tokens and cost).
  * Without keys it lists what is missing for each real service. Probe assets live under
  * saakshi/services-check/ and are overwritten on every run. Exit code 1 when a live check fails.
  */
@@ -20,7 +23,9 @@ import { PRESET_NAME, STRUCTURED_FIELD_IDS } from "../src/lib/providers/cloudina
 import { callWithRetry } from "../src/lib/providers/http";
 import { getMediaProvider } from "../src/lib/providers/media";
 import { CloudinaryMediaProvider } from "../src/lib/providers/media/real";
-import { flushUsage } from "../src/lib/usage";
+import { flushUsage, pendingUsage } from "../src/lib/usage";
+import { AnalysisWithFallback, isAiVisionQuotaError } from "../src/lib/providers/analysis/fallback";
+import { analysisPathLabel, inngestVerdict } from "../src/lib/services-check";
 
 type Status = "ok" | "fail" | "warn" | "skip";
 const results: Array<{ group: string; name: string; status: Status; detail: string }> = [];
@@ -58,7 +63,7 @@ const MINIMAL_PDF = Buffer.from(
   "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n",
 );
 
-async function cloudinaryChecks(noExtract: boolean) {
+async function cloudinaryChecks(noExtract: boolean, full: boolean) {
   const media = getMediaProvider();
   if (!(media instanceof CloudinaryMediaProvider)) return;
   const g = "Cloudinary";
@@ -125,10 +130,34 @@ async function cloudinaryChecks(noExtract: boolean) {
     return "ok";
   }, "run pnpm cld:setup");
 
-  const analysis = getAnalysisProvider();
-  await check(g, "Analyze API: AI Vision tagging", async () => `tags: ${(await analysis.tag(probe, [{ name: "pattern", description: "a flat test pattern of rectangles" }])).join(", ") || "none"}`, "register the AI Vision add-on (Console → Add-ons)");
-  await check(g, "Analyze API: AI Vision moderation", async () => JSON.stringify(await analysis.moderate(probe, [{ id: "people", text: "Are people visible?" }])), "register the AI Vision add-on");
+  // AI Vision probes go to Cloudinary itself: the fallback must never answer them by accident.
+  const provider = getAnalysisProvider();
+  const fallback = provider instanceof AnalysisWithFallback ? provider : null;
+  const analysis = fallback ? fallback.cloudinary : provider;
+  let quotaUsedUp = false;
+  const aiVision = async (run: () => Promise<string>) => {
+    try {
+      return await run();
+    } catch (e) {
+      if (!isAiVisionQuotaError(e)) throw e;
+      quotaUsedUp = true;
+      return { warn: `token quota used up (HTTP 429 MA_00008)${fallback && fallback.mode !== "on" ? "; the OpenAI vision fallback answers instead" : "; set CLD_AI_VISION=auto with OPENAI_API_KEY for the fallback"}` };
+    }
+  };
+  await check(g, "Analyze API: AI Vision tagging", () => aiVision(async () => `tags: ${(await analysis.tag(probe, [{ name: "pattern", description: "a flat test pattern of rectangles" }])).join(", ") || "none"}`), "register the AI Vision add-on (Console → Add-ons)");
+  await check(g, "Analyze API: AI Vision moderation", () => aiVision(async () => JSON.stringify(await analysis.moderate(probe, [{ id: "people", text: "Are people visible?" }]))), "register the AI Vision add-on");
   await check(g, "Analyze API: watermark detection", async () => `watermark: ${await analysis.detectWatermark(probe)}`, "register the AI Content Analysis add-on");
+  await check(g, "Tags + moderation path", async () => analysisPathLabel(getConfig().cloudinary.aiVision, { fallbackReady: !!fallback, quotaUsedUp }));
+  if (!fallback) return;
+  if (!full) return skip(g, "OpenAI vision fallback", "run with --full (one image call, detail low)");
+  await check(g, "OpenAI vision fallback (one call)", async () => {
+    const before = pendingUsage().length;
+    const { tags, answers } = await fallback.labels(probe);
+    const u = pendingUsage().slice(before).find((x) => x.operation === "vision_fallback");
+    const tokens = u ? `${u.units.input_tokens ?? "?"} in + ${u.units.output_tokens ?? "?"} out tokens` : "tokens not recorded";
+    const cost = u?.costUsd != null ? `${u.costUsd.toFixed(5)}` : "cost unknown";
+    return `tags: ${tags.join(", ") || "none"}; answers: ${JSON.stringify(answers)}; ${tokens}, ${cost}`;
+  }, "check OPENAI_API_KEY, its credit and OPENAI_MODEL_FAST");
 }
 
 async function openAiChecks(full: boolean) {
@@ -186,10 +215,9 @@ async function appChecks() {
   await check(g, `GET ${env.APP_URL}`, async () => `HTTP ${(await get(env.APP_URL!)).status}`);
   if (providers.queue.mode === "real" && env.INNGEST_SIGNING_KEY) {
     await check(g, "Inngest endpoint /api/inngest", async () => {
-      const r = await get(`${env.APP_URL}/api/inngest`);
-      if (r.status === 401) return "serving (cloud mode: unsigned requests refused, as expected)";
-      if (r.status !== 200) throw new Error(`HTTP ${r.status}`);
-      return "serving";
+      const v = inngestVerdict((await get(`${env.APP_URL}/api/inngest`)).status);
+      if (v.level === "fail") throw new Error(v.detail);
+      return v.level === "warn" ? { warn: v.detail } : v.detail;
     }, "deploy, then sync the app in Inngest (the Vercel integration syncs on every deploy)");
   }
 }
@@ -212,7 +240,7 @@ async function main() {
     return;
   }
   for (const [title, fn] of [
-    ["Cloudinary", () => cloudinaryChecks(noExtract)],
+    ["Cloudinary", () => cloudinaryChecks(noExtract, full)],
     ["OpenAI", () => openAiChecks(full)],
     ["Database", databaseChecks],
     ["App", appChecks],

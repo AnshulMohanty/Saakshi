@@ -42,6 +42,10 @@ export function verifyEnv(raw: Record<string, string | undefined>, { prod = fals
   if (env.CAPTURE_TOKEN_SECRET && env.CAPTURE_TOKEN_SECRET.length < 32) add("error", "CAPTURE_TOKEN_SECRET", "Use 32+ random characters.");
   for (const k of ["CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET"]) need(k, "Cloudinary: media, analysis, masks (production shows no mock numbers).");
   need("OPENAI_API_KEY", "OpenAI: photo understanding, prose, search, embeddings.");
+  // Tags and moderation: AI Vision's free quota is tokens (about 30-40 photos a month at 1600 px).
+  if (env.CLD_AI_VISION === "off" && !has(raw, "OPENAI_API_KEY")) add("error", "CLD_AI_VISION", "off sends tags and moderation to OpenAI vision, which needs OPENAI_API_KEY.");
+  else if (env.CLD_AI_VISION === "on") add("warning", "CLD_AI_VISION", "on: no fallback. When the AI Vision token quota runs out (429 MA_00008), no photo gets scored; auto switches to OpenAI vision.");
+  else add("ok", "CLD_AI_VISION", env.CLD_AI_VISION === "off" ? "off: tags and moderation from OpenAI vision" : "auto: Cloudinary AI Vision, OpenAI vision once its quota is used up");
   need("DATABASE_URL", "Postgres (Supabase transaction pooler). PGlite can't run on a serverless filesystem.");
   if (env.DATABASE_URL) {
     const port = /:(\d+)\//.exec(env.DATABASE_URL)?.[1];

@@ -8,6 +8,7 @@ import "server-only";
  */
 import { and, asc, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import landDots from "../../../data/land-dots.json";
+import { perceptionCodeBlock } from "../ai/perception-copy";
 import { fullDateTime, offsetMinutes } from "../charts/time-axis";
 import { getConfig } from "../config";
 import type { DB } from "../db/client";
@@ -345,7 +346,7 @@ function pipelineNodes(hero: Asset | null, h: LandingHero | null, url: (a: Asset
   const sig = signedUrl ? (/\/(s--[^/]+--)\//.exec(signedUrl)?.[1] ?? "s--…--") : "s--…--";
   return [
     { name: "Intake forensics", what: "Reads the camera file for location and time, and fingerprints the pixels so reused photos are caught.", code: 'cloudinary.uploader.upload(file, {\n  type: "authenticated",\n  media_metadata: true,\n  phash: true,\n  faces: true,\n  quality_analysis: true\n})', preview: h ? { kind: "glyph", bits: h.bits, variant: "night" } : null, caption: "pHash of the hero photo", alt: "Fingerprint glyph" },
-    { name: "Perception", what: "Tags what is in the frame and checks it for screens, stock watermarks and edits. Tags are AI-estimated and always carry a confidence.", code: "POST /v2/analysis/<cloud>/analyze/\n  ai_vision_tagging\n  ai_vision_moderation\n  watermark_detection", preview: h ? { kind: "image", src: h.src, fit: "cover" } : null, caption: "Tagged frame", alt: "Hero photo" },
+    { name: "Perception", what: "Tags what is in the frame and checks it for screens, stock watermarks and edits. Tags are AI-estimated and always carry a confidence.", code: perceptionCodeBlock(getConfig().cloudinary.aiVision), preview: h ? { kind: "image", src: h.src, fit: "cover" } : null, caption: "Tagged frame", alt: "Hero photo" },
     { name: "Measurement", what: "Segments litter and counts its pixels, so cover is a measured share of the photo.", code: `/image/authenticated/\n  ${mask.split("/").join("/\n  ")}/\n  ${pid}`, preview: h?.mask ? { kind: "image", src: h.mask, fit: "cover" } : null, caption: "Litter mask, hero photo", alt: "Litter mask" },
     { name: "Privacy", what: "Blurs every face before a photo is public, on a signed link that cannot be edited.", code: `/image/authenticated/${sig}/\n  ${preview.split("/").join("/\n  ")}/\n  v1/${pid}`, preview: h ? { kind: "image", src: h.src, fit: "cover" } : null, caption: "Public copy, faces blurred", alt: "Blurred public photo" },
     { name: "Provenance", what: "Pins each photo to a version and a signature, so a report always opens the exact file it counted.", code: `/${sig}/\n  v1/${pid}`, preview: { kind: "glyph", bits: LOGO_BITS, variant: "plain" }, caption: "Versioned, signed asset", alt: "Saakshi glyph" },

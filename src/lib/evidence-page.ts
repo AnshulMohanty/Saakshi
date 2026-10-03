@@ -13,6 +13,7 @@ import { assets, measurements } from "./db/schema";
 import { evidenceView } from "./evidence";
 import { hexToBits } from "./glyph";
 import { hamming } from "./hamming";
+import { answeredByNote } from "./ai/perception-copy";
 import { aiSentence, placeShort } from "./landing/copy";
 import { linkChips } from "./media/link-chips";
 import { AI_PENDING, aiPending, assetMode, mockLabel, type DisplayPolicy } from "./provenance";
@@ -53,6 +54,7 @@ export async function evidencePageData(db: DB, media: MediaProvider, assetId: st
   const place = placeShort(f.place) ?? v.spot?.name ?? v.project?.name ?? "Photo evidence";
   const tag = mockLabel(o.policy);
   const pendingAi = aiPending(assetMode(row.provenance), o.policy);
+  const answeredBy = answeredByNote(row.provenance?.analysis?.provider);
   const tags = row.ai?.visibleCounts?.length ? row.ai.visibleCounts.map((c) => c.label) : row.cldTags.filter((t) => !/^(saakshi|planted|sandbox|trust_)/.test(t));
   const cover = m && v.trust.hiddenText === null ? `${m.value.toFixed(1)}%` : null;
   const chips = linkChips(v.imageUrl);
@@ -108,7 +110,7 @@ export async function evidencePageData(db: DB, media: MediaProvider, assetId: st
         { name: "The photo", color: "var(--foreground)", detail: `The file as received${row.width && row.height ? `, ${row.width} × ${row.height}` : ""}. Faces blurred on every public copy.` },
         { name: "Where and when", color: "var(--verified)", detail: `${f.location ? `${coord(f.location.lat, ["N", "S"])}, ${coord(f.location.lng, ["E", "W"])}, ` : "No location recorded, "}${when}. ${f.location ? `From ${f.location.from}.` : ""}${f.tzNote ? ` ${f.tzNote}` : ""}` },
         { name: "Fingerprint", color: "var(--primary)", detail: "The 8×8 perceptual hash of the pixels. Used to catch the same photo in any project, even after a crop." },
-        { name: "What the AI sees", color: "var(--estimated)", detail: pendingAi ? `${AI_PENDING}. AI-estimated tags describe the photo but never become a number.` : `${aiSentence(tags)} AI-estimated tags; they describe the photo but never become a number.` },
+        { name: "What the AI sees", color: "var(--estimated)", detail: pendingAi ? `${AI_PENDING}. AI-estimated tags describe the photo but never become a number.` : `${aiSentence(tags)} AI-estimated tags; they describe the photo but never become a number.${answeredBy ? ` ${answeredBy}` : ""}` },
         { name: "What we measured", color: "var(--measured)", detail: m ? (cover ? `${m.metric === "green_cover" ? "Green" : "Litter"} covers ${cover} of the frame, counted from mask pixels at threshold 0.50.${m.providerMode === "mock" ? ` (${tag})` : ""}` : "Measured with a mock provider: not shown in production.") : "Not measured: only spot photos are measured." },
       ],
     },

@@ -102,3 +102,16 @@ describe("stampDayDifference", () => {
     expect(stampDayDifference(stamp("14/03/2025"), "not a date")).toBeNull();
   });
 });
+
+describe("the planted stamp (lib/demo/plant.ts stampText)", () => {
+  it("ends like a real GPS Map Camera stamp, GMT +05:30, and the parser reads it", async () => {
+    const { stampText } = await import("@/lib/demo/plant");
+    const text = stampText({ name: "New Delhi", lat: 28.6139, lng: 77.209 }, "2025-03-14T10:42:00");
+    expect(text.split("\n").at(-1)).toBe("14/03/2025 10:42 AM GMT +05:30");
+    const s = parseStamp(text)!;
+    expect(s.offset).toBe("+05:30");
+    expect(s.lat).toBeCloseTo(28.6139, 4);
+    expect(s.lng).toBeCloseTo(77.209, 3);
+    expect(stampDayDifference(s, "2025-03-14T05:12:00Z")).toBe(0);
+  });
+});

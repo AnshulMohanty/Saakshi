@@ -34,6 +34,12 @@ export const EnvSchema = z.object({
   CLD_PDF_DELIVERY: z.preprocess(blankToUndefined, z.enum(["signed", "download"]).default("signed")),
   /** "1": generate THUMB, PREVIEW and VIEW as eager derivatives at upload. */
   CLD_EAGER: z.preprocess(blankToUndefined, z.enum(["0", "1"]).default("0")),
+  /**
+   * Tagging and moderation: on = Cloudinary AI Vision only; off = OpenAI vision only; auto =
+   * Cloudinary until its token quota is used up (HTTP 429 MA_00008), then OpenAI. Needs OpenAI
+   * for off/auto; watermark detection always stays on Cloudinary. docs/providers.md.
+   */
+  CLD_AI_VISION: z.preprocess(blankToUndefined, z.enum(["auto", "on", "off"]).default("auto")),
 
   OPENAI_API_KEY: optionalString(),
   OPENAI_MODEL_FAST: stringWithDefault("gpt-5.6-luna"),
@@ -193,6 +199,7 @@ export interface Config {
     compositeMode: "layer" | "server";
     pdfDelivery: "signed" | "download";
     eager: boolean;
+    aiVision: "auto" | "on" | "off";
   };
 }
 
@@ -213,6 +220,7 @@ export function loadConfig(raw: Record<string, string | undefined> = process.env
     warnings.push("CAPTURE_TOKEN_SECRET is shorter than 32 characters.");
   }
   for (const k of publicSecretLeaks(raw)) warnings.push(`${k} looks like a secret but is exposed to the browser (NEXT_PUBLIC_).`);
+  if (env.CLD_AI_VISION === "off" && !env.OPENAI_API_KEY && env.CLOUDINARY_API_SECRET) warnings.push("CLD_AI_VISION=off needs OPENAI_API_KEY; tags and moderation stay on Cloudinary AI Vision.");
 
   return {
     env,
@@ -238,6 +246,7 @@ export function loadConfig(raw: Record<string, string | undefined> = process.env
       compositeMode: env.CLD_COMPOSITE_MODE,
       pdfDelivery: env.CLD_PDF_DELIVERY,
       eager: env.CLD_EAGER === "1",
+      aiVision: env.CLD_AI_VISION,
     },
   };
 }

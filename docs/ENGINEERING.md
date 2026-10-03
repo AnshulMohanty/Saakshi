@@ -931,3 +931,38 @@ Newest last. After every phase or fix: what changed, why, the evidence, any new 
     - rate limits are per instance (a shared store such as Upstash would make them global; the daily cap and provider spend limits are the ceiling, docs/MANUAL_STEPS.md §5b);
     - Cloudinary's account signature algorithm is still SHA-1, its default;
     - G11.
+- **First production import: three Cloudinary findings and an OpenAI fallback for AI Vision** (3 Oct)
+  - **Found** by running `pnpm demo:reset --online` against production:
+    - **AI Vision tag names:** they may contain only lower-case letters, digits and hyphens (`MA_00003`). `apiTagName()` sends `litter-or-waste` and `readTags` maps the answer back.
+    - **Text layers:** a signed `l_text` holding a single-escaped `:` was refused with 401. `encodeLayerText` now double-escapes `:` and `+` like `,` and `/`, and `decodeLayerText` reverses it. The planted stamp says "GMT +05:30" again, and the trust-stamp parser reads it.
+    - **Inngest v4 in cloud mode:** it answers an unsigned GET with 401. `services:check` reads 401 as serving, 404 as not enabled, anything else as a failure (pure `inngestVerdict` in `src/lib/services-check.ts`).
+    - **AI Vision's free quota is tokens** and ran out after roughly 30 to 40 photos at 1600 px (429 `MA_00008`). After that, no photo could be scored.
+  - **Built: `CLD_AI_VISION`** = `auto` (default) | `on` | `off`, in `src/lib/providers/analysis/fallback.ts`:
+    - `auto` switches tags and moderation to OpenAI vision on the first `MA_00008`, for the rest of the process, logged once. Other errors behave as before.
+    - Watermark detection stays on Cloudinary in every mode.
+    - The fallback exists only when Cloudinary and OpenAI are both real; mock mode is unchanged.
+  - **The fallback call:**
+    - one OpenAI call per photo (`OpenAIProvider.visionLabels`) returns the taxonomy names and a boolean for every moderation question;
+    - `tag()` and `moderate()` share it (one in-flight call per image, kept 60 s);
+    - settings: `OPENAI_MODEL_FAST`, `detail: "low"`, the configured reasoning effort, `store: false`, a strict `vision_labels` schema; unknown tags are dropped;
+    - metered in `provider_usage` as `vision_fallback`;
+    - the documented-price estimate is about $0.0005 a photo (`services:check --full` prints the real tokens and cost).
+  - **Retries:** `MA_00008` joins the never-retried errors in `http.ts`; OpenAI `insufficient_quota` already was one.
+  - **Provenance and copy:**
+    - `provenance.analysis.provider` is `openai-vision-fallback` per photo (`providerFor()`, read by the analyze step);
+    - the evidence page says which service answered;
+    - How it works and the landing show the configured path (`src/lib/ai/perception-copy.ts`).
+  - **`services:check`:**
+    - the AI Vision probes go to Cloudinary directly, never through the fallback;
+    - `MA_00008` is a warning, and a new line shows the active path;
+    - only `--full` makes the one fallback call.
+  - **`verify:env --prod`:** `off` without `OPENAI_API_KEY` is an error, and `on` warns that there is no fallback.
+  - **Evidence:**
+    - `pnpm test`: 587 passing in 60 files.
+      - New `tests/analysis-fallback.test.ts` (15): on/off/auto, one call shared by `tag()` and `moderate()` (including both Cloudinary calls hitting the quota), non-quota errors don't switch, and the copy.
+      - The same file runs the pipeline with the fallback answering: the stock photo is still `STOCK_SUSPECTED` and FLAGGED via Cloudinary's watermark check, and clean answers are `screenState` "fit".
+      - Contract cases: hyphenated tag names, `MA_00008` not retried, the `visionLabels` request and its metering, `insufficient_quota` not retried.
+      - Also: the text-layer round trip with `, / : + °` and newlines, the planted stamp, `CLD_AI_VISION` in config and verify-env, and `inngestVerdict`.
+    - `pnpm typecheck` and `pnpm lint` are clean.
+    - No real provider was called.
+  - **New issue:** the fallback reads the same unblurred, signed analysis copy as Cloudinary AI Vision, because the children's-faces question needs it. That is a second third party seeing unblurred faces (`store: false`). `describePhoto` still gets the blurred copy. The trade-off is noted in docs/providers.md.

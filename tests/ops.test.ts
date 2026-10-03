@@ -1,6 +1,7 @@
 /** verify:env and cld:setup (pure parts): what a deployment is missing, and what setup would change. */
 import { describe, expect, it } from "vitest";
 import { METADATA_FIELDS, planSetup, presetSettings, structuredValue } from "@/lib/providers/cloudinary/setup";
+import { inngestVerdict } from "@/lib/services-check";
 import { verifyEnv } from "@/lib/verify-env";
 
 const PROD = {
@@ -46,6 +47,27 @@ describe("verifyEnv", () => {
     );
     const msgs = r.checks.filter((c) => c.level !== "ok").map((c) => `${c.level}:${c.name}`);
     expect(msgs).toEqual(expect.arrayContaining(["error:APP_URL", "error:CAPTURE_TOKEN_SECRET", "error:NEXT_PUBLIC_OPENAI_API_KEY", "error:QUEUE", "warning:DATABASE_URL"]));
+  });
+});
+
+describe("CLD_AI_VISION in verify:env", () => {
+  const level = (env: Record<string, string>) => verifyEnv(env, { prod: true }).checks.find((c) => c.name === "CLD_AI_VISION");
+  it("auto (the default) is fine; on warns (no fallback); off without OpenAI is an error", () => {
+    expect(level(PROD)).toMatchObject({ level: "ok", message: expect.stringMatching(/^auto: /) });
+    expect(level({ ...PROD, CLD_AI_VISION: "off" })).toMatchObject({ level: "ok", message: expect.stringMatching(/^off: /) });
+    expect(level({ ...PROD, CLD_AI_VISION: "on" })).toMatchObject({ level: "warning", message: expect.stringMatching(/MA_00008/) });
+    const { OPENAI_API_KEY: _k, ...noOpenAI } = PROD;
+    void _k;
+    expect(level({ ...noOpenAI, CLD_AI_VISION: "off" })?.level).toBe("error");
+  });
+});
+
+describe("services:check Inngest verdict", () => {
+  it("401 is cloud mode serving (unsigned requests refused); 404 not enabled; anything else fails", () => {
+    expect(inngestVerdict(200)).toEqual({ level: "ok", detail: "serving" });
+    expect(inngestVerdict(401)).toEqual({ level: "ok", detail: "serving (cloud mode: unsigned requests refused, as expected)" });
+    expect(inngestVerdict(404)).toMatchObject({ level: "warn", detail: expect.stringMatching(/not enabled/) });
+    for (const s of [403, 500, 502]) expect(inngestVerdict(s)).toEqual({ level: "fail", detail: `HTTP ${s}` });
   });
 });
 
