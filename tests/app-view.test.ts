@@ -128,4 +128,10 @@ describe("appView", () => {
     expect(studio.studio).toEqual(all.studio);
     expect(studio.projectScreens).toEqual({});
   });
+
+  it("preloads exactly the first tiles the library draws (same order, same signed URL)", async () => {
+    const { appView, firstTileSrcs } = await import("@/lib/app/view");
+    const d = await appView(ctx.db, ctx.media, { policy: DEV, include: { projects: false, studio: false } });
+    expect(await firstTileSrcs(ctx.db, ctx.media, 2)).toEqual(d.photos.slice(0, 2).map((p) => p.src));
+  });
 });

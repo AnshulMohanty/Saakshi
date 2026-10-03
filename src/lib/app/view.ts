@@ -179,6 +179,15 @@ export async function appView(db: DB, media: MediaProvider, o: { policy: Display
   };
 }
 
+/**
+ * The library's first tiles, in its order (newest scored first), as the grid draws them: the page's
+ * LCP. The route's loading state preloads them, so they download while the rest of the page streams.
+ */
+export async function firstTileSrcs(db: DB, media: MediaProvider, n = 2): Promise<string[]> {
+  const rows = await db.select({ publicId: assets.cldPublicId }).from(assets).where(isNotNull(assets.trustBand)).orderBy(desc(assets.uploadedAt), assets.id).limit(n);
+  return rows.map((a) => media.url(a.publicId, THUMB, { signed: true }));
+}
+
 async function projectScreen(db: DB, media: MediaProvider, p: { id: string; key: string; name: string; city: string }, photos: AppPhoto[], policy: DisplayPolicy): Promise<ProjectScreen> {
   const pp = photos.filter((x) => x.project === p.key);
   const sp = await db.select().from(spots).where(eq(spots.projectId, p.id)).orderBy(asc(spots.name));
