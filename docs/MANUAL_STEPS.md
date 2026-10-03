@@ -60,6 +60,20 @@ fixed in code; they are noted here in case the Console or an older deploy shows 
 - **Colons and plus signs in text layers (401).** A signed `l_text` layer containing a `:` was
   refused with 401. Text layers now double-escape `:` → `%253A` and `+` → `%252B`, like `,` and
   `/`. The planted GPS-camera stamp reads "GMT +05:30" again.
+- **Extraction refused (400, `x-cld-error: Invalid input for extract`, empty body).** Seen on a
+  clean plantation photo for "litter" and on prompt lists whose prompts each work alone
+  (`litter;garbage`). The mask is then asked prompt by prompt and the returned masks are joined;
+  when every prompt is refused the photo is shown as "Not measurable" with the reason, gets no
+  number, and takes no part in pairs or baselines. Each prompt asked counts 75 transformations,
+  so a fallback photo can cost up to 300. Spaces in prompts gave 401 on signed URLs (prompts use
+  hyphens now).
+- **Masks are white = litter** (C3, checked on a real mask next to its photo).
+- **Watermark detection misfires** on real Commons photos (confidence 1.0 on a rubbish heap with
+  no mark). A stock flag now needs Cloudinary's detector and the vision check to agree; one alone
+  sends the photo to review (`WATERMARK_UNCONFIRMED`).
+- **Cloudinary's pHash** moved 14 bits on a 2% re-crop, so the planted reused photo slipped past
+  the 8-bit match threshold. Fingerprints are now our own pHash (`lib/phash.ts`, 8 bits for the
+  same crop); `pnpm media:rehash` recomputed the stored ones (run once, idempotent).
 - **AI Vision token quota (`MA_00008`).** See step 1.3: `CLD_AI_VISION=auto` switches tags and
   moderation to OpenAI vision for the rest of the process, and logs it once. Watermark detection
   stays on Cloudinary. `pnpm services:check` shows the active path. When the quota resets next
@@ -146,9 +160,18 @@ fixed in code; they are noted here in case the Console or an older deploy shows 
 3. In Cloudinary: **Settings → Security**, enable Strict Transformations (unsigned and edited URLs are refused), and check the plan's usage alerts.
 4. Rate limits are in memory, per serverless instance. They slow one client down but are not a global quota; the daily cap and the spend limits above are the ceiling. For a shared limiter, put Upstash Redis behind `src/lib/ratelimit.ts`.
 
-## 6. Demo data in production (10 min)
+## 6. Demo data in production (10 min) — done 3 Oct 2026
 
-With the production `DATABASE_URL` and Cloudinary keys in your env:
+Done against production: 58 archive photos and 4 planted inputs, every pipeline complete, audit
+chains intact; the live-stage spot exists (`demo:stage` at 12.841115, 77.644521). To check the
+state at any time without changing anything: `pnpm demo:status --since <ISO date> --cld`
+(statuses, step errors grouped by reason, provider spend, Cloudinary usage).
+
+To resume after a failure, **never** `demo:reset` (it uploads and analyses everything again):
+`pnpm demo:import` resumes every photo whose pipeline didn't complete, and prints one line per
+photo plus a heartbeat every 30 s. `pnpm demo:plant` is idempotent.
+
+With the production `DATABASE_URL` and Cloudinary keys in your env, from scratch:
 
 1. `pnpm demo:reset --online`. This uploads the archive photos (Wikimedia Commons, credited) and
    the planted test inputs to Cloudinary, runs the pipeline with the real providers, and prints

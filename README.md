@@ -69,7 +69,7 @@ The pipeline runs as idempotent steps keyed by asset id (parse metadata → anal
 
 | Job | What Saakshi uses |
 |---|---|
-| Intake forensics | Upload to `authenticated` storage with `media_metadata`, `phash`, `faces`, `quality_analysis` |
+| Intake forensics | Upload to `authenticated` storage with `media_metadata`, `faces`, `quality_analysis`; the fingerprint is Saakshi's own pHash of the stored image |
 | Perception | Analyze API: AI vision tagging, moderation, watermark detection (each value AI-estimated, with a confidence) |
 | Measurement | `e_extract` segmentation masks at a fixed threshold; cover counted from mask pixels |
 | Privacy | `e_blur_faces` on every public copy, delivered as signed URLs (Strict Transformations) |
@@ -110,7 +110,7 @@ The demo archive is built from Wikimedia Commons by fixed rules (`data/demo-data
 | Tree planting, Pimpri-Chinchwad | plantation | 20 |
 | Lake clean-up, Hyderabad | water | 15 + 1 planted |
 
-After `pnpm demo:reset`, all 58 archive photos are Verified with no hard flag, and each planted input is Flagged for its own reason: reused (30), stock watermark (35), location mismatch (25), stamp mismatch (40).
+In production (real Cloudinary and OpenAI), each planted input is Flagged for its own reason: reused (30), stock watermark (35), location mismatch (25), stamp mismatch (40). Of the 58 archive photos, 46 are Verified and 11 Need review because Cloudinary's watermark detector saw a watermark that the vision check didn't (a person decides). One is Flagged: it carries the photographer's burned-in signature, which both checks see. Three hero photos are shown as "not measurable": Cloudinary refused the litter extraction, so they get no number. Offline, with the mock providers, all 58 archive photos are Verified.
 
 ## Evidence that it works
 
