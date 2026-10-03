@@ -215,6 +215,45 @@
   }
 }
 
+/* Route loading states (components/skeletons.tsx). */
+.sk {
+  background: color-mix(in srgb, var(--foreground) 9%, transparent);
+  animation: skpulse 1.6s ease-in-out infinite;
+}
+.sk-rail {
+  width: 220px;
+}
+.sk-review {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr) minmax(260px, 320px);
+  gap: 16px;
+}
+@media (max-width: 760px) {
+  .sk-rail {
+    width: 60px;
+  }
+  .sk-rail-word {
+    display: none;
+  }
+}
+@media (max-width: 900px) {
+  .sk-review {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(240px, 1fr);
+  }
+  .sk-review > :first-child,
+  .sk-review > :last-child {
+    display: none !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sk {
+    animation: none;
+  }
+}
+
 /* Leaflet: undo preflight image sizing inside the map. */
 .leaflet-container img {
   max-width: none;
@@ -302,6 +341,80 @@ html[data-intro="off"] .ink-intro {
 @media (prefers-reduced-motion: reduce) {
   .ink-intro {
     display: none;
+  }
+}
+
+/* The reload loader (components/boot-loader.tsx, lib/boot.ts): the mark draws itself, then fades by 1.2 s. */
+.boot {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  --boot-bg: var(--background);
+  --boot-on: var(--primary);
+  --boot-off: color-mix(in srgb, var(--primary) 12%, transparent);
+  background: var(--boot-bg);
+}
+html[data-boot-tone="night"] .boot {
+  --boot-bg: var(--n-background);
+  --boot-on: var(--n-primary);
+  --boot-off: color-mix(in srgb, var(--n-foreground) 12%, transparent);
+}
+html[data-boot="on"] .boot {
+  display: flex;
+  animation: boot-out 300ms cubic-bezier(0.65, 0, 0.35, 1) 900ms forwards;
+}
+html[data-boot="done"] .boot {
+  display: flex;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 260ms cubic-bezier(0.65, 0, 0.35, 1),
+    visibility 0s linear 260ms;
+}
+.boot-mark {
+  width: 72px;
+  height: 72px;
+  overflow: visible;
+  filter: drop-shadow(0 0 18px color-mix(in srgb, var(--boot-on) 45%, transparent));
+}
+.boot-off {
+  fill: var(--boot-off);
+}
+.boot-on {
+  fill: var(--boot-on);
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: boot-cell 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes boot-cell {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes boot-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .boot {
+    display: none !important;
+  }
+}
+@media print {
+  .boot {
+    display: none !important;
   }
 }
 

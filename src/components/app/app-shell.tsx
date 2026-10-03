@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Glyph } from "@/components/glyph";
+import { useStoredDark, writeTheme } from "@/lib/client/theme";
 import { LOGO_BITS } from "@/lib/glyph";
 import { EvidenceDrawer } from "./evidence-drawer";
 import { LibraryScreen } from "./library-screen";
@@ -43,32 +44,6 @@ const COPY: Record<Screen, { loading: string; emptyTitle: string; emptyBody: str
 };
 const RAIL_BTN = { display: "flex", alignItems: "center", gap: "10px", padding: "9px 10px", borderRadius: "8px", border: "0", background: "transparent", cursor: "pointer", whiteSpace: "nowrap", color: "var(--muted-foreground)" } as const;
 
-// The viewer's own theme choice (localStorage), read without a hydration mismatch.
-const THEME_KEY = "saakshi-theme";
-const themeListeners = new Set<() => void>();
-const subscribeTheme = (cb: () => void) => {
-  themeListeners.add(cb);
-  window.addEventListener("storage", cb);
-  return () => {
-    themeListeners.delete(cb);
-    window.removeEventListener("storage", cb);
-  };
-};
-const readTheme = () => {
-  try {
-    return localStorage.getItem(THEME_KEY) === "dark";
-  } catch {
-    return false;
-  }
-};
-const writeTheme = (dark: boolean) => {
-  try {
-    localStorage.setItem(THEME_KEY, dark ? "dark" : "light");
-  } catch {
-    // private mode: the choice lasts this page only
-  }
-  themeListeners.forEach((cb) => cb());
-};
 const subscribeOnline = (cb: () => void) => {
   window.addEventListener("online", cb);
   window.addEventListener("offline", cb);
@@ -96,7 +71,7 @@ export function AppShell({ data, screen: routeScreen, state, theme, project, rou
   const [localScreen, setLocalScreen] = useState<Screen>(routeScreen);
   const scr = routes ? routeScreen : localScreen;
   const [rail, setRail] = useState(true);
-  const stored = useSyncExternalStore(subscribeTheme, readTheme, () => false);
+  const stored = useStoredDark();
   const [forcedDark, setForcedDark] = useState<boolean | null>(theme ? theme === "dark" : null);
   const dark = forcedDark ?? stored;
   const online = useSyncExternalStore(subscribeOnline, () => navigator.onLine, () => true);

@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { preload } from "react-dom";
+import { BootLoader } from "@/components/boot-loader";
+import { BOOT_CHECK } from "@/lib/boot";
 import { INTRO_CHECK } from "@/lib/landing/intro";
 import { FONT_PRELOADS } from "./font-preloads";
 import "./globals.css";
@@ -26,8 +28,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         {/* Before paint: the landing's ink-drop intro shows on a first visit only (components/landing/ink-intro.tsx). */}
         <script dangerouslySetInnerHTML={{ __html: INTRO_CHECK }} />
+        {/* After it: on a reload, the mark draws itself while the page gets ready (components/boot-loader.tsx). */}
+        <script dangerouslySetInnerHTML={{ __html: BOOT_CHECK }} />
       </head>
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        <BootLoader />
+        {children}
+      </body>
     </html>
   );
 }
