@@ -645,7 +645,7 @@ html[data-boot="done"] .boot {
 
 /* The library map (components/app/library-map.tsx). */
 .lm-box {
-  height: clamp(320px, 42vh, 460px);
+  height: clamp(340px, 46vh, 520px);
 }
 @media (max-width: 640px) {
   .lm-box {

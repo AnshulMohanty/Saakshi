@@ -3,7 +3,7 @@
 import { useState, type CSSProperties } from "react";
 import { IndiaMap, type MapPin, type Projector } from "@/components/map/india-map";
 import { clusterPoints, fanOut, pinPosition, placeCards } from "@/lib/app/map";
-import { viewFor, type View } from "@/lib/map/india";
+import { INDIA_BOUNDS, viewFor, type View } from "@/lib/map/india";
 import { bandMark } from "./marks";
 import type { AppPhoto, AppProject } from "./types";
 
@@ -24,9 +24,8 @@ const COMPACT = { w: 134, h: 46, gap: 10, edge: 6, top: 52, bottom: 64 };
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
-function overview(projects: AppProject[]): View {
-  return viewFor(projects, ASPECT, { pad: 0.45, minSpan: 9 });
-}
+/** The overview is the whole country, official boundary and all; picking a project or cluster flies in. */
+const overview = (): View => INDIA_BOUNDS;
 
 function viewOf(projects: AppProject[], photos: AppPhoto[], keys: string[]): View {
   const ps = projects.filter((p) => keys.includes(p.key));
@@ -37,12 +36,12 @@ function viewOf(projects: AppProject[], photos: AppPhoto[], keys: string[]): Vie
 }
 
 export function LibraryMap({ photos, projects, focus, onFocus, onOpen, dark }: { photos: AppPhoto[]; projects: AppProject[]; focus: MapFocus; onFocus: (f: MapFocus) => void; onOpen: (id: string) => void; dark: boolean }) {
-  const [target, setTarget] = useState<View>(() => (focus ? viewOf(projects, photos, focus.keys) : overview(projects)));
+  const [target, setTarget] = useState<View>(() => (focus ? viewOf(projects, photos, focus.keys) : overview()));
   const [hover, setHover] = useState<string | null>(null);
 
   const go = (keys: string[] | null) => {
     onFocus(keys ? { keys } : null);
-    setTarget(keys ? viewOf(projects, photos, keys) : overview(projects));
+    setTarget(keys ? viewOf(projects, photos, keys) : overview());
     setHover(null);
   };
 
