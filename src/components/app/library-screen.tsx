@@ -13,6 +13,9 @@ import type { AppData } from "./types";
  * bulk bar, and the photo grid (score badge with its band shape, the fingerprint on hover, a
  * select box). `importTick` replays the import animation (AP:977-985).
  */
+/** The first row or two of tiles is above the fold: loaded at once, the first two first (the page's LCP). */
+const EAGER_TILES = 8;
+
 export function LibraryScreen({ data, dark, onOpen, toast, onImport, importTick, actions }: { data: AppData; dark: boolean; onOpen: (id: string) => void; toast: (t: string) => void; onImport: () => void; importTick: number; actions?: { bulkReview?: (ids: string[]) => Promise<string>; bulkReport?: (ids: string[]) => Promise<string>; searchText?: (q: string) => Promise<string[] | null> } }) {
   const [chips, setChips] = useState<Chip[]>([]);
   const [query, setQuery] = useState("");
@@ -120,14 +123,14 @@ export function LibraryScreen({ data, dark, onOpen, toast, onImport, importTick,
         )}
       </div>
       <div ref={grid} id="lib-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(150px,1fr))", gap: "8px" }}>
-        {shown.map((p) => {
+        {shown.map((p, i) => {
           const m = bandMark(p.band);
           const s = !!sel[p.id];
           return (
             <div key={p.id} data-lt="" className="app-tile" style={{ position: "relative", aspectRatio: "1", borderRadius: "9px", overflow: "hidden", background: "var(--muted)", outline: s ? "2px solid var(--primary)" : "0 solid transparent", outlineOffset: "-2px" }}>
               <button type="button" onClick={() => onOpen(p.id)} aria-label={`Open ${p.title}`} style={{ position: "absolute", inset: "0", padding: "0", border: "0", cursor: "pointer", background: "transparent" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element -- signed, face-blurred thumbnail */}
-                <img src={p.src} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                <img src={p.src} alt="" loading={i < EAGER_TILES ? "eager" : "lazy"} fetchPriority={i < 2 ? "high" : "auto"} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                 <span className="app-tile-glyph" style={{ position: "absolute", inset: "0", display: "flex", alignItems: "center", justifyContent: "center", background: "color-mix(in srgb, var(--n-background) 72%, transparent)", opacity: "0", transition: "opacity 160ms" }}>
                   <Glyph bits={p.hash ?? "0".repeat(64)} colors={{ on: "var(--n-primary)", off: "color-mix(in srgb, var(--n-foreground) 16%, transparent)" }} style={{ width: "46%", height: "46%" }} />
                 </span>

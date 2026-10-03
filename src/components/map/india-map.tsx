@@ -142,14 +142,22 @@ export function IndiaMap({ theme = "night", variant = "panel", sites = [], pins 
     const el = root.current;
     if (!el || !enabled) return;
     let live = true;
+    let onLoad: (() => void) | null = null;
     const io = new IntersectionObserver(
       (es) => {
         if (!es.some((e) => e.isIntersecting)) return;
         io.disconnect();
-        void loadIndiaMap().then(
-          (d) => live && setData(d),
-          () => undefined,
-        );
+        // After the page's own load, so the map never competes with its largest image.
+        const go = () =>
+          void loadIndiaMap().then(
+            (d) => live && setData(d),
+            () => undefined,
+          );
+        if (document.readyState === "complete") go();
+        else {
+          onLoad = go;
+          window.addEventListener("load", go, { once: true });
+        }
       },
       { rootMargin: "800px" },
     );
@@ -157,6 +165,7 @@ export function IndiaMap({ theme = "night", variant = "panel", sites = [], pins 
     return () => {
       live = false;
       io.disconnect();
+      if (onLoad) window.removeEventListener("load", onLoad);
     };
   }, [enabled]);
 
