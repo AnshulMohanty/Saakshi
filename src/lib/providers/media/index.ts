@@ -61,6 +61,18 @@ export interface MaskOptions {
   frame?: Transform;
 }
 
+/**
+ * A mask and what it covers. Real: when Cloudinary refuses the prompt list, prompts are asked one
+ * by one (`prompts` = the ones that returned a mask, `refused` = the rest); every prompt
+ * refused throws ExtractRefusedError (media/extract-refusal.ts).
+ */
+export interface ExtractedMask {
+  maskUrl: string;
+  buffer: Buffer;
+  prompts?: string[];
+  refused?: string[];
+}
+
 /** The URL steps for a mask: frame, then e_extract in mask mode, delivered as PNG. */
 export function maskTransform(prompt: string | string[], { multiple, frame = [] }: MaskOptions = {}): Transform {
   return [...frame, { effect: "extract", prompt, ...(multiple ? { multiple: true } : {}), mode: "mask" }, { format: "png" }];
@@ -112,7 +124,7 @@ export interface MediaProvider {
    * Segmentation mask for `prompt` (real: e_extract:prompt_(…);multiple_true;mode_mask, PNG),
    * computed on the `frame` derivative so two photos can be masked on the same crop.
    */
-  extractMask(publicId: string, prompt: string | string[], opts?: MaskOptions): Promise<{ maskUrl: string; buffer: Buffer }>;
+  extractMask(publicId: string, prompt: string | string[], opts?: MaskOptions): Promise<ExtractedMask>;
   /** Bytes of a derived image (server-side; e.g. to re-upload a watermarked variant). */
   fetchDerived(publicId: string, transforms: Transform): Promise<Buffer>;
   /**

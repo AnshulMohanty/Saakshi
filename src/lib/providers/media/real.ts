@@ -18,6 +18,7 @@ import { summarizeExif } from "../../media/exif";
 import { unionMasks, sideBySide } from "../../media/raster";
 import { buildCloudinaryUrl, cloudinarySignature, compileTransform, PUBLIC_ID_RE, type Transform } from "../../media/transform";
 import { PREVIEW, THUMB, VIEW } from "../../media/derivatives";
+import { ExtractRefusedError, isExtractRefusal } from "../../media/extract-refusal";
 import { cloudinaryTransformations } from "../../pricing";
 import { callWithRetry, ProviderHttpError, type HttpDeps } from "../http";
 import { CloudinaryClient, encodeCloudinaryContext, signUploadParams, type CloudinaryCreds } from "../cloudinary/client";
@@ -26,6 +27,7 @@ import {
   maskTransform,
   type CompositeResult,
   type CompositeSide,
+  type ExtractedMask,
   type MaskOptions,
   type MediaAsset,
   type MediaProvider,
@@ -78,15 +80,19 @@ export function normalizePhash(v: unknown): string | null {
   return hex.padStart(16, "0");
 }
 
-/** Pure: upload response → MediaAsset. media_metadata=true returns an image_metadata object. */
-export function mediaAssetFromUpload(r: CloudinaryUploadResponse, { exifDefaultOffset = "+05:30", fallbackPhash }: { exifDefaultOffset?: string; fallbackPhash?: string } = {}): MediaAsset {
+/**
+ * Pure: upload response → MediaAsset. media_metadata=true returns an image_metadata object.
+ * `phash`: our own fingerprint (lib/phash.ts), which wins over Cloudinary's. The match thresholds
+ * are calibrated on ours, and Cloudinary's drifts 14 bits on a 2% re-crop where ours drifts 8.
+ */
+export function mediaAssetFromUpload(r: CloudinaryUploadResponse, { exifDefaultOffset = "+05:30", phash }: { exifDefaultOffset?: string; phash?: string } = {}): MediaAsset {
   const meta = r.image_metadata ?? r.media_metadata ?? {};
   const focus = r.quality_analysis?.focus;
   return {
     publicId: r.public_id,
     assetId: r.asset_id ?? "",
     etag: r.etag ?? "",
-    phash: normalizePhash(r.phash) ?? fallbackPhash ?? "",
+    phash: phash ?? normalizePhash(r.phash) ?? "",
     width: r.width ?? 0,
     height: r.height ?? 0,
     format: r.format === "jpeg" ? "jpg" : (r.format ?? ""),
@@ -124,6 +130,9 @@ export function uploadParams(input: UploadInput, o: Pick<CloudinaryOptions, "del
   };
 }
 
+/** The most one derived request may take, 423 retries included (3 min). */
+export const DERIVED_DEADLINE_MS = 180_000;
+
 export class CloudinaryMediaProvider implements MediaProvider {
   readonly kind = "real" as const;
   readonly evidenceType: "authenticated" | "private";
@@ -150,9 +159,8 @@ export class CloudinaryMediaProvider implements MediaProvider {
     const params = uploadParams(input, this.o, publicId);
     const file = input.file ? { bytes: input.file, filename: `${publicId.split("/").pop()}.jpg`, contentType: "application/octet-stream" } : { url: input.url! };
     const r = await this.client.uploadApi<CloudinaryUploadResponse>("image", "upload", params, file, { operation: "upload" });
-    // Cloudinary always returns phash when asked; the local hash is only a guard for an empty field.
-    const fallbackPhash = !r.phash && input.file ? await import("../../phash").then((m) => m.phash(input.file!)) : undefined;
-    return mediaAssetFromUpload(r, { exifDefaultOffset: this.extra.exifDefaultOffset, fallbackPhash });
+    const phash = await this.fingerprint(r.public_id, input.file);
+    return mediaAssetFromUpload(r, { exifDefaultOffset: this.extra.exifDefaultOffset, phash });
   }
 
   async uploadRaw({ publicId, bytes, contentType }: RawUploadInput): Promise<{ publicId: string; bytes: number }> {
@@ -211,7 +219,7 @@ export class CloudinaryMediaProvider implements MediaProvider {
   async resource(publicId: string): Promise<MediaAsset | null> {
     try {
       const r = await this.client.adminApi<CloudinaryUploadResponse>("GET", `resources/image/${this.typeOf(publicId)}/${publicId}`, { media_metadata: true, phash: true, faces: true, quality_analysis: true }, { operation: "admin:resource" });
-      return mediaAssetFromUpload(r, { exifDefaultOffset: this.extra.exifDefaultOffset });
+      return mediaAssetFromUpload(r, { exifDefaultOffset: this.extra.exifDefaultOffset, phash: await this.fingerprint(r.public_id) });
     } catch (err) {
       if (err instanceof ProviderHttpError && err.status === 404) return null;
       throw err;
@@ -257,6 +265,16 @@ export class CloudinaryMediaProvider implements MediaProvider {
     await this.client.adminApi("POST", `resources/image/${this.typeOf(publicId)}/${publicId}`, { moderation_status: status }, { operation: "admin:moderation" });
   }
 
+  /**
+   * Our pHash (lib/phash.ts) of the stored image: from the uploaded bytes when we have them, else
+   * from the stored original (a signed delivery with no transformation, so no transformation is
+   * counted). The same algorithm as the mock and the browser preview.
+   */
+  async fingerprint(publicId: string, bytes?: Buffer): Promise<string> {
+    const { phash } = await import("../../phash");
+    return phash(bytes ?? (await this.fetchDerived(publicId, [])));
+  }
+
   async fetchDerived(publicId: string, transforms: Transform): Promise<Buffer> {
     const { body } = await callWithRetry<Buffer>(
       {
@@ -265,9 +283,11 @@ export class CloudinaryMediaProvider implements MediaProvider {
         url: this.url(publicId, transforms, { signed: true }),
         init: { method: "GET" },
         as: "buffer",
+        // 423: "derived asset is being generated" (docs, e_extract); retried with backoff, but the
+        // whole request (every attempt and wait) is bounded so a stuck derivation fails clearly.
         timeoutMs: 90_000,
-        // 423: "derived asset is being generated" (docs, e_extract); retried with backoff.
-        retries: 4,
+        retries: 10,
+        deadlineMs: DERIVED_DEADLINE_MS,
         meter: () => ({ units: { transformations: cloudinaryTransformations(compileTransform(transforms)) } }),
       },
       this.extra.deps,
@@ -275,15 +295,44 @@ export class CloudinaryMediaProvider implements MediaProvider {
     return body;
   }
 
-  async extractMask(publicId: string, prompt: string | string[], opts: MaskOptions = {}): Promise<{ maskUrl: string; buffer: Buffer }> {
+  async extractMask(publicId: string, prompt: string | string[], opts: MaskOptions = {}): Promise<ExtractedMask> {
     const prompts = Array.isArray(prompt) ? prompt : [prompt];
-    if (this.o.extractMode === "union" && prompts.length > 1) {
-      const parts = await Promise.all(prompts.map((p) => this.fetchDerived(publicId, maskTransform(p, opts))));
-      // No single URL shows the union; the first prompt's mask URL is kept as the reference.
-      return { maskUrl: this.url(publicId, maskTransform(prompts[0], opts), { signed: true }), buffer: await unionMasks(parts) };
+    if (this.o.extractMode === "union" || prompts.length === 1) return this.maskPerPrompt(publicId, prompts, opts);
+    const t = maskTransform(prompts, opts);
+    try {
+      return { maskUrl: this.url(publicId, t, { signed: true }), buffer: await this.fetchDerived(publicId, t), prompts, refused: [] };
+    } catch (err) {
+      // Some prompt lists are refused although each prompt works alone: ask prompt by prompt.
+      if (!isExtractRefusal(err)) throw err;
+      return this.maskPerPrompt(publicId, prompts, opts);
     }
-    const t = maskTransform(prompts.length === 1 ? prompts[0] : prompts, opts);
-    return { maskUrl: this.url(publicId, t, { signed: true }), buffer: await this.fetchDerived(publicId, t) };
+  }
+
+  /**
+   * One e_extract per prompt, then the union of the masks Cloudinary returned. A refused prompt
+   * contributes no pixels; when every prompt is refused, ExtractRefusedError (not measurable).
+   */
+  private async maskPerPrompt(publicId: string, prompts: string[], opts: MaskOptions): Promise<ExtractedMask> {
+    const got: Array<{ prompt: string; buffer: Buffer }> = [];
+    const refused: string[] = [];
+    let reason = "";
+    for (const p of prompts) {
+      try {
+        got.push({ prompt: p, buffer: await this.fetchDerived(publicId, maskTransform(p, opts)) });
+      } catch (err) {
+        if (!isExtractRefusal(err)) throw err;
+        refused.push(p);
+        reason = err.reason ?? "Invalid input for extract";
+      }
+    }
+    if (!got.length) throw new ExtractRefusedError(prompts, reason);
+    // No single URL shows a union; the first returned prompt's mask URL is kept as the reference.
+    return {
+      maskUrl: this.url(publicId, maskTransform(got[0].prompt, opts), { signed: true }),
+      buffer: got.length === 1 ? got[0].buffer : await unionMasks(got.map((g) => g.buffer)),
+      prompts: got.map((g) => g.prompt),
+      refused,
+    };
   }
 
   async composite(before: CompositeSide, after: CompositeSide): Promise<CompositeResult> {

@@ -25,6 +25,8 @@ export function openAiCost(model: string, inputTokens: number, outputTokens = 0,
 
 /** Transformations a derived image counts as (Cloudinary transformation_counts). */
 export function cloudinaryTransformations(transformation: string): number {
+  // The original, delivered as stored, is not a transformation.
+  if (!transformation) return 0;
   return transformation.includes("e_extract") ? 75 : 1;
 }
 

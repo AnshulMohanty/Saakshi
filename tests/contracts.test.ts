@@ -9,10 +9,12 @@ import { describe, expect, it } from "vitest";
 import { openPglite } from "@/lib/db/client";
 import { providerUsage } from "@/lib/db/schema";
 import { cloudinarySignature } from "@/lib/media/transform";
+import { phash } from "@/lib/phash";
 import { openAiCost } from "@/lib/pricing";
 import { strictJsonSchema } from "@/lib/providers/ai/json-schema";
 import { OpenAIProvider, OpenAIRefusalError, VISION_FALLBACK_PROMPT } from "@/lib/providers/ai/real";
 import { ParsedSearch, PhotoAnalysisOutput } from "@/lib/providers/ai/schemas";
+import { ExtractRefusedError } from "@/lib/media/extract-refusal";
 import { isAiVisionQuotaError } from "@/lib/providers/analysis/fallback";
 import { apiTagName, CloudinaryAnalysisProvider, readModeration, readTags, readWatermark } from "@/lib/providers/analysis/real";
 import { CloudinaryClient, signUploadParams, stringToSign } from "@/lib/providers/cloudinary/client";
@@ -66,6 +68,13 @@ function recorder(respond: (c: Call, i: number) => Response | Promise<Response>)
   return { calls, sleeps, usage, deps: { fetch, sleep: async (ms: number) => void sleeps.push(ms), onUsage: (u: UsageEntry) => void usage.push(u) } };
 }
 
+/** A small real JPEG (the fingerprint needs pixels). */
+const testJpeg = (seed = 1) =>
+  sharp({ create: { width: 64, height: 48, channels: 3, background: { r: 40 * seed, g: 90, b: 160 } } })
+    .composite([{ input: { create: { width: 20, height: 16, channels: 3, background: "#fff" } }, left: 4 * seed, top: 6 }])
+    .jpeg()
+    .toBuffer();
+
 const CREDS = { cloudName: "demo", apiKey: "123456789012345", apiSecret: "abcd" };
 const NOW = Date.UTC(2026, 8, 28, 6, 0, 0);
 const cld = (deps: ReturnType<typeof recorder>["deps"], o: Partial<CloudinaryOptions> = {}) =>
@@ -112,7 +121,8 @@ describe("Cloudinary signing", () => {
 describe("CloudinaryMediaProvider contract", () => {
   it("upload: signed multipart POST to /image/upload with the documented parameters", async () => {
     const r = recorder(() => json(UPLOAD_RESPONSE));
-    const asset = await cld(r.deps).upload({ file: Buffer.from("jpeg"), folder: "saakshi/evidence", publicId: "saakshi/evidence/abc", tags: ["saakshi", "witness"], context: { filename: "a=b|c.jpg", source: "witness" } });
+    const photo = await testJpeg();
+    const asset = await cld(r.deps).upload({ file: photo, folder: "saakshi/evidence", publicId: "saakshi/evidence/abc", tags: ["saakshi", "witness"], context: { filename: "a=b|c.jpg", source: "witness" } });
     const [c] = r.calls;
     expect(c.method).toBe("POST");
     expect(c.url).toBe("https://api.cloudinary.com/v1_1/demo/image/upload");
@@ -132,9 +142,11 @@ describe("CloudinaryMediaProvider contract", () => {
     });
     expect(c.form.eager).toBeUndefined();
     expect(c.form.signature).toBe(formSignature(c.form));
-    expect(c.file).toMatchObject({ size: 4 });
-    // Response → MediaAsset (media_metadata=true returns image_metadata).
-    expect(asset).toMatchObject({ publicId: "saakshi/evidence/abc", phash: "ba19c8ab5fa05a59", facesCount: 2, qualityScore: 0.83, width: 4000, format: "jpg" });
+    expect(c.file).toMatchObject({ size: photo.length });
+    // Response → MediaAsset (media_metadata=true returns image_metadata). The fingerprint is ours
+    // (lib/phash.ts) from the uploaded bytes, not Cloudinary's phash; no extra request.
+    expect(r.calls).toHaveLength(1);
+    expect(asset).toMatchObject({ publicId: "saakshi/evidence/abc", phash: await phash(photo), facesCount: 2, qualityScore: 0.83, width: 4000, format: "jpg" });
     expect(asset.exif).toMatchObject({ takenAt: "2025-03-14T04:00:00.000Z", takenAtTzAssumed: true, make: "Google" });
     expect(asset.exif!.lat).toBeCloseTo(12.9717, 3);
     expect(r.usage[0]).toMatchObject({ provider: "cloudinary", operation: "upload", ok: true, attempts: 1, mode: "real" });
@@ -142,12 +154,17 @@ describe("CloudinaryMediaProvider contract", () => {
 
   it("upload: QR codes are public (type upload, no moderation); CLD_EAGER adds the standard derivatives; URLs upload by reference", async () => {
     const r = recorder(() => json({ ...UPLOAD_RESPONSE, public_id: "saakshi/qr/x" }));
-    await cld(r.deps).upload({ file: Buffer.from("png"), folder: "saakshi/qr", publicId: "saakshi/qr/x", access: "public" });
+    await cld(r.deps).upload({ file: await testJpeg(), folder: "saakshi/qr", publicId: "saakshi/qr/x", access: "public" });
     expect(r.calls[0].form.type).toBe("upload");
     expect(r.calls[0].form.moderation).toBeUndefined();
 
-    const e = recorder(() => json(UPLOAD_RESPONSE));
-    await cld(e.deps, { eager: true, deliveryType: "private" }).upload({ url: "https://upload.wikimedia.org/x.jpg", folder: "saakshi/archive" });
+    const stored = await testJpeg(7);
+    const e = recorder((c) => (c.method === "GET" ? new Response(new Uint8Array(stored)) : json(UPLOAD_RESPONSE)));
+    const byUrl = await cld(e.deps, { eager: true, deliveryType: "private" }).upload({ url: "https://upload.wikimedia.org/x.jpg", folder: "saakshi/archive" });
+    // By reference we have no bytes: the fingerprint comes from the stored original (no transformation).
+    expect(e.calls[1].url).toMatch(/^https:\/\/res\.cloudinary\.com\/demo\/image\/private\/s--[\w-]{8}--\/v1\/saakshi\/evidence\/abc$/);
+    expect(byUrl.phash).toBe(await phash(stored));
+    expect(e.usage[1].units).toEqual({ transformations: 0 });
     expect(e.calls[0].form.type).toBe("private");
     expect(String(e.calls[0].form.eager).split("|")).toEqual(["c_fill,g_auto,w_480,h_360/e_blur_faces/f_auto,q_auto", "c_limit,w_1280/e_blur_faces/f_auto,q_auto", "c_fill,g_auto,w_800,h_600/e_blur_faces/f_auto,q_auto"]);
     expect(e.calls[0].file).toBe("https://upload.wikimedia.org/x.jpg");
@@ -169,10 +186,19 @@ describe("CloudinaryMediaProvider contract", () => {
   });
 
   it("resource: Admin API GET with media_metadata, phash, faces and quality_analysis; 404 means none", async () => {
-    const r = recorder((c) => (c.url.includes("missing") ? json({ error: { message: "Resource not found - missing" } }, 404) : json({ public_id: "saakshi/evidence/a", asset_id: "aid", etag: "e1", phash: "0123456789ABCDEF", width: 1600, height: 1200, format: "jpg", bytes: 10, faces: [[1, 2, 3, 4]], quality_analysis: { focus: 0.8 }, image_metadata: { Make: "NIKON" } })));
+    const stored = await testJpeg(3);
+    const r = recorder((c) =>
+      c.url.startsWith("https://res.cloudinary.com/")
+        ? new Response(new Uint8Array(stored))
+        : c.url.includes("missing")
+          ? json({ error: { message: "Resource not found - missing" } }, 404)
+          : json({ public_id: "saakshi/evidence/a", asset_id: "aid", etag: "e1", phash: "0123456789ABCDEF", width: 1600, height: 1200, format: "jpg", bytes: 10, faces: [[1, 2, 3, 4]], quality_analysis: { focus: 0.8 }, image_metadata: { Make: "NIKON" } }),
+    );
     const p = cld(r.deps);
     const a = await p.resource("saakshi/evidence/a");
-    expect(a).toMatchObject({ phash: "0123456789abcdef", width: 1600, facesCount: 1, qualityScore: 0.8, mediaMetadata: { Make: "NIKON" } });
+    // Our fingerprint of the stored original, not Cloudinary's phash field.
+    expect(r.calls[1].url).toMatch(/\/image\/authenticated\/s--[\w-]{8}--\/v1\/saakshi\/evidence\/a$/);
+    expect(a).toMatchObject({ phash: await phash(stored), width: 1600, facesCount: 1, qualityScore: 0.8, mediaMetadata: { Make: "NIKON" } });
     expect(await p.resource("saakshi/evidence/missing")).toBeNull();
     expect(r.calls[0].url).toBe("https://api.cloudinary.com/v1_1/demo/resources/image/authenticated/saakshi/evidence/a?media_metadata=true&phash=true&faces=true&quality_analysis=true");
   });
@@ -238,6 +264,39 @@ describe("CloudinaryMediaProvider contract", () => {
     expect(u.calls.map((c) => decodeURIComponent(c.url).match(/prompt_([^;/]+)/)?.[1])).toEqual(["litter", "plastic waste"]);
     const { data } = await sharp(union.buffer).greyscale().raw().toBuffer({ resolveWithObject: true });
     expect([...data].every((v) => v === 255)).toBe(true);
+  });
+
+  it("extractMask: when Cloudinary refuses the prompt list (400 'Invalid input for extract'), it asks prompt by prompt and joins what comes back", async () => {
+    const left = await sharp({ create: { width: 8, height: 4, channels: 3, background: "#000" } }).composite([{ input: { create: { width: 4, height: 4, channels: 3, background: "#fff" } }, left: 0, top: 0 }]).png().toBuffer();
+    const refused = () => new Response(null, { status: 400, headers: { "x-cld-error": "Invalid input for extract" } });
+    const prompt = (c: Call) => {
+      const u = decodeURIComponent(c.url);
+      return u.match(/prompt_\(([^)]+)\)/)?.[1] ?? u.match(/prompt_([^;/]+)/)?.[1];
+    };
+    const frame = [{ crop: "fill" as const, gravity: "auto" as const, width: 800, height: 600 }];
+    // The list and "plastic-waste" are refused; "litter" and "garbage" return masks.
+    const r = recorder((c) => (["litter", "garbage"].includes(prompt(c) ?? "") ? new Response(new Uint8Array(left)) : refused()));
+    const m = await cld(r.deps).extractMask("saakshi/evidence/abc", ["litter", "garbage", "plastic-waste"], { multiple: true, frame });
+    expect(r.calls.map(prompt)).toEqual(["litter;garbage;plastic-waste", "litter", "garbage", "plastic-waste"]);
+    expect(m).toMatchObject({ prompts: ["litter", "garbage"], refused: ["plastic-waste"] });
+    expect(m.maskUrl).toContain("/e_extract:prompt_litter;multiple_true;mode_mask/");
+    expect(r.calls.every((c) => r.calls.indexOf(c) === 0 || !c.url.includes("%3B"))).toBe(true);
+    expect(r.sleeps).toEqual([]); // a 400 is not retried
+    // Usage: the refused requests are recorded as failures with Cloudinary's reason; only masks count transformations.
+    expect(r.usage.filter((u) => u.ok).map((u) => u.units.transformations)).toEqual([75, 75]);
+    expect(r.usage.find((u) => !u.ok)?.error).toBe("cloudinary derived failed (HTTP 400): Invalid input for extract");
+
+    // Every prompt refused: not measurable, no mask, no number.
+    const none = recorder(() => refused());
+    const err = await cld(none.deps).extractMask("saakshi/evidence/abc", ["litter", "garbage"], { multiple: true, frame }).catch((e) => e);
+    expect(err).toBeInstanceOf(ExtractRefusedError);
+    expect(err.message).toBe('Cloudinary refused the extraction for litter, garbage ("Invalid input for extract", HTTP 400)');
+    expect(none.calls).toHaveLength(3);
+
+    // Any other 400 is an error as before (no prompt-by-prompt retry).
+    const other = recorder(() => new Response(null, { status: 400, headers: { "x-cld-error": "Invalid transformation" } }));
+    await expect(cld(other.deps).extractMask("saakshi/evidence/abc", ["litter", "garbage"], { multiple: true, frame })).rejects.toThrow("cloudinary derived failed (HTTP 400): Invalid transformation");
+    expect(other.calls).toHaveLength(1);
   });
 
   it("fetchDerived: 423 (derived asset being generated) is retried with backoff", async () => {
@@ -492,6 +551,35 @@ describe("callWithRetry", () => {
     await expect(call(async () => (calls++, json({ error: { code: "insufficient_quota", message: "You exceeded your current quota" } }, 429)), s2, usage)).rejects.toMatchObject({ status: 429, retryable: false });
     expect(calls).toBe(1);
     expect(usage[0]).toMatchObject({ ok: false, status: 429, attempts: 1 });
+  });
+
+  it("a deadline bounds every attempt and wait together, then fails saying so", async () => {
+    let clock = 0;
+    let calls = 0;
+    const err = await callWithRetry(
+      { provider: "cloudinary", operation: "derived", url: "https://res.cloudinary.com/x", init: { method: "GET" }, retries: 50, deadlineMs: 60_000, as: "buffer" },
+      {
+        fetch: async () => (calls++, (clock += 5_000), new Response("generating", { status: 423, headers: { "x-cld-error": "Derived asset is being generated" } })),
+        sleep: async (ms) => void (clock += ms),
+        now: () => clock,
+        onUsage: () => {},
+      },
+    ).catch((e) => e);
+    expect(err).toBeInstanceOf(ProviderHttpError);
+    expect(err).toMatchObject({ status: 423, retryable: false, reason: "Derived asset is being generated" });
+    expect(err.message).toMatch(/^cloudinary derived failed \(HTTP 423\): Derived asset is being generated · generating \(gave up after \d+ s and \d+ attempt\(s\)\)$/);
+    // A real fetch is aborted when the deadline passes; this fake one isn't, so allow its 5 s.
+    expect(clock).toBeLessThanOrEqual(65_000);
+    expect(calls).toBeLessThan(51);
+    expect(calls).toBeGreaterThan(3);
+  });
+
+  it("Cloudinary's x-cld-error reason is part of the error when the body is empty", async () => {
+    const err = await call(async () => new Response(null, { status: 400, headers: { "x-cld-error": "Invalid input for extract" } }), []).catch((e) => e);
+    expect(err).toMatchObject({ status: 400, reason: "Invalid input for extract", body: "" });
+    expect(err.message).toBe("openai x failed (HTTP 400): Invalid input for extract");
+    const bare = await call(async () => new Response(null, { status: 400 }), []).catch((e) => e);
+    expect(bare.message).toBe("openai x failed (HTTP 400): no reason given");
   });
 
   it("retries 5xx and network errors up to 3 times, not 4xx", async () => {

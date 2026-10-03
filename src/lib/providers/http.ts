@@ -19,6 +19,11 @@ export interface CallOptions {
   init: RequestInit;
   timeoutMs?: number;
   retries?: number;
+  /**
+   * Total time for every attempt and wait together. Each attempt's timeout shrinks to what's
+   * left, and no retry starts past it: the call then fails with the last error, saying so.
+   */
+  deadlineMs?: number;
   /** Units and cost from the parsed body (tokens, transformations, credits). */
   meter?: (body: unknown, res: Response) => { units?: Record<string, number>; costUsd?: number | null };
   assetId?: string | null;
@@ -31,6 +36,8 @@ export interface HttpDeps {
   sleep?: (ms: number) => Promise<void>;
   /** Where usage goes (default: lib/usage recordUsage). */
   onUsage?: (u: UsageEntry) => void;
+  /** Clock for deadlines (tests). */
+  now?: () => number;
 }
 
 export class ProviderHttpError extends Error {
@@ -40,8 +47,10 @@ export class ProviderHttpError extends Error {
     readonly status: number | null,
     readonly body: string,
     readonly retryable: boolean,
+    /** Cloudinary's reason header (x-cld-error); delivery errors often have an empty body. */
+    readonly reason: string | null = null,
   ) {
-    super(`${provider} ${operation} failed${status ? ` (HTTP ${status})` : ""}: ${body.slice(0, 300)}`);
+    super(`${provider} ${operation} failed${status ? ` (HTTP ${status})` : ""}: ${[reason, body.slice(0, 300)].filter(Boolean).join(" · ") || "no reason given"}`);
     this.name = "ProviderHttpError";
   }
 }
@@ -72,14 +81,18 @@ export async function callWithRetry<T = unknown>(o: CallOptions, deps: HttpDeps 
   const sleep = deps.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   const log = deps.onUsage ?? recordUsage;
   const retries = o.retries ?? 3;
-  const started = Date.now();
+  const now = deps.now ?? Date.now;
+  const started = now();
+  const deadline = o.deadlineMs ? now() + o.deadlineMs : Infinity;
+  const left = () => deadline - now();
   let attempt = 0;
+  let outOfTime = false;
   let lastError: ProviderHttpError | null = null;
   while (attempt <= retries) {
     attempt++;
     let res: Response | null = null;
     try {
-      res = await doFetch(o.url, { ...o.init, signal: AbortSignal.timeout(o.timeoutMs ?? 60_000) });
+      res = await doFetch(o.url, { ...o.init, signal: AbortSignal.timeout(Math.max(1, Math.floor(Math.min(o.timeoutMs ?? 60_000, left())))) });
     } catch (err) {
       lastError = new ProviderHttpError(o.provider, o.operation, null, err instanceof Error ? err.message : String(err), true);
     }
@@ -87,19 +100,33 @@ export async function callWithRetry<T = unknown>(o: CallOptions, deps: HttpDeps 
       if (res.ok) {
         const body = (o.as === "buffer" ? Buffer.from(await res.arrayBuffer()) : o.as === "text" ? await res.text() : await res.json()) as T;
         const m = o.meter?.(body, res) ?? {};
-        log({ provider: o.provider, operation: o.operation, model: o.model ?? null, mode: "real", units: m.units ?? {}, latencyMs: Date.now() - started, costUsd: m.costUsd ?? null, ok: true, status: res.status, attempts: attempt, assetId: o.assetId ?? null, error: null });
+        log({ provider: o.provider, operation: o.operation, model: o.model ?? null, mode: "real", units: m.units ?? {}, latencyMs: now() - started, costUsd: m.costUsd ?? null, ok: true, status: res.status, attempts: attempt, assetId: o.assetId ?? null, error: null });
         return { body, status: res.status, headers: res.headers, attempts: attempt };
       }
       const text = await res.text().catch(() => "");
       const retryable = isRetryableStatus(res.status) && !NEEDS_A_HUMAN.test(text);
-      lastError = new ProviderHttpError(o.provider, o.operation, res.status, text, retryable);
+      lastError = new ProviderHttpError(o.provider, o.operation, res.status, text, retryable, res.headers.get("x-cld-error"));
       if (!retryable || attempt > retries) break;
-      await sleep(retryAfterMs(res.headers.get("retry-after")) ?? backoffMs(attempt));
+      const wait = retryAfterMs(res.headers.get("retry-after")) ?? backoffMs(attempt);
+      if (wait >= left()) {
+        outOfTime = true;
+        break;
+      }
+      await sleep(wait);
       continue;
     }
     if (attempt > retries) break;
-    await sleep(backoffMs(attempt));
+    const wait = backoffMs(attempt);
+    if (wait >= left()) {
+      outOfTime = true;
+      break;
+    }
+    await sleep(wait);
   }
-  log({ provider: o.provider, operation: o.operation, model: o.model ?? null, mode: "real", units: {}, latencyMs: Date.now() - started, costUsd: null, ok: false, status: lastError?.status ?? null, attempts: attempt, assetId: o.assetId ?? null, error: lastError?.message.slice(0, 500) ?? "unknown" });
+  if (outOfTime && lastError) {
+    const note = `gave up after ${Math.round((now() - started) / 1000)} s and ${attempt} attempt(s)`;
+    lastError = new ProviderHttpError(lastError.provider, lastError.operation, lastError.status, [lastError.body, `(${note})`].filter(Boolean).join(" "), false, lastError.reason);
+  }
+  log({ provider: o.provider, operation: o.operation, model: o.model ?? null, mode: "real", units: {}, latencyMs: now() - started, costUsd: null, ok: false, status: lastError?.status ?? null, attempts: attempt, assetId: o.assetId ?? null, error: lastError?.message.slice(0, 500) ?? "unknown" });
   throw lastError ?? new ProviderHttpError(o.provider, o.operation, null, "unknown error", false);
 }
