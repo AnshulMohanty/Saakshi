@@ -120,13 +120,20 @@ export function scoreAsset(
 
   // --- Authenticity (max 15) --------------------------------------------------------------------
   const m = s.moderation;
-  const stock = s.watermark === true || m?.watermark_or_stock === true;
+  // Two independent watermark signals: Cloudinary's detector and the vision model's answer. The
+  // detector alone misfires on real photos (confidence 1.0 on a rubbish heap with no mark), so a
+  // hard flag needs both; one alone asks a person to look.
+  const detector = s.watermark === true;
+  const branding = m?.watermark_or_stock === true;
+  const stock = detector && branding;
+  const oneSignal = detector !== branding;
   if (!m && s.watermark === null) add("authenticity", "AUTH_UNCHECKED", "points", 0);
   else {
     if (m?.screen_or_print) add("authenticity", "SCREEN_OR_PRINT", "review", P.screenOrPrint);
     if (m?.composited_or_generated) add("authenticity", "COMPOSITED", "review", P.composited);
-    if (stock) add("authenticity", "STOCK_SUSPECTED", "hard", 0, { watermark: s.watermark === true, branding: m?.watermark_or_stock === true });
-    if (!m?.screen_or_print && !m?.composited_or_generated && !stock) add("authenticity", "AUTH_CLEAR", "points", P.authClear);
+    if (stock) add("authenticity", "STOCK_SUSPECTED", "hard", 0, { watermark: true, branding: true });
+    else if (oneSignal) add("authenticity", "WATERMARK_UNCONFIRMED", "review", 0, { watermark: detector, branding });
+    if (!m?.screen_or_print && !m?.composited_or_generated && !stock && !oneSignal) add("authenticity", "AUTH_CLEAR", "points", P.authClear);
   }
 
   // --- Burned-in stamp ------------------------------------------------------------------------

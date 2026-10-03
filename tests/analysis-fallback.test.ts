@@ -261,9 +261,9 @@ describe("pipeline with the fallback answering", () => {
     await ctx?.close();
   });
 
-  async function run(watermark: boolean, filename: string) {
+  async function run(watermark: boolean, filename: string, labels = clean) {
     const cld = fakeCloudinary({ fail: () => quotaError(), watermark });
-    const lab = fakeLabeler(clean);
+    const lab = fakeLabeler(labels);
     const { p } = build("auto", cld, lab);
     const up = await ctx.media.upload({ file: fixture, folder: "saakshi/test", context: { filename } });
     const [row] = await ctx.db
@@ -275,16 +275,26 @@ describe("pipeline with the fallback answering", () => {
     return { done, lab };
   }
 
-  it("the planted stock photo is still flagged: Cloudinary's watermark check, clean fallback answers", async () => {
-    const { done, lab } = await run(true, "stock-photo.jpg");
+  it("the planted stock photo is still flagged: Cloudinary's watermark check and the fallback's answer agree", async () => {
+    const sees = (t: TaxonomyEntry[], q: ModerationQuestion[]) => ({ ...clean(t, q), answers: { ...clean(t, q).answers, watermark_or_stock: true } });
+    const { done, lab } = await run(true, "stock-photo.jpg", sees);
     expect(lab.calls).toHaveLength(1);
     expect(done.watermark).toBe(true);
-    expect(done.moderation?.answers?.watermark_or_stock).toBe(false);
+    expect(done.moderation?.answers?.watermark_or_stock).toBe(true);
     expect(done.provenance.analysis).toEqual({ mode: "real", provider: FALLBACK_PROVIDER_ID });
     expect(done.pipeline.steps.analyze?.output).toMatchObject({ provider: FALLBACK_PROVIDER_ID, watermark: true });
     const stock = done.trustReasons?.find((r) => r.code === "STOCK_SUSPECTED");
     expect(stock).toMatchObject({ kind: "hard" });
     expect(done.trustBand).toBe("FLAGGED");
+  });
+
+  it("the watermark detector alone (clean fallback answers): a person looks, no hard flag", async () => {
+    const { done } = await run(true, "river-bank.jpg");
+    expect(done.watermark).toBe(true);
+    expect(done.trustReasons?.find((r) => r.code === "WATERMARK_UNCONFIRMED")).toMatchObject({ kind: "review", detail: { watermark: true, branding: false } });
+    expect(done.trustReasons?.some((r) => r.code === "STOCK_SUSPECTED")).toBe(false);
+    // (The fixture file is reused across these tests, so uniqueness may flag it; authenticity must not.)
+    expect(done.trustReasons?.filter((r) => r.signal === "authenticity" && r.kind === "hard")).toEqual([]);
   });
 
   it("clean fallback answers: fit for the public screens, tags stored", async () => {

@@ -34,6 +34,7 @@ const LABEL: Record<ReasonCode, string> = {
   SCREEN_OR_PRINT: "Photo of a screen or print",
   COMPOSITED: "May be composited",
   STOCK_SUSPECTED: "Stock-site watermark",
+  WATERMARK_UNCONFIRMED: "Possible watermark, unconfirmed",
   STAMP_CONSISTENT: "Stamp agrees",
   STAMP_UNVERIFIABLE: "Stamp can't be checked",
   STAMP_MISMATCH: "Stamp disagrees with the camera",

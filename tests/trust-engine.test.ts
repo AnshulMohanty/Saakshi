@@ -280,9 +280,25 @@ describe("authenticity (max 15)", () => {
     expect(r.band).toBe("NEEDS_REVIEW");
   });
 
-  it("watermark or stock branding: hard STOCK_SUSPECTED", () => {
-    expect(scoreAsset(archive({ watermark: true }), project, null, []).hardFlags).toEqual(["STOCK_SUSPECTED"]);
-    expect(scoreAsset(archive({ moderation: { watermark_or_stock: true } }), project, null, []).hardFlags).toEqual(["STOCK_SUSPECTED"]);
+  it("watermark: hard STOCK_SUSPECTED only when the detector and the vision check agree", () => {
+    const both = scoreAsset(archive({ watermark: true, moderation: { watermark_or_stock: true } }), project, null, []);
+    expect(both.hardFlags).toEqual(["STOCK_SUSPECTED"]);
+    expect(both.band).toBe("FLAGGED");
+    expect(reason(both, "STOCK_SUSPECTED")?.detail).toEqual({ watermark: true, branding: true });
+  });
+
+  it("one watermark signal alone asks a person (the detector misfires on real photos)", () => {
+    const detector = scoreAsset(archive({ watermark: true }), project, null, []);
+    expect(detector.hardFlags).toEqual([]);
+    expect(reason(detector, "WATERMARK_UNCONFIRMED")).toMatchObject({ kind: "review", points: 0, detail: { watermark: true, branding: false } });
+    expect(codes(detector)).not.toContain("AUTH_CLEAR");
+    expect(detector.band).toBe("NEEDS_REVIEW");
+    expect(describeReason(reason(detector, "WATERMARK_UNCONFIRMED")!)).toMatch(/^Cloudinary's watermark detector found a watermark, but the vision check saw no/);
+    const vision = scoreAsset(archive({ moderation: { watermark_or_stock: true } }), project, null, []);
+    expect(vision.hardFlags).toEqual([]);
+    expect(reason(vision, "WATERMARK_UNCONFIRMED")?.detail).toEqual({ watermark: false, branding: true });
+    expect(describeReason(reason(vision, "WATERMARK_UNCONFIRMED")!)).toMatch(/^The vision check saw a watermark/);
+    expect(vision.band).toBe("NEEDS_REVIEW");
   });
 
   it("not checked yet: 0", () => {
@@ -341,7 +357,7 @@ describe("quality, provenance, privacy", () => {
 
 describe("score, cap and bands", () => {
   it("a hard flag caps the score at 40 with its own reason, so the ledger still adds up", () => {
-    const r = scoreAsset(witness({ watermark: true }), project, null, []);
+    const r = scoreAsset(witness({ watermark: true, moderation: { watermark_or_stock: true } }), project, null, []);
     expect(r.score).toBe(40);
     expect(reason(r, "HARD_FLAG_CAP")).toMatchObject({ points: -45, detail: { cap: 40 } });
     expect(sum(r)).toBe(r.score);

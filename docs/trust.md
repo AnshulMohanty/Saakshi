@@ -39,7 +39,8 @@ English sentence; no LLM writes any of it. All numbers live in `src/lib/trust/co
 | Authenticity (max 15) | Moderation clear | +15 | `AUTH_CLEAR` |
 | | Photo of a screen or a print | −10, review | `SCREEN_OR_PRINT` |
 | | Looks composited or generated (never a hard flag) | −10, review | `COMPOSITED` |
-| | Watermark or stock branding | **hard** | `STOCK_SUSPECTED` |
+| | Watermark or stock branding: Cloudinary's watermark detector **and** the vision check agree | **hard** | `STOCK_SUSPECTED` |
+| | Only one of the two sees a watermark (the detector misfires on real photos: confidence 1.0 on a rubbish heap with no mark) | review | `WATERMARK_UNCONFIRMED` |
 | Stamp | Burned-in GPS more than 1 km off, or date more than 1 day off | **hard** | `STAMP_MISMATCH` |
 | Quality (max 10) | Quality ≥ 0.6 | +10 | `QUALITY_OK` |
 | Provenance (max 5) | Camera make and model recorded | +5 | `PROVENANCE_CAMERA` |

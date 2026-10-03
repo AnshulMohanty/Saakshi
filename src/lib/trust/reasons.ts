@@ -39,7 +39,11 @@ const SENTENCES: Record<ReasonCode, (d: D) => string> = {
   AUTH_UNCHECKED: () => "Authenticity checks have not run yet.",
   SCREEN_OR_PRINT: () => "Looks like a photo of a screen or of a printed photo.",
   COMPOSITED: () => "May be digitally composited or AI-generated (flagged for a person to check; this is not a deepfake verdict).",
-  STOCK_SUSPECTED: () => "Shows a watermark or stock-photo branding.",
+  STOCK_SUSPECTED: () => "Shows a watermark or stock-photo branding: Cloudinary's watermark detector and the vision check both found it.",
+  WATERMARK_UNCONFIRMED: (d) =>
+    d.watermark
+      ? "Cloudinary's watermark detector found a watermark, but the vision check saw no watermark or stock branding. A person should look."
+      : "The vision check saw a watermark or stock branding, but Cloudinary's watermark detector found none. A person should look.",
   STAMP_CONSISTENT: () => "A burned-in GPS stamp agrees with the capture location and date.",
   STAMP_UNVERIFIABLE: () => "A burned-in stamp was found, but there is nothing to check it against.",
   STAMP_MISMATCH: (d) =>

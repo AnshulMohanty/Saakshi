@@ -68,7 +68,7 @@ export function simulationSignals(f: SimFacts): { signals: TrustSignals; dups: D
     capturedAtTzAssumed: false,
     capturedAtPrecision: "second",
     uploadedAt: "2026-11-21T09:00:00+05:30",
-    moderation: { screen_or_print: f.screen, composited_or_generated: false, watermark_or_stock: false, children_faces: false },
+    moderation: { screen_or_print: f.screen, composited_or_generated: false, watermark_or_stock: f.watermark, children_faces: false },
     watermark: f.watermark,
     textInImage: null,
     childrenVisible: false,

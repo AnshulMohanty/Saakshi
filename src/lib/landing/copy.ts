@@ -41,6 +41,8 @@ export function flagTitle(r: Pick<TrustReason, "code" | "detail">): string {
       return `Same photo already used in ${d.otherProject ?? "another project"}`;
     case "STOCK_SUSPECTED":
       return "Stock-site watermark";
+    case "WATERMARK_UNCONFIRMED":
+      return "A possible watermark, for a person to check";
     case "LOCATION_MISMATCH":
       return `Taken ${km(d.distanceKm)} km from the site`;
     case "STAMP_MISMATCH":
