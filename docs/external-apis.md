@@ -211,6 +211,12 @@ Neither is set in this repo yet (MANUAL_STEPS step 0).
 |------|--------|
 | `pnpm land:dots` downloads `ne_50m_land.geojson` once from the tagged repo (`nvkelso/natural-earth-vector` **v5.1.2**, raw.githubusercontent.com) through `src/lib/providers/http.ts`, caches it in `.data/geo/` and writes `data/land-dots.json` (7,660 dots). The app never calls it at runtime. | VERIFIED: public domain (naturalearthdata.com/about/terms-of-use), file shape is a GeoJSON FeatureCollection of Polygon/MultiPolygon land features |
 
+## DataMeet: the official outline of India (build time only)
+
+| Item | Status |
+|------|--------|
+| `pnpm map:india` downloads `Country/india-soi.geojson` once from `datameet/maps` (raw.githubusercontent.com) through `src/lib/providers/http.ts`, caches it in `.data/geo/` and writes `public/geo/india.json` (docs/map-data.md). The app never calls it at runtime; browsers load the static file. | VERIFIED: the repository's `Country/README.md` gives this file's licence as CC BY-SA 2.5 / ODbL and describes it as the dissolved official Survey of India boundary; file shape is a GeoJSON FeatureCollection of Polygon/MultiPolygon features |
+
 ## Rendering and tooling
 
 | Item | Status |

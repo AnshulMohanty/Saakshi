@@ -41,6 +41,7 @@
     "design:tokens": "tsx scripts/design-tokens.ts",
     "design:port": "tsx scripts/design-port.ts",
     "land:dots": "tsx --conditions=react-server scripts/land-dots.ts",
+    "map:india": "tsx --conditions=react-server scripts/india-map.ts",
     "parity:boxes": "tsx --conditions=react-server scripts/parity-boxes.ts",
     "parity:inspect": "tsx scripts/parity-inspect.ts",
     "parity:motion": "tsx --conditions=react-server scripts/parity-motion.ts",
