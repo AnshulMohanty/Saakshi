@@ -203,14 +203,19 @@ export async function rescoreProject(db: DB, media: MediaProvider, projectId: st
 
 
 /** Re-scores every scored asset, oldest first (settles results after concurrent imports). */
-export async function rescoreAll(db: DB, media: MediaProvider, why: string) {
+/** Every scored photo, oldest first. `log` gets a progress line every 10 photos (long runs aren't silent). */
+export async function rescoreAll(db: DB, media: MediaProvider, why: string, log?: (m: string) => void) {
   const rows = await db
     .select({ id: assets.id })
     .from(assets)
     .where(isNotNull(assets.trustScore))
     .orderBy(sql`${assets.capturedAt} asc nulls last`, assets.id);
   let changed = 0;
-  for (const { id } of rows) if ((await rescoreAsset(db, media, id, why))?.changed) changed++;
+  let i = 0;
+  for (const { id } of rows) {
+    if ((await rescoreAsset(db, media, id, why))?.changed) changed++;
+    if (++i % 10 === 0 && i < rows.length) log?.(`  re-scored ${i} of ${rows.length} (${changed} changed)`);
+  }
   return { rescored: rows.length, changed };
 }
 

@@ -20,6 +20,8 @@
     "demo:plant": "tsx --conditions=react-server scripts/demo-plant.ts",
     "demo:reset": "tsx --conditions=react-server scripts/demo-reset.ts",
     "tunnel": "node scripts/tunnel.mjs",
+    "media:rehash": "tsx --conditions=react-server scripts/media-rehash.ts",
+    "demo:status": "tsx --conditions=react-server scripts/demo-status.ts",
     "demo:stage": "tsx --conditions=react-server scripts/demo-stage.ts",
     "measure:pairs": "tsx --conditions=react-server scripts/measure-pairs.ts",
     "cld:setup": "tsx --conditions=react-server scripts/cld-setup.ts",

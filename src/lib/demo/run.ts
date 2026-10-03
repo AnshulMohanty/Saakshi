@@ -27,6 +27,7 @@ import { DEMO_DATASET } from "../../../data/demo-dataset.config";
 import type { Logger } from "./common";
 import { importDemo, type DemoDeps, type ImportReport } from "./import";
 import { plantDemo, type PlantedAsset } from "./plant";
+import { PipelineProgress, type AssetOutcome } from "./progress";
 import { wipeDemo, type WipeReport } from "./reset";
 
 export const CANDIDATES_PATH = path.join(process.cwd(), "data", "archive-candidates.json");
@@ -76,11 +77,42 @@ async function setup(opts: DemoRunOptions): Promise<DemoDeps & { drain: () => Pr
 
   const deps = await getPipelineDeps();
   const registry = new HandlerRegistry();
+  const progress = new PipelineProgress(opts.log ?? (() => {}));
   registry.on("asset.uploaded", async ({ assetId }) => {
-    await runPipeline(deps, assetId);
+    progress.start(assetId);
+    let error: unknown = null;
+    try {
+      await runPipeline(deps, assetId);
+    } catch (err) {
+      error = err;
+    }
+    progress.finish(assetId, await outcomeOf(db, assetId, error));
   });
-  const queue = new InlineQueue(registry, { concurrency: 4 });
-  return { ...base, enqueue: (assetId) => queue.send("asset.uploaded", { assetId }), drain: () => queue.drain() };
+  // Errors are recorded on the step and reported above; the queue doesn't print them again.
+  const queue = new InlineQueue(registry, { concurrency: 4, onError: () => {} });
+  return {
+    ...base,
+    enqueue: (assetId) => {
+      progress.enqueue();
+      return queue.send("asset.uploaded", { assetId });
+    },
+    drain: () => (queue.activeCount ? progress.heartbeat(queue.drain()) : queue.drain()),
+  };
+}
+
+/** What one pipeline run ended with, for the progress line. */
+async function outcomeOf(db: DemoDeps["db"], assetId: string, error: unknown): Promise<AssetOutcome> {
+  const [a] = await db.select().from(assets).where(eq(assets.id, assetId)).limit(1);
+  const label = a?.externalId ?? (a?.testCase ? `planted:${a.testCase}` : assetId.slice(0, 8));
+  const steps = a?.pipeline?.steps ?? {};
+  const failedStep = Object.entries(steps).find(([, r]) => r?.status === "error");
+  if (error || failedStep) {
+    const message = failedStep?.[1]?.error ?? (error instanceof Error ? error.message : String(error));
+    return { label, status: null, failed: { step: failedStep?.[0] ?? "pipeline", error: message } };
+  }
+  const m = steps.measure?.output as { status?: string; skipped?: string; reason?: string } | undefined;
+  const measure = m ? (m.skipped ? `skipped: ${m.skipped}` : m.status === "unmeasurable" ? `unmeasurable: ${m.reason}` : (m.status ?? null)) : null;
+  return { label, status: a?.status ?? null, band: a?.trustBand, score: a?.trustScore, measure };
 }
 
 export interface DemoSummary {
@@ -96,15 +128,18 @@ export interface DemoSummary {
 
 async function summarise(deps: DemoDeps): Promise<Pick<DemoSummary, "statuses" | "audit" | "trust" | "pairing">> {
   // Photos scored concurrently can miss each other for a moment; one ordered pass settles them.
-  const settled = await rescoreAll(deps.db, deps.media, "settle after demo run");
+  deps.log?.("Settling trust scores, then baselines and before/after pairs…");
+  const settled = await rescoreAll(deps.db, deps.media, "settle after demo run", deps.log);
   if (settled.changed) deps.log?.(`Settled trust scores: ${settled.changed} of ${settled.rescored} changed.`);
   // Baselines: each demo spot's earliest eligible photo (archive photos arrive in any order). Then pairs.
   const demo = await deps.db.select({ id: projects.id, name: projects.name }).from(projects).where(eq(projects.source, "demo_archive"));
   const pairing: PairingSummary[] = [];
   for (const p of demo) {
     for (const s of await deps.db.select({ id: spots.id }).from(spots).where(eq(spots.projectId, p.id))) await refreshBaseline(deps.db, s.id, { force: true });
+    const t = Date.now();
     const r = await autoPairProject({ db: deps.db, media: deps.media, measureMax: getConfig().env.MEASURE_MAX_PER_PROJECT }, p.id);
     pairing.push(summarisePairing(p.name, r.result));
+    deps.log?.(`  ${p.name}: ${r.result.pairs.length} pair(s), ${r.comparisons} comparison(s) (${((Date.now() - t) / 1000).toFixed(0)} s)`);
   }
   const rows = await deps.db
     .select({ status: assets.status, n: count() })

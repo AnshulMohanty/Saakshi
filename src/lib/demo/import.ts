@@ -181,10 +181,12 @@ export async function importDemo(deps: DemoDeps, candidates: Candidate[], cfg: D
         await deps.enqueue(assetId);
       } else {
         report.skipped++;
-        const [a] = await deps.db.select({ status: assets.status }).from(assets).where(eq(assets.id, assetId));
-        if (a?.status === "processing") {
+        const [a] = await deps.db.select({ status: assets.status, pipeline: assets.pipeline }).from(assets).where(eq(assets.id, assetId));
+        // Resume an interrupted or failed pipeline (steps are idempotent; done steps are skipped).
+        // Scoring sets the status before measure runs, so "not completed" is the test, not "processing".
+        if (a && (a.status === "processing" || !a.pipeline?.completedAt)) {
           report.requeued++;
-          await deps.enqueue(assetId); // resume an interrupted pipeline (steps are idempotent)
+          await deps.enqueue(assetId);
         }
       }
     }
