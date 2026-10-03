@@ -23,7 +23,9 @@ export async function AppRoute({ screen, project, sp }: { screen: Screen; projec
   let data: AppData | null = null;
   let state: DemoState = "normal";
   try {
-    data = await appView(await getDb(), getMediaProvider(), { policy: displayPolicy(), project: project ?? one("project") ?? null });
+    // Each route builds only what its screen shows (the shell switches screens by navigating).
+    const include = { projects: screen === "projects", studio: screen === "studio" };
+    data = await appView(await getDb(), getMediaProvider(), { policy: displayPolicy(), project: project ?? one("project") ?? null, include });
     if (!data.photos.length) state = "empty";
   } catch (err) {
     const id = randomUUID().slice(0, 6);

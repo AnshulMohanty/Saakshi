@@ -110,4 +110,22 @@ describe("appView", () => {
     expect(before.title).toBe("River bank 1");
     expect(d.projectScreens.tiruppur.kpis.find((x) => x.k === "before")?.tag).toBe("Prototype measurement");
   });
+
+  it("builds only what a route shows: the library and review skip the project screens and Studio", async () => {
+    const { appView } = await import("@/lib/app/view");
+    const all = await appView(ctx.db, ctx.media, { policy: DEV });
+    const lib = await appView(ctx.db, ctx.media, { policy: DEV, include: { projects: false, studio: false } });
+    expect(lib.photos).toEqual(all.photos);
+    expect(lib.projects).toEqual(all.projects);
+    expect(lib.projectIds).toEqual(all.projectIds);
+    expect(lib.projectScreens).toEqual({});
+    expect(lib.studio).toBeNull();
+    const proj = await appView(ctx.db, ctx.media, { policy: DEV, include: { projects: true, studio: false } });
+    expect(proj.projectScreens).toEqual(all.projectScreens);
+    expect(proj.studio).toBeNull();
+    // Studio builds its own project's screen: the same Studio as the full view.
+    const studio = await appView(ctx.db, ctx.media, { policy: DEV, include: { projects: false, studio: true } });
+    expect(studio.studio).toEqual(all.studio);
+    expect(studio.projectScreens).toEqual({});
+  });
 });

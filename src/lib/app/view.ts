@@ -36,7 +36,14 @@ const BAND = { VERIFIED: "Verified", NEEDS_REVIEW: "Needs review", FLAGGED: "Fla
 const coord = (v: number, dir: [string, string]) => `${Math.abs(v).toFixed(5)}° ${v >= 0 ? dir[0] : dir[1]}`;
 const pct = (v: number) => `${Number.isInteger(v) ? v : v.toFixed(1)}%`;
 
-export async function appView(db: DB, media: MediaProvider, o: { policy: DisplayPolicy; project?: string | null }): Promise<AppData> {
+/**
+ * `include` skips the parts a route never shows (the library and review screens don't render the
+ * project screens or Studio; switching screens loads the next route's own data). Their payload was
+ * most of the page, and it sits inside the route's loading boundary, which the first tile waits for.
+ */
+export async function appView(db: DB, media: MediaProvider, o: { policy: DisplayPolicy; project?: string | null; include?: { projects?: boolean; studio?: boolean } }): Promise<AppData> {
+  const withProjects = o.include?.projects ?? true;
+  const withStudio = o.include?.studio ?? true;
   const off = offsetMinutes(getConfig().env.EXIF_DEFAULT_UTC_OFFSET);
   const when = (d: Date | null) => (d ? fullDateTime(d.getTime(), "second", off, { seconds: true }) : null);
   const rows = (await db.select().from(assets).where(isNotNull(assets.trustBand)).orderBy(desc(assets.uploadedAt), assets.id).limit(500)) as Asset[];
@@ -152,7 +159,7 @@ export async function appView(db: DB, media: MediaProvider, o: { policy: Display
   const projectsOut: AppProject[] = placed.map((p) => ({ key: p.key, name: p.name, city: p.city, lat: p.lat, lng: p.lng, card: sides[p.key], href: `/projects/${p.key}`, aliases: [] }));
 
   const projectScreens: Record<string, ProjectScreen> = {};
-  for (const p of placed) projectScreens[p.key] = await projectScreen(db, media, p, photos, o.policy);
+  if (withProjects) for (const p of placed) projectScreens[p.key] = await projectScreen(db, media, p, photos, o.policy);
 
   const hero = await heroProject(db);
   const studioKey = o.project ?? hero.project?.slug ?? hero.project?.id ?? placed[0]?.key ?? null;
@@ -162,7 +169,7 @@ export async function appView(db: DB, media: MediaProvider, o: { policy: Display
     photos,
     projects: projectsOut,
     projectScreens,
-    studio: studioProject ? await studioScreen(db, media, studioProject, photos, projectScreens[studioProject.key], o.policy) : null,
+    studio: withStudio && studioProject ? await studioScreen(db, media, studioProject, photos, projectScreens[studioProject.key] ?? (await projectScreen(db, media, studioProject, photos, o.policy)), o.policy) : null,
     captureHref: "/capture",
     importToast: `${photos.length} photos sorted into ${placed.length} projects by place and date`,
     errorDetail: "",
