@@ -10,10 +10,12 @@ import type { LiveEvent } from "@/lib/live";
  * Chapter 9 (L:1008-1030): the QR to the witness camera, and the full map of India where real
  * Witness photos land as they arrive (/api/live, B5.8): each one drops onto its place as a
  * thumbnail with a ripple. The QR is rendered on the server (level M), dark modules on white.
- * The feed opens once, when the chapter first comes near, and stays open for the visit.
+ * The feed is polled every 6 s while the chapter is on screen.
  */
 type Arrival = Pick<LiveEvent, "id" | "thumbUrl" | "place" | "band"> & { lat: number; lng: number; at: number };
 
+/** How often chapter 9 asks the feed for new witness photos while it is on screen. */
+const LIVE_POLL_MS = 6000;
 const BAND_WORD: Record<string, string> = { VERIFIED: "verified", NEEDS_REVIEW: "needs review", FLAGGED: "flagged" };
 
 export function WitnessChapter({ data, qrSvg, live = true }: { data: LandingData; qrSvg: string; live?: boolean }) {
@@ -25,35 +27,49 @@ export function WitnessChapter({ data, qrSvg, live = true }: { data: LandingData
   useEffect(() => {
     const el = box.current;
     if (!el || !live) return;
-    let es: EventSource | null = null;
     const nearest = (lat: number, lng: number) => w.spots.reduce((best, s) => ((s.lat - lat) ** 2 + (s.lng - lng) ** 2 < (best.lat - lat) ** 2 + (best.lng - lng) ** 2 ? s : best), w.spots[0]);
-    const open = () => {
-      if (es) return;
-      try {
-        es = new EventSource("/api/live");
-        es.addEventListener("arrival", (m) => {
-          const ev = JSON.parse((m as MessageEvent<string>).data) as LiveEvent;
-          if (!ev.location) return;
-          const near = w.spots.length ? nearest(ev.location.lat, ev.location.lng).city : null;
-          setLatest(`New witness photo${ev.place ? ` at ${ev.place}` : near ? ` near ${near}` : ""}${ev.band ? `, ${BAND_WORD[ev.band] ?? ev.band.toLowerCase()}` : ""}`);
-          setArrivals((a) => [{ id: ev.id, thumbUrl: ev.thumbUrl, place: ev.place, band: ev.band, lat: ev.location!.lat, lng: ev.location!.lng, at: Date.now() }, ...a.filter((x) => x.id !== ev.id)].slice(0, 6));
-        });
-      } catch {
-        es = null;
-      }
+    const arrive = (ev: LiveEvent) => {
+      if (ev.kind !== "arrival" || !ev.location) return;
+      const near = w.spots.length ? nearest(ev.location.lat, ev.location.lng).city : null;
+      setLatest(`New witness photo${ev.place ? ` at ${ev.place}` : near ? ` near ${near}` : ""}${ev.band ? `, ${BAND_WORD[ev.band] ?? ev.band.toLowerCase()}` : ""}`);
+      setArrivals((a) => [{ id: ev.id, thumbUrl: ev.thumbUrl, place: ev.place, band: ev.band, lat: ev.location!.lat, lng: ev.location!.lng, at: Date.now() }, ...a.filter((x) => x.id !== ev.id)].slice(0, 6));
     };
-    // One stream per visit, opened when the chapter first comes near and kept until the page goes:
-    // reopening on every pass would start a new server stream each time (the route allows 4 per client).
-    const io = new IntersectionObserver((e) => {
-      if (!e.some((x) => x.isIntersecting)) return;
-      io.disconnect();
-      open();
-    }, { rootMargin: "400px" });
+    // Polls the feed (?since=, the same events) while the chapter is on screen. A stream per visitor
+    // would count against the route's four per client, which Vercel frees late; the Wall keeps the stream.
+    let cursor = new Date().toISOString();
+    let visible = false;
+    let stopped = false;
+    let timer = 0;
+    const poll = async () => {
+      if (stopped || !visible) return;
+      try {
+        const r = await fetch(`/api/live?since=${encodeURIComponent(cursor)}`, { cache: "no-store" });
+        if (r.ok) {
+          const j = (await r.json()) as { events: LiveEvent[]; cursor: string };
+          cursor = j.cursor;
+          j.events.forEach(arrive);
+        }
+      } catch {
+        // offline: try again on the next tick
+      }
+      if (!stopped && visible) timer = window.setTimeout(() => void poll(), LIVE_POLL_MS);
+    };
+    const io = new IntersectionObserver(
+      (e) => {
+        const was = visible;
+        visible = e.some((x) => x.isIntersecting);
+        if (visible && !was) {
+          window.clearTimeout(timer);
+          void poll();
+        }
+      },
+      { rootMargin: "200px" },
+    );
     io.observe(el);
     return () => {
+      stopped = true;
       io.disconnect();
-      es?.close();
-      es = null;
+      window.clearTimeout(timer);
     };
   }, [live, w.spots]);
 
