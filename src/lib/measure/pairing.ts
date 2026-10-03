@@ -27,6 +27,8 @@ export interface PairPhoto {
   stage: Stage | null;
   phash: string | null;
   embedding?: number[] | null;
+  /** Cloudinary refused to measure it (lib/measure/measure.ts): it can't be one side of a pair. */
+  unmeasurable?: boolean;
 }
 
 export interface PairProject {
@@ -44,7 +46,7 @@ export interface PairSpot {
 export const PAIRING_DEFAULTS = { maxRadiusM: 30, approximateMaxRadiusM: 150, perSpot: 3 };
 export type PairingOptions = typeof PAIRING_DEFAULTS;
 
-export type PhotoExclusion = "no_spot" | "no_time" | "no_location" | "flagged" | "rejected" | "not_scored";
+export type PhotoExclusion = "no_spot" | "no_time" | "no_location" | "flagged" | "rejected" | "not_scored" | "unmeasurable";
 export type PairRejection = "outside_spot" | "gap_too_short" | "same_time" | "gap_unknown";
 
 export interface PairCandidate {
@@ -164,6 +166,7 @@ export function findPairs(project: PairProject, spots: PairSpot[], photos: PairP
   for (const p of photos) {
     const reasons = exclusionsOf(p);
     if (p.spotId && !spotById.has(p.spotId)) reasons.push("no_spot");
+    if (p.unmeasurable) reasons.push("unmeasurable");
     if (reasons.length) {
       excluded.push({ id: p.id, reasons });
       continue;
@@ -199,7 +202,8 @@ export function findPairs(project: PairProject, spots: PairSpot[], photos: PairP
  * "after" photo, the latest eligible photo.
  */
 export function chooseBaseline<T extends PairPhoto & { score: number | null }>(photos: T[]): T | null {
-  const eligible = photos.filter((p) => exclusionsOf(p).length === 0);
+  // A baseline is measured: a photo Cloudinary couldn't measure doesn't qualify.
+  const eligible = photos.filter((p) => exclusionsOf(p).length === 0 && !p.unmeasurable);
   return (
     eligible.sort(
       (a, b) =>
@@ -218,6 +222,7 @@ const EXCLUSION_TEXT: Record<PhotoExclusion, string> = {
   flagged: "flagged by the Trust Engine",
   rejected: "rejected by a reviewer",
   not_scored: "not scored yet",
+  unmeasurable: "Cloudinary couldn't measure it",
 };
 const REJECTION_TEXT: Record<PairRejection, string> = {
   outside_spot: "a photo is outside the spot radius",

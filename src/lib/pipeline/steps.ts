@@ -194,6 +194,8 @@ const measureStep: Step = async (deps, asset) => {
   if (excluded.length) return { output: { skipped: excluded.join(", ") }, patch: {} };
 
   const measured = await measureAsset(deps, asset, kind);
+  // Cloudinary refused every prompt: say why, record no number, and let finalize run.
+  if (measured.status === "unmeasurable") return { output: { status: "unmeasurable", reason: measured.reason }, patch: {} };
   const output: Record<string, unknown> = { status: measured.status, values: Object.fromEntries(measured.rows.map((r) => [r.metric, r.value])) };
   const baselineId = await refreshBaseline(deps.db, spot.id);
   output.baseline = baselineId;

@@ -2,7 +2,9 @@ import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { verifyAllChains } from "@/lib/audit";
 import { assets, comparisons, measurements, projects, spots, type CaptureInfo } from "@/lib/db/schema";
-import { autoPairProject, CAVEAT, FRAME_KEY, manualPair, PairError, remeasure } from "@/lib/measure/measure";
+import { ExtractRefusedError } from "@/lib/media/extract-refusal";
+import { autoPairProject, CAVEAT, FRAME_KEY, LITTER_PROMPTS, manualPair, measureAsset, PairError, remeasure, unmeasurableReason } from "@/lib/measure/measure";
+import { describeExclusion } from "@/lib/measure/pairing";
 import { runPipeline } from "@/lib/pipeline/runner";
 import type { MediaProvider } from "@/lib/providers/media";
 import { createTestContext, litterScene, type TestContext } from "./helpers";
@@ -260,5 +262,87 @@ describe("live stage: photograph the littered table, clean it, photograph again"
     expect(c).toMatchObject({ origin: "checkin", beforeAssetId: littered, method: "measured" });
     expect(c.delta).toBeLessThan(-20);
     expect(c.gapHours).toBeCloseTo(0.1, 2);
+  });
+});
+
+describe("Cloudinary refuses the extraction: the photo is not measurable", () => {
+  let ctx: TestContext;
+  let projectId: string;
+  let spotId: string;
+  const refusedIds = new Set<string>();
+  let refusedCalls = 0;
+
+  beforeAll(async () => {
+    ctx = await createTestContext();
+    const media = ctx.deps.media as MediaProvider;
+    const extract = media.extractMask.bind(media);
+    media.extractMask = (publicId, ...rest) => {
+      if (refusedIds.has(publicId)) {
+        refusedCalls++;
+        return Promise.reject(new ExtractRefusedError(LITTER_PROMPTS, "Invalid input for extract"));
+      }
+      return extract(publicId, ...rest);
+    };
+    [{ id: projectId }] = await ctx.db
+      .insert(projects)
+      .values({ name: "Lake cleanup", type: "cleanup", centerLat: SITE.lat, centerLng: SITE.lng, radiusM: 300, startDate: "2017-09-01", endDate: "2017-09-30", minPairGapHours: 0.5, locationApproximate: true })
+      .returning();
+    [{ id: spotId }] = await ctx.db.insert(spots).values({ projectId, name: "Ghat", slug: "lake-ghat", lat: SITE.lat, lng: SITE.lng, radiusM: 60 }).returning();
+  }, 60_000);
+  afterAll(async () => {
+    await ctx?.close();
+  });
+
+  async function archive(bytes: Buffer, date: string, filename: string, refuse = false) {
+    const up = await ctx.media.upload({ file: bytes, folder: "saakshi/test", context: { filename } });
+    if (refuse) refusedIds.add(up.publicId);
+    const commons = { date: { local: date, precision: "second" }, lat: SITE.lat, lng: SITE.lng, make: "NIKON", model: "D7000" };
+    const [row] = await ctx.db
+      .insert(assets)
+      .values({ source: "archive", cldPublicId: up.publicId, etag: up.etag, phash: up.phash, width: up.width, height: up.height, qualityScore: 0.8, pipeline: { ingest: { commons, mediaMetadata: {}, hint: { projectId, spotId } }, steps: {} } })
+      .returning();
+    await runPipeline(ctx.deps, row.id);
+    return (await ctx.db.select().from(assets).where(eq(assets.id, row.id)))[0];
+  }
+
+  it("records the reason, stores no number, lets finalize run, and keeps the photo out of pairs and baselines", async () => {
+    const before = await archive(await litterScene(0.4, 11), "2017-09-05T08:00:00", "lake-ghat-garbage-before.jpg");
+    const after = await archive(await litterScene(0.02, 12), "2017-09-05T20:00:00", "lake-ghat-after-cleanup.jpg", true);
+    const during = await archive(await litterScene(0.2, 13), "2017-09-05T12:00:00", "lake-ghat-cleanup-drive.jpg");
+
+    expect(after.pipeline.steps.measure).toMatchObject({ status: "done", output: { status: "unmeasurable", reason: 'Cloudinary refused the extraction for litter, garbage, plastic-waste, floating-waste ("Invalid input for extract", HTTP 400)' } });
+    expect(after.pipeline.steps.finalize?.status).toBe("done");
+    expect(after.pipeline.completedAt).toBeTruthy();
+    expect(after.status).toBe("ready");
+    expect(unmeasurableReason(after)).toMatch(/^Cloudinary refused the extraction/);
+    expect(await ctx.db.select().from(measurements).where(eq(measurements.assetId, after.id))).toEqual([]);
+
+    // The best "after" photo is unmeasurable, so it is not the baseline.
+    const [spot] = await ctx.db.select().from(spots).where(eq(spots.id, spotId));
+    expect(spot.baselineAssetId).not.toBe(after.id);
+
+    const r = await autoPairProject({ db: ctx.db, media: ctx.deps.media }, projectId);
+    expect(r.result.excluded).toContainEqual({ id: after.id, reasons: ["unmeasurable"] });
+    expect(describeExclusion("unmeasurable")).toBe("Cloudinary couldn't measure it");
+    const cs = await ctx.db.select().from(comparisons).where(eq(comparisons.projectId, projectId));
+    expect(cs.length).toBeGreaterThan(0);
+    expect(cs.every((c) => c.beforeAssetId !== after.id && c.afterAssetId !== after.id)).toBe(true);
+    expect(new Set(cs.flatMap((c) => [c.beforeAssetId, c.afterAssetId]))).toEqual(new Set([before.id, during.id]));
+
+    // Asked once only: the recorded refusal is reused, Cloudinary isn't asked again.
+    const calls = refusedCalls;
+    const [fresh] = await ctx.db.select().from(assets).where(eq(assets.id, after.id));
+    expect(await measureAsset({ db: ctx.db, media: ctx.deps.media }, fresh, "litter", { enforceCap: false })).toMatchObject({ status: "unmeasurable", rows: [] });
+    expect(refusedCalls).toBe(calls);
+    expect((await verifyAllChains(ctx.db)).ok).toBe(true);
+  });
+
+  it("a manual pair with an unmeasurable photo is refused, saying why", async () => {
+    const photos = await ctx.db.select().from(assets).where(eq(assets.projectId, projectId));
+    const after = photos.find((p) => unmeasurableReason(p))!;
+    const before = photos.find((p) => p.id !== after.id && p.capturedAt! < after.capturedAt!)!;
+    const err = await manualPair({ db: ctx.db, media: ctx.deps.media }, projectId, [before.id, after.id]).catch((e) => e);
+    expect(err).toBeInstanceOf(PairError);
+    expect(err.reasons).toEqual(["after:unmeasurable"]);
   });
 });

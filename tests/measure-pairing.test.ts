@@ -187,3 +187,15 @@ describe("date precision", () => {
     expect(evaluatePair(plantation, spot, a, c).ok).toBe(true);
   });
 });
+
+describe("photos Cloudinary couldn't measure", () => {
+  it("take no part in pairs (excluded as unmeasurable) and are never the baseline", () => {
+    const before = photo({ capturedAt: "2017-09-05T08:00:00Z", stage: "before" });
+    const after = photo({ capturedAt: "2017-09-05T20:00:00Z", stage: "after", unmeasurable: true });
+    const during = photo({ capturedAt: "2017-09-05T12:00:00Z" });
+    const r = findPairs(cleanup, [spot], [before, after, during], opts1);
+    expect(r.excluded).toEqual([{ id: after.id, reasons: ["unmeasurable"] }]);
+    expect(r.pairs.map((p) => [p.beforeId, p.afterId])).toEqual([[before.id, during.id]]);
+    expect(chooseBaseline([before, after, during].map((p) => ({ ...p, score: 90 })))?.id).toBe(during.id);
+  });
+});

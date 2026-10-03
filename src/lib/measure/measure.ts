@@ -9,12 +9,16 @@
  *   waste", multiple). Secondary: items visible, the AI's counts (ai_estimated, with confidence).
  * - plantation: green cover from extractMask("trees, plants, grass"), checked against ExG green
  *   cover. More than 15 points apart → low confidence.
+ * - When Cloudinary refuses the extraction for every prompt, the photo is "unmeasurable": its
+ *   measure step records the reason, no number is stored, and it takes no part in pairs or
+ *   baselines (media/extract-refusal.ts).
  */
 import { and, count, countDistinct, eq, inArray } from "drizzle-orm";
 import type { DB } from "../db/client";
 import { assets, comparisons, measurements, projects, spots, type Asset, type Comparison, type ComparisonDetail, type Measurement, type MetricId, type Project, type Spot } from "../db/schema";
 import { captureDate } from "../media/composite";
 import { FRAME, VIEW } from "../media/derivatives";
+import { ExtractRefusedError } from "../media/extract-refusal";
 import { compileTransform } from "../media/transform";
 import type { MediaProvider } from "../providers/media";
 import { DISAGREEMENT_POINTS, exgCover, maskCover, MASK_THRESHOLD } from "./cover";
@@ -51,6 +55,12 @@ export interface MeasureDeps {
   measureMax?: number;
 }
 
+/** The measure step recorded that Cloudinary couldn't measure this photo (the reason, else null). */
+export function unmeasurableReason(a: Pick<Asset, "pipeline">): string | null {
+  const out = a.pipeline?.steps?.measure?.output as { status?: string; reason?: string } | undefined;
+  return out?.status === "unmeasurable" ? (out.reason ?? "Cloudinary refused the extraction") : null;
+}
+
 /** A photo's pairing view: witness device fix first, else EXIF/Commons GPS. */
 export function pairPhotoOf(a: Asset): PairPhoto {
   const fix = a.source === "witness" ? a.capture?.deviceFix : null;
@@ -64,6 +74,7 @@ export function pairPhotoOf(a: Asset): PairPhoto {
     status: a.status,
     stage: (a.ai?.stage as Stage | undefined) ?? null,
     phash: a.phash,
+    unmeasurable: unmeasurableReason(a) !== null,
   };
 }
 
@@ -76,13 +87,26 @@ async function spotOf(db: DB, spotId: string | null): Promise<Spot | null> {
   return s ?? null;
 }
 
-export type MeasureStatus = "measured" | "cached" | "capped" | "not_measured";
+export type MeasureStatus = "measured" | "cached" | "capped" | "not_measured" | "unmeasurable";
 
 /** Measures one photo on FRAME (cached). `enforceCap` applies MEASURE_MAX_PER_PROJECT. */
-export async function measureAsset(deps: MeasureDeps, asset: Asset, kind: MeasureKind, { enforceCap = true } = {}): Promise<{ status: MeasureStatus; rows: Measurement[] }> {
-  const { primary, secondary } = METRICS[kind];
+export async function measureAsset(deps: MeasureDeps, asset: Asset, kind: MeasureKind, { enforceCap = true } = {}): Promise<{ status: MeasureStatus; rows: Measurement[]; reason?: string }> {
+  const { primary } = METRICS[kind];
   const existing = await deps.db.select().from(measurements).where(and(eq(measurements.assetId, asset.id), eq(measurements.frame, FRAME_KEY)));
   if (existing.some((m) => m.metric === primary)) return { status: "cached", rows: existing };
+  // Already refused (the measure step's record): don't ask Cloudinary again.
+  const known = unmeasurableReason(asset);
+  if (known) return { status: "unmeasurable", rows: existing, reason: known };
+  try {
+    return await measureNow(deps, asset, kind, existing, enforceCap);
+  } catch (err) {
+    if (err instanceof ExtractRefusedError) return { status: "unmeasurable", rows: existing, reason: err.message };
+    throw err;
+  }
+}
+
+async function measureNow(deps: MeasureDeps, asset: Asset, kind: MeasureKind, existing: Measurement[], enforceCap: boolean): Promise<{ status: MeasureStatus; rows: Measurement[] }> {
+  const { primary, secondary } = METRICS[kind];
 
   if (enforceCap && asset.projectId) {
     const [{ n }] = await deps.db
@@ -99,25 +123,28 @@ export async function measureAsset(deps: MeasureDeps, asset: Asset, kind: Measur
   const exgProv = { providerMode: deps.media.kind, provider: deps.media.kind === "real" ? "saakshi:exg-on-cloudinary-frame" : "saakshi:exg-on-mock-frame" };
   const aiProv = { providerMode: (asset.provenance?.ai?.mode ?? "mock") as "mock" | "real", provider: `ai:${asset.ai?.model ?? "unknown"}` };
   if (kind === "litter") {
-    const { maskUrl, buffer } = await deps.media.extractMask(asset.cldPublicId, LITTER_PROMPTS, { multiple: true, frame: FRAME });
-    rows.push({ assetId: asset.id, metric: primary, frame: FRAME_KEY, value: await maskCover(buffer), method: "measured", maskUrl, ...media, detail: { prompt: LITTER_PROMPTS, threshold: MASK_THRESHOLD } });
+    const { maskUrl, buffer, prompts, refused } = await deps.media.extractMask(asset.cldPublicId, LITTER_PROMPTS, { multiple: true, frame: FRAME });
+    rows.push({ assetId: asset.id, metric: primary, frame: FRAME_KEY, value: await maskCover(buffer), method: "measured", maskUrl, ...media, detail: { prompt: LITTER_PROMPTS, threshold: MASK_THRESHOLD, ...promptDetail(prompts, refused) } });
     const counts = (asset.ai?.visibleCounts ?? []).filter((c) => LITTER_WORDS.test(c.label));
     if (asset.ai && counts.length) {
       const confidence = Math.round(Math.min(asset.ai.confidence, ...counts.map((c) => c.confidence)) * 100) / 100;
       rows.push({ assetId: asset.id, metric: secondary, frame: FRAME_KEY, value: counts.reduce((s, c) => s + c.count, 0), method: "ai_estimated", confidence, ...aiProv, detail: { labels: counts.map((c) => c.label), model: asset.ai.model } });
     }
   } else {
-    const { maskUrl, buffer } = await deps.media.extractMask(asset.cldPublicId, GREEN_PROMPTS, { multiple: true, frame: FRAME });
+    const { maskUrl, buffer, prompts, refused } = await deps.media.extractMask(asset.cldPublicId, GREEN_PROMPTS, { multiple: true, frame: FRAME });
     const mask = await maskCover(buffer);
     const exgValue = await exgCover(await deps.media.fetchDerived(asset.cldPublicId, [...FRAME, { format: "png" }]));
     const agreement = Math.round(Math.abs(mask - exgValue) * 10) / 10;
     const lowConfidence = agreement > DISAGREEMENT_POINTS;
-    rows.push({ assetId: asset.id, metric: primary, frame: FRAME_KEY, value: mask, method: "measured", confidence: lowConfidence ? 0.4 : 0.9, maskUrl, ...media, detail: { prompt: GREEN_PROMPTS, threshold: MASK_THRESHOLD, exg: exgValue, agreement, lowConfidence } });
+    rows.push({ assetId: asset.id, metric: primary, frame: FRAME_KEY, value: mask, method: "measured", confidence: lowConfidence ? 0.4 : 0.9, maskUrl, ...media, detail: { prompt: GREEN_PROMPTS, threshold: MASK_THRESHOLD, exg: exgValue, agreement, lowConfidence, ...promptDetail(prompts, refused) } });
     rows.push({ assetId: asset.id, metric: secondary, frame: FRAME_KEY, value: exgValue, method: "measured", ...exgProv, detail: { index: "ExG > 0.05 at 256 px" } });
   }
   await deps.db.insert(measurements).values(rows).onConflictDoNothing();
   return { status: "measured", rows: await deps.db.select().from(measurements).where(and(eq(measurements.assetId, asset.id), eq(measurements.frame, FRAME_KEY))) };
 }
+
+/** When Cloudinary was asked prompt by prompt: which returned a mask and which it refused. */
+const promptDetail = (prompts?: string[], refused?: string[]) => (refused?.length ? { maskedPrompts: prompts ?? [], refusedPrompts: refused } : {});
 
 export interface PairContext {
   origin: Comparison["origin"];
@@ -133,6 +160,8 @@ export async function measurePair(deps: MeasureDeps, project: Project, before: A
   const spot = await spotOf(deps.db, before.spotId);
   if (!spot && !ctx.candidate) return [];
   const [b, a] = await Promise.all([measureAsset(deps, before, kind, { enforceCap: false }), measureAsset(deps, after, kind, { enforceCap: false })]);
+  // No comparison without two measurements: an unmeasurable photo never gets a number.
+  if (b.status === "unmeasurable" || a.status === "unmeasurable") return [];
   const candidate = ctx.candidate ?? evaluatePair(pairProjectOf(project), pairSpotOf(spot!), pairPhotoOf(before), pairPhotoOf(after));
   const composite = await deps.media.composite({ publicId: before.cldPublicId, label: captureDate(before.capturedAt, before.capturedAtPrecision) }, { publicId: after.cldPublicId, label: captureDate(after.capturedAt, after.capturedAtPrecision) });
   const view = { frameBeforeUrl: deps.media.url(before.cldPublicId, VIEW, { signed: true }), frameAfterUrl: deps.media.url(after.cldPublicId, VIEW, { signed: true }) };
@@ -245,6 +274,8 @@ export async function manualPair(deps: MeasureDeps, projectId: string, ids: [str
   if (rows.some((r) => r.projectId !== projectId)) throw new PairError("Both photos must be in this project", ["different_project"]);
   const [before, after] = rows.sort((x, y) => (x.capturedAt?.getTime() ?? 0) - (y.capturedAt?.getTime() ?? 0));
   const reasons = [...exclusionsOf(pairPhotoOf(before)).map((r) => `before:${r}`), ...exclusionsOf(pairPhotoOf(after)).map((r) => `after:${r}`)];
+  if (unmeasurableReason(before)) reasons.push("before:unmeasurable");
+  if (unmeasurableReason(after)) reasons.push("after:unmeasurable");
   if (before.spotId !== after.spotId) reasons.push("different_spot");
   const spot = await spotOf(deps.db, before.spotId);
   if (!spot) throw new PairError("This pair breaks the pairing rules", [...new Set([...reasons, "no_spot"])]);
@@ -282,7 +313,7 @@ export async function refreshBaseline(db: DB, spotId: string, { force = false } 
   if (!spot) return null;
   // Check-ins are compared with the baseline, so they never become it.
   const photos = (await db.select().from(assets).where(eq(assets.spotId, spotId))).filter((a) => a.id === spot.baselineAssetId || a.source !== "witness" || !spot.baselineAssetId);
-  const current = photos.find((p) => p.id === spot.baselineAssetId && exclusionsOf(pairPhotoOf(p)).length === 0);
+  const current = photos.find((p) => p.id === spot.baselineAssetId && exclusionsOf(pairPhotoOf(p)).length === 0 && !unmeasurableReason(p));
   if (current && !force) return current.id;
   const best = chooseBaseline(photos.map((a) => ({ ...pairPhotoOf(a), score: a.trustScore })));
   if ((best?.id ?? null) !== spot.baselineAssetId) await db.update(spots).set({ baselineAssetId: best?.id ?? null }).where(eq(spots.id, spotId));

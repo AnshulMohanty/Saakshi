@@ -16,6 +16,7 @@ import { hamming } from "./hamming";
 import { answeredByNote } from "./ai/perception-copy";
 import { aiSentence, placeShort } from "./landing/copy";
 import { linkChips } from "./media/link-chips";
+import { unmeasurableReason } from "./measure/measure";
 import { AI_PENDING, aiPending, assetMode, mockLabel, type DisplayPolicy } from "./provenance";
 import type { MediaProvider } from "./providers/media";
 import { defaultTrustConfig, describeReason } from "./trust";
@@ -57,6 +58,8 @@ export async function evidencePageData(db: DB, media: MediaProvider, assetId: st
   const answeredBy = answeredByNote(row.provenance?.analysis?.provider);
   const tags = row.ai?.visibleCounts?.length ? row.ai.visibleCounts.map((c) => c.label) : row.cldTags.filter((t) => !/^(saakshi|planted|sandbox|trust_)/.test(t));
   const cover = m && v.trust.hiddenText === null ? `${m.value.toFixed(1)}%` : null;
+  const refused = unmeasurableReason(row);
+  const notMeasured = refused ? `Not measurable: ${refused}. No number is recorded for this photo.` : "Not measured: only spot photos are measured.";
   const chips = linkChips(v.imageUrl);
   // The proof strip is many layered segments (pad, text and QR overlays): one entry.
   const isStrip = (t: string) => /(^|,)(l_|fl_layer_apply|b_rgb)/.test(t);
@@ -111,7 +114,7 @@ export async function evidencePageData(db: DB, media: MediaProvider, assetId: st
         { name: "Where and when", color: "var(--verified)", detail: `${f.location ? `${coord(f.location.lat, ["N", "S"])}, ${coord(f.location.lng, ["E", "W"])}, ` : "No location recorded, "}${when}. ${f.location ? `From ${f.location.from}.` : ""}${f.tzNote ? ` ${f.tzNote}` : ""}` },
         { name: "Fingerprint", color: "var(--primary)", detail: "The 8×8 perceptual hash of the pixels. Used to catch the same photo in any project, even after a crop." },
         { name: "What the AI sees", color: "var(--estimated)", detail: pendingAi ? `${AI_PENDING}. AI-estimated tags describe the photo but never become a number.` : `${aiSentence(tags)} AI-estimated tags; they describe the photo but never become a number.${answeredBy ? ` ${answeredBy}` : ""}` },
-        { name: "What we measured", color: "var(--measured)", detail: m ? (cover ? `${m.metric === "green_cover" ? "Green" : "Litter"} covers ${cover} of the frame, counted from mask pixels at threshold 0.50.${m.providerMode === "mock" ? ` (${tag})` : ""}` : "Measured with a mock provider: not shown in production.") : "Not measured: only spot photos are measured." },
+        { name: "What we measured", color: "var(--measured)", detail: m ? (cover ? `${m.metric === "green_cover" ? "Green" : "Litter"} covers ${cover} of the frame, counted from mask pixels at threshold 0.50.${m.providerMode === "mock" ? ` (${tag})` : ""}` : "Measured with a mock provider: not shown in production.") : notMeasured },
       ],
     },
     chips: v.trust.hiddenText ? [] : ruleChips(v.trust.reasons),
