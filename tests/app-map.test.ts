@@ -1,6 +1,6 @@
 /** The library map's geometry (pure: lib/app/map.ts). */
 import { describe, expect, it } from "vitest";
-import { areaFor, cardOffset, cardSides, CARD, DESIGN_AREA, dotRadius, hash01, PAD, pinPosition, project, zoomBox, ZOOM_SPAN } from "@/lib/app/map";
+import { areaFor, cardOffset, cardSides, CARD, clusterPoints, DESIGN_AREA, dotRadius, fanOut, hash01, PAD, pinPosition, placeCards, project, zoomBox, ZOOM_SPAN } from "@/lib/app/map";
 
 describe("project", () => {
   it("maps the area's corners inside the padded box, far rows narrower (s = 0.8 + 0.2·ny)", () => {
@@ -66,5 +66,74 @@ describe("cards and pins", () => {
     expect(pinPosition({ id: "p12", gps: false, lat: null, lng: null }, c)).toEqual(a);
     expect(pinPosition({ id: "x", gps: true, lat: 19.13, lng: 72.82 }, c)).toEqual({ lat: 19.13, lng: 72.82 });
     expect(pinPosition({ id: "x", gps: true, lat: 28.6, lng: 77.2 }, c)).toBeNull();
+  });
+});
+
+describe("clusters and cards on the India map", () => {
+  it("merges points closer than r into one cluster at their weighted centre, heaviest first", () => {
+    const pts = [
+      { key: "pune", x: 100, y: 100, n: 20 },
+      { key: "fool", x: 110, y: 104, n: 1 },
+      { key: "hyd", x: 300, y: 120, n: 16 },
+    ];
+    const cs = clusterPoints(pts, 40);
+    expect(cs).toHaveLength(2);
+    const a = cs.find((c) => c.keys.includes("pune"))!;
+    expect(a.keys).toEqual(["pune", "fool"]);
+    expect(a.n).toBe(21);
+    expect(a.x).toBeCloseTo((100 * 20 + 110) / 21, 6);
+    expect(cs.find((c) => c.keys.includes("hyd"))!.keys).toEqual(["hyd"]);
+    // Far apart (or a small radius): one cluster each, same order every time.
+    expect(clusterPoints(pts, 5).map((c) => c.keys)).toEqual([["pune"], ["hyd"], ["fool"]]);
+    expect(clusterPoints(pts, 5)).toEqual(clusterPoints(pts, 5));
+    expect(clusterPoints([], 40)).toEqual([]);
+  });
+
+  it("places cards without overlapping each other or another anchor, inside the map", () => {
+    const o = { w: 180, h: 66, gap: 12, edge: 8, top: 48, bottom: 40 };
+    const W = 800;
+    const H = 360;
+    const anchors = [
+      { key: "a", x: 300, y: 150 },
+      { key: "b", x: 330, y: 170 },
+      { key: "c", x: 780, y: 340 },
+    ];
+    const off = placeCards(anchors, W, H, o);
+    const box = (k: string) => {
+      const a = anchors.find((x) => x.key === k)!;
+      return { x: a.x + off[k][0], y: a.y + off[k][1] };
+    };
+    const A = box("a");
+    const B = box("b");
+    const C = box("c");
+    const apart = (p: { x: number; y: number }, q: { x: number; y: number }) => p.x + o.w <= q.x || q.x + o.w <= p.x || p.y + o.h <= q.y || q.y + o.h <= p.y;
+    expect(apart(A, B)).toBe(true);
+    for (const b of [A, B, C]) {
+      expect(b.x).toBeGreaterThanOrEqual(o.edge);
+      expect(b.x + o.w).toBeLessThanOrEqual(W - o.edge);
+      expect(b.y).toBeGreaterThanOrEqual(o.top);
+      expect(b.y + o.h).toBeLessThanOrEqual(H - o.bottom);
+    }
+    // A card never sits on another project's dot.
+    const covers = (c: { x: number; y: number }, p: { x: number; y: number }) => p.x > c.x && p.x < c.x + o.w && p.y > c.y && p.y < c.y + o.h;
+    expect(covers(A, anchors[1])).toBe(false);
+    expect(covers(B, anchors[0])).toBe(false);
+  });
+});
+
+describe("fanOut", () => {
+  it("leaves a lone pin in place and spreads pins at the same spot apart", () => {
+    const pts = [
+      { id: "a", lat: 11, lng: 77 },
+      { id: "b", lat: 11, lng: 77 },
+      { id: "c", lat: 11, lng: 77 },
+      { id: "d", lat: 12, lng: 77 },
+    ];
+    const o = fanOut(pts, 10);
+    expect(o.a).toEqual([0, 0]);
+    expect(o.d).toEqual([0, 0]);
+    expect(Math.hypot(...o.b)).toBeCloseTo(10, 0);
+    expect(Math.hypot(o.b[0] - o.c[0], o.b[1] - o.c[1])).toBeGreaterThan(8);
+    expect(fanOut(pts, 10)).toEqual(o);
   });
 });

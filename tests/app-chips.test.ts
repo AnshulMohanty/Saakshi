@@ -45,6 +45,10 @@ describe("matches", () => {
     expect(matches(p(), none)).toBe(true);
     expect(matches(p(), { ...none, band: "Flagged" })).toBe(false);
     expect(matches(p(), { ...none, zoom: "pune" })).toBe(false);
+    // A map cluster: any of its projects.
+    expect(matches(p(), { ...none, zoom: ["pune", p().project!] })).toBe(true);
+    expect(matches(p(), { ...none, zoom: ["pune"] })).toBe(false);
+    expect(matches(p({ project: null }), { ...none, zoom: ["pune"] })).toBe(false);
     const year = parseChip("2024", projects)!;
     const pune = parseChip("pune", projects)!;
     expect(matches(p(), { ...none, chips: [year] })).toBe(true);

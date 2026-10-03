@@ -6,7 +6,7 @@
  * flight) lives in the shell.
  */
 import type { BandName, Chip, ChipProject } from "@/lib/app/chips";
-import type { BBox, CardSide } from "@/lib/app/map";
+import type { CardSide } from "@/lib/app/map";
 import type { LayerInput } from "@/lib/scenes/layers";
 
 export type { BandName, Chip };
@@ -42,7 +42,7 @@ export interface AppPhoto {
   w: number | null;
   h: number | null;
   credit: { title: string; author: string; license: string; page: string } | null;
-  rows: Array<{ label: string; note: string; pts: number; max: number; tone: Tone }>;
+  rows: Array<{ signal?: string; label: string; note: string; pts: number; max: number; tone: Tone }>;
   hard: string[];
   /** Waits in the review queue. */
   queue: boolean;
@@ -110,14 +110,11 @@ export interface AppData {
   banner: string;
   photos: AppPhoto[];
   projects: AppProject[];
-  area: BBox;
-  land: Array<[number, number]>;
   projectScreens: Record<string, ProjectScreen>;
   studio: StudioScreen | null;
   captureHref: string;
   /** "56 photos sorted into 3 projects by place and date". */
   importToast: string;
-  areaCaption: string;
   errorDetail: string;
   /** Project key → database id (the product's API calls). */
   projectIds: Record<string, string>;

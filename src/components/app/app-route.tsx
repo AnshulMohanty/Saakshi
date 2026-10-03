@@ -37,5 +37,5 @@ export async function AppRoute({ screen, project, sp }: { screen: Screen; projec
 }
 
 function emptyData(errorDetail: string): AppData {
-  return { banner: "Demo workspace. Photos come from Wikimedia Commons.", photos: [], projects: [], area: { lng0: 68, lng1: 92, lat0: 6, lat1: 30 }, land: [], projectScreens: {}, studio: null, captureHref: "/capture", importToast: "", areaCaption: "", errorDetail, projectIds: {}, studioKey: null, studioPlace: "" };
+  return { banner: "Demo workspace. Photos come from Wikimedia Commons.", photos: [], projects: [], projectScreens: {}, studio: null, captureHref: "/capture", importToast: "", errorDetail, projectIds: {}, studioKey: null, studioPlace: "" };
 }

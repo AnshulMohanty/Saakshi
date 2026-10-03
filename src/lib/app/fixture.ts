@@ -11,7 +11,6 @@ import { designArchive } from "../parity/archive";
 import { heroLayer, heroWhen } from "../parity/hero";
 import { skScore } from "../parity/sk";
 import type { SimFacts } from "../trust/simulate";
-import { DESIGN_AREA } from "./map";
 
 const PLANTED: Record<string, string> = { p56: "Same photo already used in Lake clean-up, Pune", p55: "Stock-site watermark", p53: "Taken 1,143 km from the site", p35: "The stamp says Delhi. The camera says Mumbai." };
 const HISTORY = [
@@ -132,8 +131,6 @@ export async function appFixture(): Promise<AppData> {
     banner: "Demo workspace. Photos come from Wikimedia Commons.",
     photos,
     projects,
-    area: DESIGN_AREA,
-    land: D.land,
     projectScreens,
     studio: {
       report: {
@@ -163,7 +160,6 @@ export async function appFixture(): Promise<AppData> {
     },
     captureHref: "Capture.html",
     importToast: `${photos.length} photos sorted into 3 projects by place and date`,
-    areaCaption: "Demo area: coastline dots, no boundaries drawn",
     errorDetail: "503 from api/photos, request 7f3a2c",
     projectIds: {},
     studioKey: "mumbai",

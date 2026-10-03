@@ -9,7 +9,6 @@ import "server-only";
  */
 import { and, asc, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import type { AppData, AppPhoto, AppProject, Kpi, ProjectScreen, StudioScreen, Tone } from "@/components/app/types";
-import landDots from "../../../data/land-dots.json";
 import { fullDateTime, offsetMinutes } from "../charts/time-axis";
 import type { Claim } from "../claims";
 import { getConfig } from "../config";
@@ -31,7 +30,7 @@ import { rankPairs } from "../showcase";
 import { defaultTrustConfig, describeReason } from "../trust";
 import { ledgerRows } from "../trust/labels";
 import { auditLabel } from "../audit-labels";
-import { areaFor, cardSides } from "./map";
+import { cardSides } from "./map";
 
 const BAND = { VERIFIED: "Verified", NEEDS_REVIEW: "Needs review", FLAGGED: "Flagged" } as const;
 const coord = (v: number, dir: [string, string]) => `${Math.abs(v).toFixed(5)}° ${v >= 0 ? dir[0] : dir[1]}`;
@@ -104,7 +103,7 @@ export async function appView(db: DB, media: MediaProvider, o: { policy: Display
       w: a.width,
       h: a.height,
       credit: a.attribution?.source_url ? { title: a.attribution.title ?? "Wikimedia Commons file", author: a.attribution.author?.trim() || "unknown", license: a.attribution.license || "licence unknown", page: a.attribution.source_url } : null,
-      rows: ledger.map((r) => ({ label: r.label, note: r.note, pts: r.pts, max: r.max, tone: r.tone as Tone })),
+      rows: ledger.map((r) => ({ signal: r.signal, label: r.label, note: r.note, pts: r.pts, max: r.max, tone: r.tone as Tone })),
       hard: reasons.filter((r) => r.kind === "hard").map((r) => flagTitle(r)),
       queue: (a.status === "flagged" && a.trustBand !== "VERIFIED") || (a.reviewRequestedAt !== null && a.status !== "approved" && a.status !== "rejected"),
       overlay: null,
@@ -162,13 +161,10 @@ export async function appView(db: DB, media: MediaProvider, o: { policy: Display
     banner: "Demo workspace. Photos come from Wikimedia Commons.",
     photos,
     projects: projectsOut,
-    area: areaFor(placed),
-    land: landDots.dots as Array<[number, number]>,
     projectScreens,
     studio: studioProject ? await studioScreen(db, media, studioProject, photos, projectScreens[studioProject.key], o.policy) : null,
     captureHref: "/capture",
     importToast: `${photos.length} photos sorted into ${placed.length} projects by place and date`,
-    areaCaption: "Demo area: coastline dots, no boundaries drawn",
     errorDetail: "",
     projectIds: Object.fromEntries(placed.map((p) => [p.key, p.id])),
     studioKey: studioProject?.key ?? null,

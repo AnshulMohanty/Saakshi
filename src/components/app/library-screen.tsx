@@ -4,7 +4,7 @@ import gsap from "gsap";
 import { useEffect, useRef, useState } from "react";
 import { Glyph } from "@/components/glyph";
 import { matches, parseChip, type BandName, type Chip } from "@/lib/app/chips";
-import { LibraryMap } from "./library-map";
+import { LibraryMap, type MapFocus } from "./library-map";
 import { bandMark } from "./marks";
 import type { AppData } from "./types";
 
@@ -17,7 +17,7 @@ export function LibraryScreen({ data, dark, onOpen, toast, onImport, importTick,
   const [chips, setChips] = useState<Chip[]>([]);
   const [query, setQuery] = useState("");
   const [band, setBand] = useState<BandName | "all">("all");
-  const [zoom, setZoom] = useState<string | null>(null);
+  const [focus, setFocus] = useState<MapFocus>(null);
   const [sel, setSel] = useState<Record<string, boolean>>({});
   const grid = useRef<HTMLDivElement>(null);
 
@@ -33,9 +33,11 @@ export function LibraryScreen({ data, dark, onOpen, toast, onImport, importTick,
     return () => cancelAnimationFrame(raf);
   }, [importTick]);
 
-  const shown = data.photos.filter((p) => matches(p, { band, zoom, chips }));
+  // The map counts what the search and band leave; picking a project or cluster on it narrows the grid too.
+  const onMap = data.photos.filter((p) => matches(p, { band, zoom: null, chips }));
+  const shown = focus ? onMap.filter((p) => matches(p, { band: "all", zoom: focus.keys, chips: [] })) : onMap;
   const selected = Object.keys(sel).filter((k) => sel[k]);
-  const filtering = chips.length > 0 || band !== "all";
+  const filtering = chips.length > 0 || band !== "all" || !!focus;
   const bulk = async (kind: "report" | "review") => {
     const fn = kind === "report" ? actions?.bulkReport : actions?.bulkReview;
     const msg = fn ? await fn(selected).catch((e: unknown) => (e instanceof Error ? e.message : String(e))) : kind === "report" ? `${selected.length} photos added to the Versova report` : `${selected.length} photos sent to review`;
@@ -96,7 +98,7 @@ export function LibraryScreen({ data, dark, onOpen, toast, onImport, importTick,
         </button>
       </div>
 
-      <LibraryMap photos={shown} projects={data.projects} area={data.area} land={data.land} zoom={zoom} onZoom={setZoom} onOpen={onOpen} caption={data.areaCaption} dark={dark} />
+      <LibraryMap photos={onMap} projects={data.projects} focus={focus} onFocus={setFocus} onOpen={onOpen} dark={dark} />
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
         <span style={{ color: "var(--muted-foreground)" }} data-testid="library-count">

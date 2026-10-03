@@ -642,3 +642,20 @@ html[data-boot="done"] .boot {
 .ft-chev {
   transition: transform var(--dur-ui);
 }
+
+/* The library map (components/app/library-map.tsx). */
+.lm-box {
+  height: clamp(320px, 42vh, 460px);
+}
+@media (max-width: 640px) {
+  .lm-box {
+    height: 380px;
+  }
+  .lm-legend {
+    bottom: 22px !important;
+    right: 10px;
+  }
+  .lm-hint {
+    display: none;
+  }
+}

@@ -61,10 +61,11 @@ export interface ChipPhoto {
   reason: string;
 }
 
-/** AP:885-900: the band filter, the zoomed project and every chip, together. */
-export function matches(p: ChipPhoto, o: { band: BandName | "all"; zoom: string | null; chips: Chip[] }): boolean {
+/** AP:885-900: the band filter, the zoomed project (or a map cluster's projects) and every chip, together. */
+export function matches(p: ChipPhoto, o: { band: BandName | "all"; zoom: string | readonly string[] | null; chips: Chip[] }): boolean {
   if (o.band !== "all" && p.band !== o.band) return false;
-  if (o.zoom && p.project !== o.zoom) return false;
+  if (typeof o.zoom === "string" && p.project !== o.zoom) return false;
+  if (Array.isArray(o.zoom) && (p.project === null || !o.zoom.includes(p.project))) return false;
   for (const c of o.chips) {
     if (c.t === "band" && p.band !== c.v) return false;
     if (c.t === "project" && p.project !== c.v) return false;

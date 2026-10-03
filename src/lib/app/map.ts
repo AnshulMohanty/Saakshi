@@ -1,7 +1,8 @@
 /**
  * The library map's geometry (pure; AP:950-976, 1069-1085): a flat projected dot field with a mild
  * perspective (far rows narrower), project clusters with a card beside each pin, and when zoomed
- * into a project, one pin per photo. No boundaries are drawn (B5.10).
+ * into a project, one pin per photo. The product's library draws them on the shared map of India
+ * (components/map/india-map.tsx); clusterPoints and placeCards lay out its clusters and cards.
  */
 
 export interface BBox {
@@ -89,4 +90,93 @@ export function pinPosition(p: { id: string; gps: boolean; lat: number | null; l
   const a = hash01(p.id, 7) * Math.PI * 2;
   const rad = 0.05 + hash01(p.id, 13) * 0.2;
   return { lat: c.lat + Math.sin(a) * rad * 0.7, lng: c.lng + Math.cos(a) * rad };
+}
+
+export interface ClusterInput {
+  key: string;
+  x: number;
+  y: number;
+  /** Weight (photos): the biggest point anchors a cluster. */
+  n: number;
+}
+export interface Cluster {
+  keys: string[];
+  x: number;
+  y: number;
+  n: number;
+}
+
+/**
+ * Points closer than `r` pixels merge into one cluster (the library map at a wide zoom, where
+ * nearby projects would sit on top of each other). Greedy from the heaviest point; a cluster sits
+ * at the weighted centre of its points. Stable: same input, same clusters, keys in input order.
+ */
+export function clusterPoints(points: ClusterInput[], r: number): Cluster[] {
+  const order = points.map((p, i) => ({ p, i })).sort((a, b) => b.p.n - a.p.n || a.i - b.i);
+  const out: Array<{ anchor: ClusterInput; members: Array<{ p: ClusterInput; i: number }> }> = [];
+  for (const m of order) {
+    const hit = out.find((c) => Math.hypot(c.anchor.x - m.p.x, c.anchor.y - m.p.y) < r);
+    if (hit) hit.members.push(m);
+    else out.push({ anchor: m.p, members: [m] });
+  }
+  return out.map((c) => {
+    const ms = [...c.members].sort((a, b) => a.i - b.i);
+    const n = ms.reduce((t, m) => t + m.p.n, 0);
+    const w = (m: { p: ClusterInput }) => (n > 0 ? m.p.n / n : 1 / ms.length);
+    return { keys: ms.map((m) => m.p.key), x: ms.reduce((t, m) => t + m.p.x * w(m), 0), y: ms.reduce((t, m) => t + m.p.y * w(m), 0), n };
+  });
+}
+
+/**
+ * Card offsets for anchors on a W×H map: each card tries below right, below left, above right and
+ * above left of its anchor, clamped inside the map (`top`/`bottom` keep clear of the map's own
+ * bars), and takes the first spot that overlaps no card placed before it and no other anchor;
+ * failing that, the spot with the least overlap. Returns [dx, dy] from each anchor.
+ */
+export function placeCards(anchors: Array<{ key: string; x: number; y: number }>, W: number, H: number, o: { w: number; h: number; gap: number; edge: number; top: number; bottom: number }): Record<string, [number, number]> {
+  const placed: Array<{ x: number; y: number }> = [];
+  const out: Record<string, [number, number]> = {};
+  const overlap = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.max(0, Math.min(a.x + o.w, b.x + o.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + o.h, b.y + o.h) - Math.max(a.y, b.y));
+  const covers = (c: { x: number; y: number }, p: { x: number; y: number }) => p.x > c.x - 8 && p.x < c.x + o.w + 8 && p.y > c.y - 8 && p.y < c.y + o.h + 8;
+  const cl = (v: number, a: number, b: number) => Math.max(a, Math.min(Math.max(a, b), v));
+  for (const a of anchors) {
+    const tries = [
+      [a.x + o.gap, a.y + o.gap],
+      [a.x - o.gap - o.w, a.y + o.gap],
+      [a.x + o.gap, a.y - o.gap - o.h],
+      [a.x - o.gap - o.w, a.y - o.gap - o.h],
+    ].map(([x, y]) => ({ x: cl(x, o.edge, W - o.edge - o.w), y: cl(y, o.top, H - o.bottom - o.h) }));
+    let best = tries[0];
+    let bestCost = Infinity;
+    for (const t of tries) {
+      const cost = placed.reduce((s, p) => s + overlap(t, p), 0) + anchors.filter((b) => covers(t, b)).length * o.w * o.h;
+      if (cost < bestCost) {
+        best = t;
+        bestCost = cost;
+      }
+      if (cost === 0) break;
+    }
+    placed.push(best);
+    out[a.key] = [best.x - a.x, best.y - a.y];
+  }
+  return out;
+}
+
+/**
+ * Pixel nudges for pins at the same spot (photos with identical GPS, or several waiting near the
+ * site): the first stays put, the rest fan out on a golden-angle spiral `px` apart, so every photo
+ * can be seen and picked. Stable for a given order.
+ */
+export function fanOut(points: Array<{ id: string; lat: number; lng: number }>, px: number): Record<string, [number, number]> {
+  const seen = new Map<string, number>();
+  const out: Record<string, [number, number]> = {};
+  for (const p of points) {
+    const k = `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`;
+    const i = seen.get(k) ?? 0;
+    seen.set(k, i + 1);
+    const a = i * 2.399963;
+    const r = px * Math.sqrt(i);
+    out[p.id] = [Math.round(Math.cos(a) * r * 10) / 10, Math.round(Math.sin(a) * r * 10) / 10];
+  }
+  return out;
 }
