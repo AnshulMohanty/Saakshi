@@ -310,3 +310,222 @@ html[data-intro="off"] .ink-intro {
   outline: 2px solid var(--ring) !important;
   outline-offset: 2px;
 }
+
+/* The shared India map (components/map/india-map.tsx): pulsing sites, arrival ripples. */
+@keyframes im-pulse {
+  from {
+    transform: translate(-50%, -50%) scale(0.55);
+    opacity: 0.9;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(2.4);
+    opacity: 0;
+  }
+}
+@keyframes im-ripple {
+  from {
+    transform: translate(-50%, -50%) scale(0.4);
+    opacity: 1;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(6);
+    opacity: 0;
+  }
+}
+@keyframes im-drop {
+  from {
+    transform: translate(-50%, -220%) scale(1.25);
+    opacity: 0;
+  }
+  60% {
+    opacity: 1;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+.im-drop {
+  transform: translate(-50%, -50%);
+  animation: im-drop 900ms cubic-bezier(0.2, 0.9, 0.25, 1.15) both;
+}
+.im-pulse {
+  animation: im-pulse 2.2s cubic-bezier(0.2, 0.7, 0.3, 1) infinite;
+}
+.im-ripple {
+  animation: im-ripple 1.8s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .im-pulse,
+  .im-ripple {
+    animation: none;
+    opacity: 0;
+  }
+  .im-drop {
+    animation: none;
+  }
+}
+
+/* Landing chapter 2: the map layer's box (fixed, under the WebGL canvas). */
+.c2-mapbox {
+  position: absolute;
+  left: 40vw;
+  right: 3vw;
+  top: 11vh;
+  bottom: 3vh;
+}
+@media (max-width: 1099px) {
+  .c2-mapbox {
+    left: 2vw;
+    right: 2vw;
+    top: 44vh;
+    bottom: 2vh;
+  }
+}
+
+/* Landing chapter 1: the seal's layer ledger shows beside the card on wide screens only. */
+@media (max-width: 1099px) {
+  .h-build {
+    display: none !important;
+  }
+}
+
+/* Landing chapter 5: the report card left, the photo wall right; stacked on phones. */
+.c5-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.78fr) 1.22fr;
+  gap: clamp(28px, 4vw, 64px);
+  align-items: center;
+}
+.c5-wall {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+@media (max-width: 899px) {
+  .c5-layout {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+  .c5-left #c5-pull {
+    display: none;
+  }
+}
+
+/* Landing chapter 6: text and steps left, the link and photo right, one screen tall. */
+.c6-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 5fr) 7fr;
+  gap: clamp(28px, 4.5vw, 72px);
+  align-items: center;
+}
+@media (max-width: 899px) {
+  .c6-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Landing chapter 7: the story left, the frame and its visits right; stacked on phones. */
+.c7-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.9fr) 1.1fr;
+  gap: clamp(24px, 4vw, 64px);
+  align-items: center;
+}
+@media (max-width: 899px) {
+  .c7-layout {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .c7-layout .c7-flow,
+  .c7-layout .c7-time {
+    display: none !important;
+  }
+}
+
+/* Landing chapter 8: the lab. Drop zone and samples left, the pipeline and ledger right. */
+.c8-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.85fr) 1.15fr;
+  gap: clamp(20px, 3vw, 40px);
+  align-items: start;
+}
+@media (max-width: 899px) {
+  .c8-layout {
+    grid-template-columns: 1fr;
+  }
+}
+.c8-drop:focus-within {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+@keyframes c8-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.c8-spin {
+  animation: c8-spin 0.8s linear infinite;
+}
+@keyframes c8-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.c8-row {
+  animation: c8-row-in 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .c8-spin,
+  .c8-row {
+    animation: none;
+  }
+}
+
+/* Landing chapter 10: the stage's text and call left, its picture right. */
+.c10-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: clamp(16px, 3vw, 40px);
+  align-items: start;
+}
+@media (max-width: 899px) {
+  .c10-layout {
+    grid-template-columns: 1fr;
+    overflow: auto;
+  }
+  .c10-layout figure {
+    display: none !important;
+  }
+  .c10-name {
+    font-size: 12px !important;
+  }
+}
+
+/* Landing footer: three columns, credits in a section that opens. */
+.ft-top {
+  display: grid;
+  grid-template-columns: 1.3fr 0.7fr 1fr;
+  gap: 28px clamp(24px, 5vw, 72px);
+}
+@media (max-width: 799px) {
+  .ft-top {
+    grid-template-columns: 1fr;
+  }
+}
+.ft-credits summary::-webkit-details-marker {
+  display: none;
+}
+.ft-credits summary:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+.ft-credits[open] .ft-chev {
+  transform: rotate(180deg);
+}
+.ft-chev {
+  transition: transform var(--dur-ui);
+}

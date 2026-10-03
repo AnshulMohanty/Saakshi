@@ -9,7 +9,6 @@ import "server-only";
  */
 import { fullDateTime } from "../charts/time-axis";
 import { bitsToHex, diffCells, LOGO_BITS } from "../glyph";
-import { DESIGN_FRAME } from "../motion/scenes/landing";
 import { designArchive, type DPhoto } from "../parity/archive";
 import type { RuleChip } from "../trust/labels";
 import type { FieldTile, LandingData, LandingFlag, LandingProject, StormPhoto } from "./types";
@@ -97,8 +96,6 @@ export async function landingFixture(): Promise<LandingData> {
   const heroCover = (D.hero.cover * 100).toFixed(1);
   const beforePct = Math.round(D.before.cover * 100);
   return {
-    frame: { ...DESIGN_FRAME },
-    land: D.land,
     hero: {
       assetId: null,
       src: src(D.hero.src),

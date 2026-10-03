@@ -7,9 +7,8 @@ import "server-only";
  * state instead (null here).
  */
 import { and, asc, desc, eq, inArray, isNotNull } from "drizzle-orm";
-import landDots from "../../../data/land-dots.json";
 import { perceptionCodeBlock } from "../ai/perception-copy";
-import { fullDateTime, offsetMinutes } from "../charts/time-axis";
+import { dayLabel, fullDateTime, offsetMinutes } from "../charts/time-axis";
 import { getConfig } from "../config";
 import type { DB } from "../db/client";
 import { assets, comparisons, duplicates, measurements, projects, reports, spots, type Asset } from "../db/schema";
@@ -22,14 +21,15 @@ import { linkChips } from "../media/link-chips";
 import { compileTransform, type Transform } from "../media/transform";
 import { FRAME_KEY, LITTER_PROMPTS } from "../measure/measure";
 import { spotView } from "../measure/views";
-import { FRAME as MAP_FRAME } from "../motion/scenes/landing";
 import { AI_PENDING, aiPending, assetMode, combineModes, HIDDEN_MOCK, hidesMock, mockLabel, numberPolicy, type DisplayPolicy, type ProviderMode } from "../provenance";
 import { maskTransform, type MediaProvider } from "../providers/media";
 import { rankPairs, showcase } from "../showcase";
 import { defaultTrustConfig, describeReason, scoreAsset } from "../trust";
 import { ruleChips } from "../trust/labels";
 import type { TrustSignals } from "../trust/types";
-import { aiSentence, creditTitle, decisiveReason, flagTitle, placeShort, splitProjectName, stackLayout, yearRange } from "./copy";
+import { aiSentence, creditTitle, decisiveReason, flagExplain, flagTitle, visitSpan, placeShort, splitProjectName, stackLayout, yearRange } from "./copy";
+import { perceptionParams, UPLOAD_PARAMS, urlParams } from "./params";
+import { sealSteps } from "./seal";
 import type { Credit, FieldTile, LandingData, LandingFlag, LandingHero, LandingNumber, LandingProject, Ledger, StormPhoto } from "./types";
 
 /** Storm tiles: 420 px wide (D-0022 note), aspect kept, faces blurred. */
@@ -77,6 +77,12 @@ export async function landingView(db: DB, media: MediaProvider, o: LandingOption
   const credit = (a: Asset) => a.attribution;
   const heroView = heroPhoto ? heroOf(heroPhoto) : null;
 
+  /** Layer 5's line: the measured cover (it scores no points), or why it isn't shown. */
+  function shownCover(m: { value: number; providerMode: ProviderMode; metric: string }): string | null {
+    const n = shown(m.value, m.providerMode);
+    return n.value === null ? n.text : `${m.metric === "green_cover" ? "Green" : "Litter"} covers ${n.text}% of the frame${n.mock ? ` (${mockTag})` : ""}`;
+  }
+
   function heroOf(a: Asset): LandingHero {
     const loc = locationOf(a)!;
     const m = primaryOf(a.id);
@@ -107,7 +113,16 @@ export async function landingView(db: DB, media: MediaProvider, o: LandingOption
       aiBoxes: [],
       cover: m ? shown(m.value, m.providerMode) : null,
       metric: m?.metric === "green_cover" ? "green" : "litter",
-      trust: tp === "hide" || a.trustScore === null || !a.trustBand ? null : { score: a.trustScore, band: a.trustBand, chips: ruleChips(a.trustReasons ?? []), mock: tp === "tag" },
+      trust:
+        tp === "hide" || a.trustScore === null || !a.trustBand
+          ? null
+          : {
+              score: a.trustScore,
+              band: a.trustBand,
+              chips: ruleChips(a.trustReasons ?? []),
+              mock: tp === "tag",
+              seal: sealSteps(a.trustReasons ?? [], a.trustScore, m ? (shownCover(m) ?? null) : null),
+            },
       credit: `${place}, ${a.capturedAt ? shortDate(a.capturedAt) : "date unknown"}. Photo: ${at?.author ?? "unknown"}, ${at?.license ?? "licence unknown"}, Wikimedia Commons. Faces blurred.`,
       evidenceUrl: `${o.appUrl}/e/${a.id}`,
     };
@@ -147,6 +162,7 @@ export async function landingView(db: DB, media: MediaProvider, o: LandingOption
       alt: `Planted test photo: ${title}`,
       reason: title,
       detail: r ? describeReason(r) : "",
+      ...(r ? flagExplain(r.code) : {}),
       diff: a.phash && other ? { bits: hexToBits(a.phash), other: hexToBits(other), text: `${reused!.hamming} of 64 cells differ. Same photo.` } : null,
       evidenceUrl: `${o.appUrl}/e/${a.id}`,
     };
@@ -227,7 +243,7 @@ export async function landingView(db: DB, media: MediaProvider, o: LandingOption
     if (!a || seen.has(a.id) || !a.attribution) return;
     seen.add(a.id);
     const at = a.attribution;
-    credits.push({ title: creditTitle(at.title), author: at.author ?? "unknown", license: at.license ?? "licence unknown", page: at.source_url, note: note || (a.testCase ? ". Planted copy." : "") });
+    credits.push({ title: creditTitle(at.title), author: at.author ?? "unknown", license: at.license ?? "licence unknown", page: at.source_url, note: note || (a.testCase ? ". Planted copy." : ""), group: demo.find((p) => p.id === a.projectId)?.name ?? "Other photos" });
   };
   add(heroPhoto, ". Hero photo.");
   if (sc.measurement) {
@@ -239,8 +255,6 @@ export async function landingView(db: DB, media: MediaProvider, o: LandingOption
   const repoUrl = cfg.env.APP_REPO_URL ?? null;
 
   return {
-    frame: { ...MAP_FRAME },
-    land: landDots.dots as Array<[number, number]>,
     hero: heroView,
     projects: projectsView,
     storm: stormPhotos,
@@ -305,36 +319,54 @@ async function internetLedger(db: DB, media: MediaProvider, heroId: string | nul
   };
 }
 
+/**
+ * Chapter 7: the spot whose visits mean the most: measured photos on the most different days, then
+ * the longest span, then the most photos (at least three). Its last eight visits, oldest first,
+ * each with its date and time.
+ */
 async function checkinsOf(db: DB, media: MediaProvider, projectIds: string[], policy: DisplayPolicy, off: number): Promise<LandingData["checkins"]> {
+  let best: { v: NonNullable<Awaited<ReturnType<typeof spotView>>>; score: number } | null = null;
   for (const pid of projectIds) {
     const ss = await db.select({ slug: spots.slug, id: spots.id }).from(spots).where(eq(spots.projectId, pid));
-    let best: Awaited<ReturnType<typeof spotView>> = null;
     for (const s of ss) {
       const v = await spotView(db, media, s.slug ?? s.id, policy);
-      if (v && v.trend.length >= 3 && (!best || v.trend.length > best.trend.length)) best = v;
+      if (!v || v.trend.length < 3) continue;
+      const ts = v.trend.map((t) => t.t);
+      const days = new Set(ts.map((t) => dayLabel(t, off))).size;
+      const spanH = (Math.max(...ts) - Math.min(...ts)) / 3_600_000;
+      const score = days * 1e7 + Math.min(spanH, 9e6) + v.trend.length / 100;
+      if (!best || score > best.score) best = { v, score };
     }
-    if (!best) continue;
-    const photos = await db.select({ id: assets.id, cldPublicId: assets.cldPublicId }).from(assets).where(inArray(assets.id, best.trend.map((t) => t.assetId)));
-    const mode: ProviderMode = best.trendMock ? "mock" : "real";
-    const pts = best.trend.slice(-6);
-    const multiYear = new Date(pts[0].t).getUTCFullYear() !== new Date(pts.at(-1)!.t).getUTCFullYear();
-    return {
-      spot: best.spot.name,
-      photo: null,
-      points: pts.map((t, i) => {
-        const ph = photos.find((p) => p.id === t.assetId);
-        const day = fullDateTime(t.t, "day", off).replace(" (date only)", "");
-        return {
-          label: i === 0 ? `First measured photo, ${day}` : `Photo ${i + 1}, ${day}`,
-          // "5 Sep", or "5 Sep 17" when the points span years.
-          short: multiYear ? day.replace(/ \d\d(\d\d)$/, " $1") : day.replace(/ \d{4}$/, ""),
-          value: numberPolicy(mode, policy) === "hide" ? { value: null, text: HIDDEN_MOCK, mock: false } : { value: Math.round(t.value), text: String(Math.round(t.value)), mock: mode === "mock" },
-          photo: ph ? media.url(ph.cldPublicId, VIEW, { signed: true }) : null,
-        };
-      }),
-    };
   }
-  return null;
+  if (!best) return null;
+  const v = best.v;
+  const mode: ProviderMode = v.trendMock ? "mock" : "real";
+  const pts = v.trend.slice(-8);
+  const multiYear = new Date(pts[0].t).getUTCFullYear() !== new Date(pts.at(-1)!.t).getUTCFullYear();
+  const span = visitSpan(pts.map((t) => t.t), (t) => dayLabel(t, off));
+  return {
+    spot: v.spot.name,
+    photo: null,
+    metric: v.metric?.id === "green_cover" ? "green" : "litter",
+    span: span.text,
+    sameDay: span.sameDay,
+    project: v.project.name,
+    spotHref: v.spot.slug ? `/spots/${v.spot.slug}` : null,
+    posterHref: v.spot.slug ? `/spots/${v.spot.slug}/poster` : null,
+    points: pts.map((t, i) => {
+      const day = fullDateTime(t.t, "day", off).replace(" (date only)", "");
+      return {
+        label: i === 0 ? `First measured photo, ${day}` : `Photo ${i + 1}, ${day}`,
+        // "5 Sep", or "5 Sep 17" when the points span years.
+        short: multiYear ? day.replace(/ \d\d(\d\d)$/, " $1") : day.replace(/ \d{4}$/, ""),
+        when: fullDateTime(t.t, t.precision, off),
+        t: t.t,
+        witness: t.source === "witness",
+        value: numberPolicy(mode, policy) === "hide" ? { value: null, text: HIDDEN_MOCK, mock: false } : { value: Math.round(t.value * 10) / 10, text: (Math.round(t.value * 10) / 10).toFixed(1), mock: mode === "mock" },
+        photo: t.viewUrl,
+      };
+    }),
+  };
 }
 
 /** Chapter 10 (B5.5): each stage shows the call we make, compiled by our own transform code. */
@@ -345,10 +377,10 @@ function pipelineNodes(hero: Asset | null, h: LandingHero | null, url: (a: Asset
   const signedUrl = hero ? url(hero, PREVIEW) : null;
   const sig = signedUrl ? (/\/(s--[^/]+--)\//.exec(signedUrl)?.[1] ?? "s--…--") : "s--…--";
   return [
-    { name: "Intake forensics", what: "Reads the camera file for location and time, and fingerprints the pixels so reused photos are caught.", code: 'cloudinary.uploader.upload(file, {\n  type: "authenticated",\n  media_metadata: true,\n  phash: true,\n  faces: true,\n  quality_analysis: true\n})', preview: h ? { kind: "glyph", bits: h.bits, variant: "night" } : null, caption: "pHash of the hero photo", alt: "Fingerprint glyph" },
-    { name: "Perception", what: "Tags what is in the frame and checks it for screens, stock watermarks and edits. Tags are AI-estimated and always carry a confidence.", code: perceptionCodeBlock(getConfig().cloudinary.aiVision), preview: h ? { kind: "image", src: h.src, fit: "cover" } : null, caption: "Tagged frame", alt: "Hero photo" },
-    { name: "Measurement", what: "Segments litter and counts its pixels, so cover is a measured share of the photo.", code: `/image/authenticated/\n  ${mask.split("/").join("/\n  ")}/\n  ${pid}`, preview: h?.mask ? { kind: "image", src: h.mask, fit: "cover" } : null, caption: "Litter mask, hero photo", alt: "Litter mask" },
-    { name: "Privacy", what: "Blurs every face before a photo is public, on a signed link that cannot be edited.", code: `/image/authenticated/${sig}/\n  ${preview.split("/").join("/\n  ")}/\n  v1/${pid}`, preview: h ? { kind: "image", src: h.src, fit: "cover" } : null, caption: "Public copy, faces blurred", alt: "Blurred public photo" },
-    { name: "Provenance", what: "Pins each photo to a version and a signature, so a report always opens the exact file it counted.", code: `/${sig}/\n  v1/${pid}`, preview: { kind: "glyph", bits: LOGO_BITS, variant: "plain" }, caption: "Versioned, signed asset", alt: "Saakshi glyph" },
+    { name: "Intake forensics", lead: "cloudinary.uploader.upload(file, {…})", params: UPLOAD_PARAMS, what: "Reads the camera file for location and time, and fingerprints the pixels so reused photos are caught.", code: 'cloudinary.uploader.upload(file, {\n  type: "authenticated",\n  media_metadata: true,\n  phash: true,\n  faces: true,\n  quality_analysis: true\n})', preview: h ? { kind: "glyph", bits: h.bits, variant: "night" } : null, caption: "pHash of the hero photo", alt: "Fingerprint glyph" },
+    { name: "Perception", lead: "POST /v2/analysis/<cloud>/analyze/…", params: perceptionParams(getConfig().cloudinary.aiVision), what: "Tags what is in the frame and checks it for screens, stock watermarks and edits. Tags are AI-estimated and always carry a confidence.", code: perceptionCodeBlock(getConfig().cloudinary.aiVision), preview: h ? { kind: "image", src: h.src, fit: "cover" } : null, caption: "Tagged frame", alt: "Hero photo" },
+    { name: "Measurement", lead: "/image/authenticated/…", params: [...urlParams(mask), { code: pid, label: "The photo, by its public id" }], what: "Segments litter and counts its pixels, so cover is a measured share of the photo.", code: `/image/authenticated/\n  ${mask.split("/").join("/\n  ")}/\n  ${pid}`, preview: h?.mask ? { kind: "mask", src: h.src, mask: h.mask } : null, caption: "The hero photo with its litter mask (blue)", alt: "Litter mask" },
+    { name: "Privacy", lead: "/image/authenticated/…", params: [...urlParams(`${sig}/${preview}`), { code: `v1/${pid}`, label: "The pinned version of the photo" }], what: "Blurs every face before a photo is public, on a signed link that cannot be edited.", code: `/image/authenticated/${sig}/\n  ${preview.split("/").join("/\n  ")}/\n  v1/${pid}`, preview: h ? { kind: "image", src: h.src, fit: "cover" } : null, caption: "Public copy, faces blurred", alt: "Blurred public photo" },
+    { name: "Provenance", lead: "…/", params: [...urlParams(`${sig}/v1`), { code: pid, label: "The photo's public id: one file, never overwritten" }], what: "Pins each photo to a version and a signature, so a report always opens the exact file it counted.", code: `/${sig}/\n  v1/${pid}`, preview: { kind: "glyph", bits: LOGO_BITS, variant: "plain" }, caption: "Versioned, signed asset", alt: "Saakshi glyph" },
   ];
 }

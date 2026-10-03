@@ -6,6 +6,7 @@
  * sample archive.
  */
 import type { RuleChip } from "../trust/labels";
+import type { Seal } from "./seal";
 import type { TrustBand } from "../trust/types";
 
 export interface Frame {
@@ -25,6 +26,8 @@ export interface Credit {
   page: string | null;
   /** ". Planted copy." and similar. */
   note: string;
+  /** The project the photo belongs to (the footer groups credits by it). */
+  group?: string;
 }
 
 export interface StormPhoto {
@@ -93,7 +96,8 @@ export interface LandingHero {
   /** Label 5: litter cover of the frame (one decimal), or withheld. */
   cover: LandingNumber | null;
   metric: "litter" | "green";
-  trust: { score: number; band: TrustBand; chips: RuleChip[]; mock: boolean } | null;
+  /** `seal`: the reasons grouped by layer for "Sealed into one proof" (lib/landing/seal.ts). */
+  trust: { score: number; band: TrustBand; chips: RuleChip[]; mock: boolean; seal?: Seal } | null;
   /** "Place, date. Photo: author, licence, Wikimedia Commons. Faces blurred." */
   credit: string;
   evidenceUrl: string | null;
@@ -110,9 +114,13 @@ export interface LandingFlag {
   stampOverlay?: string[] | null;
   diff: { bits: string; other: string; text: string } | null;
   evidenceUrl: string | null;
+  /** The rule that caught it, in plain words, and what proof would change the verdict (lib/landing/copy.ts flagExplain). */
+  rule?: string;
+  proof?: string;
 }
 
 export interface Ledger {
+  /** "": no photo dropped yet (the card shows the engine's answer for such a file, without an image). */
   src: string;
   caption: string;
   score: number;
@@ -177,21 +185,32 @@ export interface Tamper {
 export interface Checkins {
   spot: string;
   photo: string | null;
-  points: Array<{ label: string; short: string; value: LandingNumber; photo: string | null }>;
+  /** Each visit to the spot (oldest first): `when` has the date and time, `t` places it on the time line. */
+  points: Array<{ label: string; short: string; value: LandingNumber; photo: string | null; when?: string; t?: number; witness?: boolean }>;
+  /** Litter or green cover. */
+  metric?: "litter" | "green";
+  /** "on 5 Sep 2017, within 6 minutes" / "over 14 months, 20 Nov 2020 to 20 Jan 2022" (lib/landing/copy.ts visitSpan). */
+  span?: string;
+  sameDay?: boolean;
+  project?: string;
+  spotHref?: string | null;
+  posterHref?: string | null;
 }
 
 export interface PipelineNode {
   name: string;
   what: string;
   code: string;
-  preview: { kind: "image"; src: string; fit: "cover" | "contain" } | { kind: "glyph"; bits: string; variant: "plain" | "night" } | null;
+  /** The call's parameters one by one, each with a plain-words label (lib/landing/params.ts). */
+  params?: Array<{ code: string; label: string }>;
+  /** A word before the parameters: "upload(file, {", "POST …/analyze/", "/image/authenticated/". */
+  lead?: string;
+  preview: { kind: "image"; src: string; fit: "cover" | "contain" } | { kind: "mask"; src: string; mask: string } | { kind: "glyph"; bits: string; variant: "plain" | "night" } | null;
   caption: string;
   alt: string;
 }
 
 export interface LandingData {
-  frame: Frame;
-  land: Array<[number, number]>;
   hero: LandingHero | null;
   projects: LandingProject[];
   storm: StormPhoto[];

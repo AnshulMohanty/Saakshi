@@ -7,7 +7,7 @@ import type { LandingController } from "@/lib/scenes/landing-dom";
 import { CatchChapter } from "./catch";
 import { CloudinaryChapter } from "./cloudinary";
 import { FacesChapter } from "./faces";
-import { FoolChapter } from "./fool";
+import { FoolChapter, type FoolSample } from "./fool";
 import { LandingFooter } from "./footer";
 import { HeroChapter } from "./hero";
 import { MeasuredChapter } from "./measured";
@@ -32,6 +32,16 @@ export interface LandingProps {
   allowMotionOverride?: boolean;
   /** Chapter 9 listens to /api/live. */
   live?: boolean;
+}
+
+/** The lab's samples: two public-domain photos from the internet, and a demo photo saved and re-uploaded. */
+function foolSamples(data: LandingData): FoolSample[] {
+  const demo = data.grid.find((g) => !g.hole)?.src;
+  return [
+    { src: "/samples/midway-atoll-debris.jpg", title: "A clean-up photo from the internet", credit: "NOAA, Midway Atoll, public domain", name: "midway-atoll-debris.jpg" },
+    { src: "/samples/beach-lighters.jpg", title: "Another one: lighters on a beach", credit: "NOAA, public domain", name: "beach-lighters.jpg" },
+    ...(demo ? [{ src: demo, title: "A demo photo, saved and re-uploaded", credit: "From this page's demo archive", name: "saved-demo-photo.jpg" }] : []),
+  ];
 }
 
 export function Landing({ data, qrSvg, demoHref, heroProject, allowMotionOverride = false, live = true }: LandingProps) {
@@ -73,11 +83,11 @@ export function Landing({ data, qrSvg, demoHref, heroProject, allowMotionOverrid
         <ThreadsChapter data={data} onHi={(k) => ctl.current?.hi(k)} />
         <FacesChapter data={data} />
         <WatchingChapter data={data} />
-        <FoolChapter sampleUrl={data.internet?.src ?? null} copy={data.copy} />
-        <WitnessChapter data={data} qrSvg={qrSvg} />
+        <FoolChapter samples={foolSamples(data)} copy={data.copy} />
+        <WitnessChapter data={data} qrSvg={qrSvg} live={live} />
         <CloudinaryChapter data={data} />
       </main>
-      <LandingFooter data={data} />
+      <LandingFooter data={data} demoHref={demoHref} />
     </div>
   );
 }

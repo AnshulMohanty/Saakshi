@@ -33,6 +33,55 @@ export function yearRange(dates: Array<Date | null | undefined>): string {
 
 const km = (v: unknown) => (typeof v === "number" ? (v >= 10 ? Math.round(v).toLocaleString("en-IN") : String(v)) : "?");
 
+/**
+ * Chapter 3: the rule that caught a flagged photo, in plain words, and the proof that would change
+ * the verdict (for a person reviewing it). Keyed by the deciding reason's code.
+ */
+export function flagExplain(code: TrustReason["code"]): { rule: string; proof: string } {
+  switch (code) {
+    case "REUSED":
+      return { rule: "Its fingerprint (pHash) matches a photo already counted in another project: the same picture, re-cropped or re-saved.", proof: "The original camera file, or the other project confirming the photo is theirs and allowed here." };
+    case "POSSIBLE_DUPLICATE":
+      return { rule: "The identical file was already submitted to this project.", proof: "A different photo of the work, or a reviewer confirming it is the same submission." };
+    case "STOCK_SUSPECTED":
+      return { rule: "Cloudinary's watermark detector and the vision check both see a watermark or stock branding.", proof: "The unwatermarked original from the camera that took it." };
+    case "WATERMARK_UNCONFIRMED":
+      return { rule: "One of the two watermark checks sees a watermark; the other doesn't.", proof: "A person looking at the photo, or the original file." };
+    case "LOCATION_MISMATCH":
+      return { rule: "Where it was taken is outside the site's radius.", proof: "A photo taken at the site with location on, or a corrected site location." };
+    case "LOCATION_CONFLICT":
+      return { rule: "The photo's own GPS and the live device location disagree.", proof: "A new photo taken with Witness Capture at the site." };
+    case "STAMP_MISMATCH":
+      return { rule: "The GPS stamp drawn on the photo disagrees with where or when it was really taken.", proof: "The original file from the GPS camera app, without a drawn-on stamp." };
+    case "SCREEN_OR_PRINT":
+      return { rule: "It looks like a photo of a screen or of a printed photo.", proof: "The original photo instead of a picture of it." };
+    case "COMPOSITED":
+      return { rule: "It may be digitally composited or AI-generated.", proof: "The original camera file; a person checks it either way." };
+    case "TIME_OUTSIDE":
+      return { rule: "It was taken outside the event dates.", proof: "A photo from the event dates, or corrected dates for the event." };
+    default:
+      return { rule: "A fixed rule of the Trust Engine.", proof: "A person reviewing it with the original file." };
+  }
+}
+
+/**
+ * Chapter 7: how long the visits to a spot span, said honestly. All on one day: "on 5 Sep 2017,
+ * within 6 minutes" (so differences come from the camera, not the spot); otherwise the dates.
+ */
+export function visitSpan(times: number[], dayOf: (t: number) => string): { sameDay: boolean; text: string } {
+  if (!times.length) return { sameDay: true, text: "" };
+  const a = Math.min(...times);
+  const b = Math.max(...times);
+  const days = new Set(times.map(dayOf));
+  if (days.size === 1) {
+    const min = Math.max(1, Math.round((b - a) / 60_000));
+    return { sameDay: true, text: `on ${dayOf(a)}, within ${min < 60 ? `${min} minute${min === 1 ? "" : "s"}` : `${Math.round(min / 60)} hours`}` };
+  }
+  const months = Math.round((b - a) / (30.44 * 86_400_000));
+  const span = months >= 24 ? `${Math.round(months / 12)} years` : months >= 2 ? `${months} months` : `${Math.max(2, Math.round((b - a) / 86_400_000))} days`;
+  return { sameDay: false, text: `over ${span}, ${dayOf(a)} to ${dayOf(b)}` };
+}
+
 /** The headline for a flagged photo (chapter 3), from the reason that flagged it. */
 export function flagTitle(r: Pick<TrustReason, "code" | "detail">): string {
   const d = r.detail;

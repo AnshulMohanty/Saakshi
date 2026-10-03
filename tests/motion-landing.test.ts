@@ -39,16 +39,20 @@ describe("landing motion constants match the design source", () => {
     expect(L.TILT).toBe(1.02);
     expect(L.SPIN).toBe(0.62);
     expect(L.GAP).toEqual({ desktop: 0.42, mobile: 0.36 });
-    expect(L.CH1).toEqual({ a: [0.03, 0.3], b: [0.22, 0.52], c: [0.66, 0.84] });
+    // UI polish (ENGINEERING.md, UI/UX polish): chapter 1 is shorter, so the seal builds sooner.
+    expect(L.CH1).toEqual({ a: [0.03, 0.24], b: [0.18, 0.42], c: [0.48, 0.58] });
   });
   it("chapter timelines (D-0039, D-0050, D-0057, D-0064, D-0069)", () => {
-    expect(L.T1.sealStretch).toEqual({ at: 0.68, dur: 0.16, from: "125%", to: "78%" });
-    expect(L.T1.score).toEqual({ at: 0.87, dur: 0.1 });
+    // UI polish: the seal comes together earlier and its points count up over a longer stretch.
+    expect(L.T1.sealStretch).toEqual({ at: 0.5, dur: 0.1, from: "125%", to: "78%" });
+    expect(L.T1.score).toEqual({ at: 0.62, dur: 0.3 });
     expect(L.T2.dusk.at).toBe(0.5);
-    expect(L.T3.fake.first + 3 * L.T3.fake.every).toBeCloseTo(0.61, 10);
+    // UI polish: four fakes, then the ledger enters with room to read it.
+    expect(L.T3.fake.first + 3 * L.T3.fake.every).toBeCloseTo(0.46, 10);
     expect(L.T4.before).toEqual({ at: 0.12, dur: 0.28, scanOffAt: 0.41 });
     expect(L.T4.maskOpacity).toBe(0.78);
-    expect(L.T5.numbers.first + 3 * L.T5.numbers.every).toBeCloseTo(0.59, 10);
+    // UI polish: the threads chapter is shorter (340vh); the last number lands by 0.56.
+    expect(L.T5.numbers.first + 3 * L.T5.numbers.every).toBeCloseTo(0.56, 10);
   });
   it("frames: the product's B5.10 frame and the prototype's (D-0052)", () => {
     expect(L.FRAME).toEqual({ lng0: 68, lng1: 92, lat0: 6, lat1: 30 });

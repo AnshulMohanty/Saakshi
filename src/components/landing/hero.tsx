@@ -1,6 +1,8 @@
 /* eslint-disable @next/next/no-img-element -- signed Cloudinary URLs; next/image would re-host them */
 import type { LandingData } from "@/lib/landing/types";
 import { BAND_COLOR, BAND_LABEL } from "@/components/trust-meter";
+import type { Seal } from "@/lib/landing/seal";
+import type { TrustBand } from "@/lib/trust/types";
 
 /**
  * Chapter 1 (L:617-675): the hero photo still first (the 3D stage replaces it after idle), the
@@ -9,12 +11,54 @@ import { BAND_COLOR, BAND_LABEL } from "@/components/trust-meter";
  */
 const coord = (v: number, dir: [string, string]) => `${Math.abs(v).toFixed(5)}° ${v >= 0 ? dir[0] : dir[1]}`;
 
+const PILL = { good: "var(--verified)", bad: "var(--flagged)", neutral: "var(--muted-foreground)" } as const;
+const signed = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : "0");
+
+/**
+ * The seal's ledger, layer by layer (wide screens, beside the card; phones see the strip only):
+ * each row lands as its chips light on the strip and the score counts by its points; a hard-flag
+ * cap is its own red row; the last line is the score.
+ */
+function SealBuild({ seal, band }: { seal: Seal; band: TrustBand }) {
+  return (
+    <ol className="h-build" aria-label="How the score is built" style={{ margin: "6px 0 0", padding: "0", listStyle: "none", display: "flex", flexDirection: "column", gap: "6px" }}>
+      {seal.steps.map((s, k) => {
+        const tone = s.points > 0 ? "good" : s.points < 0 || s.items.some((i) => i.tone === "bad") ? "bad" : "neutral";
+        return (
+          <li key={s.layer} data-build={k} style={{ opacity: "0", display: "grid", gridTemplateColumns: "26px 1fr auto", gap: "4px 10px", alignItems: "center", padding: "8px 10px", borderRadius: "10px", background: "color-mix(in srgb, var(--card) 88%, transparent)", border: "1px solid var(--border)" }}>
+            <span style={{ width: "22px", height: "22px", borderRadius: "50%", background: "var(--secondary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "600" }}>{s.layer}</span>
+            <span style={{ display: "flex", flexDirection: "column", gap: "1px", minWidth: "0" }}>
+              <span style={{ fontWeight: "600", fontSize: "14px" }}>{s.title}</span>
+              <span style={{ fontSize: "12px", color: "var(--muted-foreground)", lineHeight: "1.35" }}>{s.items.length ? s.items.map((i) => (i.points ? `${i.label} ${signed(i.points)}` : i.max ? `${i.label}, 0 of ${i.max}` : i.label)).join(" · ") : (s.note ?? "")}</span>
+            </span>
+            <span style={{ fontFamily: "var(--font-display)", fontWeight: "700", fontSize: "18px", whiteSpace: "nowrap", color: s.items.length ? PILL[tone] : "var(--muted-foreground)", fontVariantNumeric: "tabular-nums" }}>{s.items.length ? signed(s.points) : "no points"}</span>
+          </li>
+        );
+      })}
+      {seal.cap && (
+        <li data-build="cap" style={{ opacity: "0", display: "grid", gridTemplateColumns: "26px 1fr auto", gap: "4px 10px", alignItems: "center", padding: "8px 10px", borderRadius: "10px", background: "var(--flagged-tint)", border: "1px solid var(--flagged)", color: "var(--flagged-ink)" }}>
+          <span style={{ width: "22px", height: "22px", borderRadius: "50%", background: "var(--flagged)", color: "var(--l-card)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "700" }}>!</span>
+          <span style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
+            <span style={{ fontWeight: "600", fontSize: "14px" }}>{`Capped at ${seal.cap.cap}`}</span>
+            <span style={{ fontSize: "12px", lineHeight: "1.35" }}>{`A hard flag (${seal.cap.because}) caps the score, whatever the other points add up to.`}</span>
+          </span>
+          <span style={{ fontFamily: "var(--font-display)", fontWeight: "700", fontSize: "18px", whiteSpace: "nowrap" }}>{signed(seal.cap.points)}</span>
+        </li>
+      )}
+      <li data-build="total" style={{ opacity: "0", display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "12px", padding: "8px 10px 0", borderTop: "2px solid var(--foreground)" }}>
+        <span style={{ fontWeight: "600" }}>{seal.clamped ? "Score (a total below 0 counts as 0)" : "Score"}</span>
+        <span style={{ fontFamily: "var(--font-display)", fontWeight: "700", fontSize: "22px", color: BAND_COLOR[band] }}>{`${seal.score}, ${BAND_LABEL[band]}`}</span>
+      </li>
+    </ol>
+  );
+}
+
 export function HeroChapter({ data, demoHref }: { data: LandingData; demoHref: string }) {
   const h = data.hero;
   return (
     <>
       {/* CHAPTER 1: HERO */}
-      <section id="ch1" data-pin="" data-screen-label="01 Hero" style={{ position: "relative", zIndex: "2", height: "440vh" }}>
+      <section id="ch1" data-pin="" data-screen-label="01 Hero" style={{ position: "relative", zIndex: "2", height: "480vh" }}>
         <div id="ch1-sticky" style={{ position: "sticky", top: "0", height: "100vh", overflow: "hidden" }}>
           {h ? (
             <img id="hero-still" src={h.src} alt={h.alt} fetchPriority="high" decoding="async" style={{ position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "cover", transition: "opacity 300ms" }} />
@@ -48,11 +92,12 @@ export function HeroChapter({ data, demoHref }: { data: LandingData; demoHref: s
             <h2 style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "650", fontStretch: "100%", fontSize: "clamp(32px,4vw,58px)", lineHeight: "0.98", letterSpacing: "-0.015em", textWrap: "balance" }}>What Saakshi reads from one photo.</h2>
             <p style={{ margin: "0", fontSize: "16px", lineHeight: "1.5", color: "var(--muted-foreground)", textWrap: "pretty" }}>Five layers, all from this one file. Each one is something the app records, computes or checks.</p>
           </div>
-          <div id="h-seal" style={{ position: "absolute", left: "clamp(20px,5vw,72px)", top: "clamp(92px,16vh,170px)", maxWidth: "min(440px,calc(100% - 40px))", display: "flex", flexDirection: "column", gap: "12px", opacity: "0" }}>
+          <div id="h-seal" style={{ position: "absolute", left: "clamp(20px,5vw,72px)", top: "clamp(88px,14vh,150px)", width: "min(500px,calc(100% - 40px))", display: "flex", flexDirection: "column", gap: "12px", opacity: "0" }}>
             <h2 id="h-seal-t" style={{ margin: "0", fontFamily: "var(--font-display)", fontWeight: "700", fontStretch: "125%", fontSize: "clamp(32px,4vw,58px)", lineHeight: "0.98", letterSpacing: "-0.015em", textWrap: "balance" }}>
               Sealed into one proof.
             </h2>
             <p style={{ margin: "0", fontSize: "16px", lineHeight: "1.5", color: "var(--muted-foreground)", textWrap: "pretty" }}>Fixed rules turn the layers into a trust score with reasons. No black box: every point is on the strip.</p>
+            {h?.trust?.seal && <SealBuild seal={h.trust.seal} band={h.trust.band} />}
           </div>
           <div id="h-mcap" style={{ position: "absolute", left: "20px", right: "20px", bottom: "24px", height: "120px" }} />
         </div>

@@ -3,8 +3,8 @@
  * helpers (landing template L:1233-1572), ported nearly verbatim and scoped to the landing root.
  * Numbers live in lib/motion/scenes/landing.ts; the WebGL stage in ./landing-stage.ts.
  *
- * Changes from the prototype: the mode comes from lib/motion/mode.ts; chapter 9's map shows real
- * arrivals from /api/live (B5.8) instead of random ones; the QR is rendered on the server; the
+ * Changes from the prototype: the mode comes from lib/motion/mode.ts; chapter 9 (components/landing/
+ * witness.tsx) shows real arrivals from /api/live on the shared India map; the QR is rendered on the server; the
  * trust score counts to the hero's real score and band (B5.1, bands 75/45); cleanup is a
  * gsap.context so React can mount and unmount it.
  */
@@ -13,14 +13,15 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
 import type { LandingData } from "../landing/types";
 import type { MotionMode } from "../motion/mode";
-import { C9_MAP, COLORS, DUST, LABELS, LENIS, MOBILE_BELOW, NAV, REFRESH, STAGE_START, T1, T2, T3, T4, T5, T7 } from "../motion/scenes/landing";
+import { COLORS, DUST, LABELS, LENIS, MOBILE_BELOW, NAV, REFRESH, STAGE_START, T1, T2, T3, T4, T5, T7 } from "../motion/scenes/landing";
 import { oklchCssToHex } from "../color/oklch";
 import { defaultTrustConfig } from "../trust/config";
 import type { TrustBand } from "../trust/types";
-import type { LiveEvent } from "../live";
 import { DUST_REVEAL, glyphOrigin, glyphPhoto, nearestGlyph } from "../landing/dust";
 import { drawLayers, loadImage } from "./layers";
-import type { Stage, StageFrame } from "./landing-stage";
+import { sealRunning } from "../landing/seal";
+import { cellId } from "../landing/storm-slots";
+import type { Stage, StageFrame, StageTargets } from "./landing-stage";
 
 export interface LandingController {
   /** Highlight a number's threads and tiles (chapter 5), or clear with null. */
@@ -28,6 +29,7 @@ export interface LandingController {
   dispose(): void;
 }
 
+const seg = (p: number, a: number, b: number) => Math.min(1, Math.max(0, (p - a) / (b - a)));
 const BAND: Record<TrustBand, string> = { VERIFIED: "Verified", NEEDS_REVIEW: "Needs review", FLAGGED: "Flagged" };
 const bandOf = (v: number): TrustBand => (v >= defaultTrustConfig.verifiedMin ? "VERIFIED" : v >= defaultTrustConfig.reviewMin ? "NEEDS_REVIEW" : "FLAGGED");
 const BAND_VAR: Record<TrustBand, string> = { VERIFIED: "var(--verified)", NEEDS_REVIEW: "var(--review)", FLAGGED: "var(--flagged)" };
@@ -39,9 +41,8 @@ export function setupLanding(root: HTMLElement, d: LandingData, opts: { mode: Mo
   let stage: Stage | null = null;
   let lenis: Lenis | null = null;
   let ro: ResizeObserver | null = null;
-  let es: EventSource | null = null;
-  let mapRaf = 0;
   let threadsLit = false;
+  let settled = false;
   let threads: Array<{ num: HTMLElement; tile: HTMLElement; a: SVGPathElement; b: SVGPathElement }> | null = null;
   const cleanups: Array<() => void> = [];
   const on = (t: EventTarget, ev: string, f: EventListener) => {
@@ -91,14 +92,6 @@ export function setupLanding(root: HTMLElement, d: LandingData, opts: { mode: Mo
         pr.style.transform = `translate(${Math.round(mobile ? (window.innerWidth - w) / 2 : c.x)}px, ${Math.round(c.y + c.h + T1.proofGap)}px)`;
       }
     }
-    if (o.storm) {
-      for (const p of o.storm.projects) {
-        const el = root.querySelector<HTMLElement>(`[data-pl="${p.k}"]`);
-        if (!el) continue;
-        el.style.transform = p.below ? `translate(${Math.round(p.x)}px, ${Math.round(p.y + 8)}px)` : `translate(${Math.round(p.x)}px, ${Math.round(p.y - 8)}px) translate(0, -100%)`;
-        el.style.opacity = p.o.toFixed(3);
-      }
-    } else qa("[data-pl]").forEach((el) => (el.style.opacity = "0"));
   }
 
   function navTheme() {
@@ -166,102 +159,6 @@ export function setupLanding(root: HTMLElement, d: LandingData, opts: { mode: Mo
     }
   }
 
-  function mapInit() {
-    const c = q<HTMLCanvasElement>("#c9-map");
-    if (!c) return;
-    const { lng0: L0, lng1: L1, lat0: A0, lat1: A1 } = d.frame;
-    const spots = d.witness.spots;
-    const ripples: Array<{ x: number; y: number; t: number }> = [];
-    let W = 0;
-    let H = 0;
-    let x: CanvasRenderingContext2D;
-    const size = () => {
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
-      W = c.clientWidth * dpr;
-      H = c.clientHeight * dpr;
-      c.width = W;
-      c.height = H;
-      x = c.getContext("2d")!;
-    };
-    const P = (lat: number, lng: number) => [((lng - L0) / (L1 - L0)) * W, H - ((lat - A0) / (A1 - A0)) * H] as const;
-    const draw = (t: number) => {
-      x.clearRect(0, 0, W, H);
-      const r = Math.max(1, W / C9_MAP.unit);
-      x.fillStyle = COLORS.c9Land;
-      for (const [lng, lat] of d.land) {
-        const [a, b] = P(lat, lng);
-        x.fillRect(a - r, b - r, r * 2, r * 2);
-      }
-      for (const s of spots) {
-        const [a, b] = P(s.lat, s.lng);
-        x.fillStyle = COLORS.pin;
-        x.beginPath();
-        x.arc(a, b, r * C9_MAP.pinRadius, 0, 7);
-        x.fill();
-        x.fillStyle = `rgb(${COLORS.c9Centre})`;
-        x.font = `500 ${Math.round(r * C9_MAP.labelSize)}px "IBM Plex Sans"`;
-        x.fillText(s.city, a + r * 7, b + r * 4);
-      }
-      for (let i = ripples.length - 1; i >= 0; i--) {
-        const rp = ripples[i];
-        const k = (t - rp.t) / C9_MAP.ripple.ms;
-        if (k > 1) {
-          ripples.splice(i, 1);
-          continue;
-        }
-        const e = 1 - Math.pow(1 - k, 3);
-        x.strokeStyle = `rgba(${COLORS.c9Ripple},${(1 - k) * C9_MAP.ripple.alpha})`;
-        x.lineWidth = r * C9_MAP.ripple.width;
-        x.beginPath();
-        x.arc(rp.x, rp.y, r * (C9_MAP.ripple.from + e * C9_MAP.ripple.grow), 0, 7);
-        x.stroke();
-        x.fillStyle = `rgba(${COLORS.c9Centre},${1 - k * 0.6})`;
-        x.beginPath();
-        x.arc(rp.x, rp.y, r * C9_MAP.ripple.centre, 0, 7);
-        x.fill();
-      }
-    };
-    size();
-    on(window, "resize", () => {
-      size();
-      draw(performance.now());
-    });
-    draw(0);
-    if (reduced || !opts.live) return;
-    // Real arrivals (B5.8): a ripple where each Witness photo was taken.
-    let visible = false;
-    const nearest = (lat: number, lng: number) => spots.reduce((best, s) => ((s.lat - lat) ** 2 + (s.lng - lng) ** 2 < (best.lat - lat) ** 2 + (best.lng - lng) ** 2 ? s : best), spots[0]);
-    const loop = (t: number) => {
-      if (dead) return;
-      draw(t);
-      if (ripples.length && visible) mapRaf = requestAnimationFrame(loop);
-    };
-    const io = new IntersectionObserver((es) => {
-      visible = es[0].isIntersecting;
-      if (visible) mapRaf = requestAnimationFrame(loop);
-    });
-    io.observe(c);
-    cleanups.push(() => io.disconnect());
-    try {
-      es = new EventSource("/api/live");
-      // Named events (lib/live.ts liveStream): only a new photo ripples.
-      es.addEventListener("arrival", (m) => {
-        const ev = JSON.parse((m as MessageEvent<string>).data) as LiveEvent;
-        if (!ev.location) return;
-        const [a, b] = P(ev.location.lat, ev.location.lng);
-        ripples.push({ x: a, y: b, t: performance.now() });
-        const el = q("#c9-latest");
-        if (el && spots.length) el.textContent = `New witness photo near ${nearest(ev.location.lat, ev.location.lng).city}`;
-        if (visible) {
-          cancelAnimationFrame(mapRaf);
-          mapRaf = requestAnimationFrame(loop);
-        }
-      });
-    } catch {
-      /* no live feed: the map stays still */
-    }
-  }
-
   function threadsInit() {
     const svg = root.querySelector<SVGSVGElement>("#c5-threads");
     if (!svg || svg.childElementCount) return;
@@ -303,12 +200,24 @@ export function setupLanding(root: HTMLElement, d: LandingData, opts: { mode: Mo
     for (const t of threads) {
       const n = t.num.getBoundingClientRect();
       const r = t.tile.getBoundingClientRect();
-      const x1 = n.left + n.width / 2 - o.left;
-      const y1 = n.bottom - o.top - 4;
-      const x2 = r.left + r.width / 2 - o.left;
-      const y2 = r.top - o.top + 2;
-      const dy = Math.max(T5.thread.minBend, (y2 - y1) * T5.thread.bend);
-      const dd = `M${x1.toFixed(1)} ${y1.toFixed(1)} C${x1.toFixed(1)} ${(y1 + dy).toFixed(1)} ${x2.toFixed(1)} ${(y2 - dy).toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+      let dd: string;
+      if (r.left > n.right) {
+        // Card left, photos right (wide screens): from the number's right edge to the photo's left edge.
+        const x1 = n.right - o.left - 2;
+        const y1 = n.top + n.height / 2 - o.top;
+        const x2 = r.left - o.left + 2;
+        const y2 = r.top + r.height / 2 - o.top;
+        const dx = Math.max(T5.thread.minBend, (x2 - x1) * T5.thread.bend);
+        dd = `M${x1.toFixed(1)} ${y1.toFixed(1)} C${(x1 + dx).toFixed(1)} ${y1.toFixed(1)} ${(x2 - dx).toFixed(1)} ${y2.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+      } else {
+        // Stacked (phones): from the number's bottom to the photo's top.
+        const x1 = n.left + n.width / 2 - o.left;
+        const y1 = n.bottom - o.top - 4;
+        const x2 = r.left + r.width / 2 - o.left;
+        const y2 = r.top - o.top + 2;
+        const dy = Math.max(T5.thread.minBend, (y2 - y1) * T5.thread.bend);
+        dd = `M${x1.toFixed(1)} ${y1.toFixed(1)} C${x1.toFixed(1)} ${(y1 + dy).toFixed(1)} ${x2.toFixed(1)} ${(y2 - dy).toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+      }
       t.a.setAttribute("d", dd);
       t.b.setAttribute("d", dd);
     }
@@ -330,43 +239,23 @@ export function setupLanding(root: HTMLElement, d: LandingData, opts: { mode: Mo
     });
   }
 
-  const ch7Geo = () => {
+  /** Chapter 7: show visit k (frame, filmstrip, texts). Only touches the DOM when k changes. */
+  let ch7k = -1;
+  function ch7Set(k: number) {
     const pts = d.checkins?.points ?? [];
-    const max = Math.max(10, ...pts.map((p) => p.value.value ?? 0));
-    const n = Math.max(1, pts.length - 1);
-    return pts.map((p, i) => ({ ...p, x: T7.chart.x0 + i * (T7.chart.plotWidth / n), y: T7.chart.base - ((p.value.value ?? 0) / max) * (T7.chart.base - T7.chart.top) }));
-  };
-  function ch7Draw() {
-    const g = ch7Geo();
-    const line = q("#c7-line");
-    if (!line || !g.length) return g;
-    line.setAttribute("d", g.map((p, i) => `${i ? "L" : "M"}${p.x} ${p.y}`).join(" "));
-    const dots = q("#c7-dots");
-    if (dots) {
-      dots.innerHTML = "";
-      const ns = "http://www.w3.org/2000/svg";
-      for (const p of g) {
-        const c = document.createElementNS(ns, "circle");
-        c.setAttribute("cx", String(p.x));
-        c.setAttribute("cy", String(p.y));
-        c.setAttribute("r", "4");
-        c.style.fill = "var(--measured)";
-        dots.appendChild(c);
-      }
-    }
-    return g;
-  }
-  function ch7Set(i: number, g: ReturnType<typeof ch7Geo>) {
-    const p = g[i];
-    if (!p) return;
-    q("#c7-marker")?.setAttribute("cx", String(p.x));
-    q("#c7-marker")?.setAttribute("cy", String(p.y));
-    const photo = q("#c7-photo");
-    if (photo) photo.textContent = p.label;
-    const img = q<HTMLImageElement>("#c7-img");
-    if (img && p.photo) img.src = p.photo;
-    const count = q("#c7-count");
-    if (count) count.textContent = String(i);
+    const p = pts[k];
+    if (!p || k === ch7k) return;
+    ch7k = k;
+    qa("[data-c7-frame]").forEach((el) => (el.style.opacity = el.dataset.c7Frame === String(k) ? "1" : "0"));
+    qa("[data-c7-thumb]").forEach((el) => {
+      const on = el.dataset.c7Thumb === String(k);
+      el.style.outlineColor = on ? "var(--measured)" : "transparent";
+      el.style.transform = on ? "translateY(-2px)" : "none";
+    });
+    const kk = q("#c7-k");
+    if (kk) kk.textContent = `Visit ${k + 1} of ${pts.length}`;
+    const when = q("#c7-when");
+    if (when) when.textContent = p.when ?? p.label;
     const val = q("#c7-val");
     if (val) val.textContent = p.value.value === null ? p.value.text : `${p.value.text}%`;
   }
@@ -393,35 +282,34 @@ export function setupLanding(root: HTMLElement, d: LandingData, opts: { mode: Mo
         if (el) el.src = c.toDataURL("image/png");
       });
     }
-    staticMap();
   }
 
-  function staticMap() {
-    const c = q<HTMLCanvasElement>("#c2-static-map");
-    if (!c) return;
-    const W = c.clientWidth * 2 || 1200;
-    const { lng0: L0, lng1: L1, lat0: A0, lat1: A1 } = d.frame;
-    const H = Math.round((W * (A1 - A0)) / ((L1 - L0) * 0.96 || 1) / 1.0);
-    c.width = W;
-    c.height = Math.round((W * 16) / 21) || H;
-    const x = c.getContext("2d")!;
-    const HH = c.height;
-    const P = (lat: number, lng: number) => [((lng - L0) / (L1 - L0)) * W, HH - ((lat - A0) / (A1 - A0)) * HH] as const;
-    x.fillStyle = COLORS.staticLand;
-    for (const [lng, lat] of d.land) {
-      const [a, b] = P(lat, lng);
-      x.fillRect(a - 1.5, b - 1.5, 3, 3);
-    }
-    for (const p of d.projects) {
-      const [a, b] = P(p.lat, p.lng);
-      x.fillStyle = COLORS.staticPin;
-      x.beginPath();
-      x.arc(a, b, 8, 0, 7);
-      x.fill();
-      x.fillStyle = COLORS.staticLabel;
-      x.font = '600 26px "IBM Plex Sans"';
-      x.fillText(p.city, a + 14, b + 8);
-    }
+  /** Where the storm's tiles go: chapter 2's map cells and pins, and the headline to keep clear (all read from the DOM). */
+  function stageTargets(): StageTargets {
+    const cache = new Map<string, HTMLElement>();
+    const find = (sel: string) => {
+      let el = cache.get(sel);
+      if (!el || !el.isConnected) {
+        el = root.querySelector<HTMLElement>(sel) ?? undefined;
+        if (el) cache.set(sel, el);
+      }
+      return el ?? null;
+    };
+    const centre = (el: HTMLElement | null) => {
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return r.width ? { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width } : null;
+    };
+    return {
+      cell: (k, slot) => centre(find(`[data-cell="${CSS.escape(cellId(k, slot))}"]`)),
+      site: (k) => centre(find(`[data-site="${CSS.escape(k)}"]`)),
+      avoid: () => {
+        const el = find("#c2-t1");
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return { x: r.left, y: r.top, w: r.width, h: r.height };
+      },
+    };
   }
 
   function applyReduced() {
@@ -447,6 +335,7 @@ export function setupLanding(root: HTMLElement, d: LandingData, opts: { mode: Mo
     const close = q("#c3-close");
     if (close) {
       close.style.opacity = "1";
+      close.style.visibility = "visible";
       close.style.position = "relative";
     }
     const slot = q("#c3-slot");
@@ -479,11 +368,7 @@ export function setupLanding(root: HTMLElement, d: LandingData, opts: { mode: Mo
       root.querySelectorAll<SVGPathElement>("#c5-threads [data-t]").forEach((p) => (p.style.strokeDashoffset = "0"));
     });
     on(window, "resize", () => threadsLayout());
-    if (q("#ch7")) {
-      const g = ch7Draw();
-      q("#c7-line")?.setAttribute("stroke-dashoffset", "0");
-      ch7Set(g.length - 1, g);
-    }
+    if (q("#ch7") && d.checkins?.points.length) ch7Set(d.checkins.points.length - 1);
     const gl = q("#sk-gl");
     if (gl) gl.style.display = "none";
     const ov = q("#gl-overlay");
@@ -494,7 +379,6 @@ export function setupLanding(root: HTMLElement, d: LandingData, opts: { mode: Mo
   async function setup() {
     dust();
     dustReveal();
-    mapInit();
     const staticHeroMode = mode !== "full" || !d.hero;
     if (staticHeroMode) await staticHero();
     if (dead) return;
@@ -528,8 +412,7 @@ export function setupLanding(root: HTMLElement, d: LandingData, opts: { mode: Mo
                 hero: { src: hero.src, w: hero.w, h: hero.h, mask: hero.mask, layer: { bits: hero.bits, lat: hero.lat, lng: hero.lng, when: hero.when, extra: hero.extra, aiBoxes: hero.aiBoxes, aiTags: hero.aiText.replace(/\.$/, "").split(/,\s*/) } },
                 tiles: d.storm,
                 projects: d.projects,
-                land: d.land,
-                frame: d.frame,
+                targets: stageTargets(),
               },
               onFrame,
             );
@@ -561,76 +444,102 @@ export function setupLanding(root: HTMLElement, d: LandingData, opts: { mode: Mo
           .to("#h-explain", { opacity: 0, y: T1.explainOut.y, duration: T1.explainOut.dur }, T1.explainOut.at)
           .fromTo("#h-seal", { opacity: 0, y: T1.sealIn.y }, { opacity: 1, y: 0, duration: T1.sealIn.dur, ease: "expo.out" }, T1.sealIn.at)
           .fromTo("#h-seal-t", { fontStretch: T1.sealStretch.from }, { fontStretch: T1.sealStretch.to, duration: T1.sealStretch.dur, ease: "power2.inOut" }, T1.sealStretch.at)
-          .fromTo("#h-proof-in", { opacity: 0, y: T1.proofIn.y }, { opacity: 1, y: 0, duration: T1.proofIn.dur, ease: "expo.out" }, T1.proofIn.at)
-          .fromTo("[data-rule]", { opacity: 0, x: T1.rules.x }, { opacity: 1, x: 0, stagger: T1.rules.stagger, duration: T1.rules.dur }, T1.rules.at);
+          .fromTo("#h-proof-in", { opacity: 0, y: T1.proofIn.y }, { opacity: 1, y: 0, duration: T1.proofIn.dur, ease: "expo.out" }, T1.proofIn.at);
         const target = hero.trust?.score ?? 0;
+        const finalBand = hero.trust?.band ?? bandOf(target);
         const sv = { v: 0 };
-        t1.to(
-          sv,
-          {
-            v: target,
-            duration: T1.score.dur,
-            onUpdate: () => {
-              const v = Math.round(sv.v);
-              const band = bandOf(v);
-              const col = BAND_VAR[band];
-              const score = q("#h-score");
-              const bandEl = q("#h-band");
-              const bar = q("#h-bar");
-              if (score) {
-                score.textContent = String(v);
-                score.style.color = col;
-              }
-              if (bandEl) {
-                bandEl.textContent = v === 0 ? "Checking" : BAND[band];
-                bandEl.style.color = col;
-              }
-              if (bar) {
-                bar.style.width = `${v}%`;
-                bar.style.background = col;
-              }
-            },
-          },
-          T1.score.at,
-        );
+        /** The strip at a running score; the final value shows the engine's own band (a hard flag decides it). */
+        const paint = () => {
+          const v = Math.round(sv.v);
+          const band = v === target && sv.v === target && done ? finalBand : bandOf(v);
+          const col = BAND_VAR[band];
+          const score = q("#h-score");
+          const bandEl = q("#h-band");
+          const bar = q("#h-bar");
+          const marker = q("#h-marker");
+          if (score) {
+            score.textContent = String(v);
+            score.style.color = v === 0 ? "var(--muted-foreground)" : col;
+          }
+          if (bandEl) {
+            // While the layers land the band is still being decided: only the final score names it.
+            const final = done && v === target;
+            bandEl.textContent = v === 0 ? "Checking" : final ? BAND[band] : "Adding up…";
+            bandEl.style.color = final ? col : "var(--muted-foreground)";
+          }
+          if (bar) {
+            bar.style.width = `${v}%`;
+            bar.style.background = col;
+          }
+          if (marker) marker.style.left = `${v}%`;
+        };
+        let done = false;
+        const seal = hero.trust?.seal;
+        if (seal) {
+          const running = sealRunning(seal);
+          const keys = [...seal.steps.map((_, k) => String(k)), ...(seal.cap ? ["cap"] : [])];
+          keys.forEach((k, i) => {
+            const at = T1.steps.first + i * T1.steps.every;
+            const last = i === keys.length - 1;
+            t1.fromTo(`[data-build="${k}"]`, { opacity: 0, x: T1.steps.rowX }, { opacity: 1, x: 0, duration: T1.steps.rowDur, ease: "expo.out" }, at)
+              .fromTo(`#h-proof [data-step="${k}"]`, { opacity: 0.18, y: -6 }, { opacity: 1, y: 0, duration: T1.steps.chipDur, ease: "back.out(2)" }, at + T1.steps.chipAt)
+              .to(sv, { v: running[i], duration: T1.steps.countDur, onUpdate: paint, onComplete: () => void (last && ((done = true), paint())), onReverseComplete: () => void (done = false) }, at + T1.steps.chipAt);
+          });
+          t1.fromTo('[data-build="total"]', { opacity: 0 }, { opacity: 1, duration: T1.total.dur }, T1.steps.first + keys.length * T1.steps.every);
+        } else {
+          t1.fromTo("[data-rule]", { opacity: 0, x: T1.rules.x }, { opacity: 1, x: 0, stagger: T1.rules.stagger, duration: T1.rules.dur }, T1.rules.at).to(sv, { v: target, duration: T1.score.dur, onUpdate: paint, onComplete: () => ((done = true), paint()) }, T1.score.at);
+        }
         t1.to({}, { duration: T1.hold.dur }, T1.hold.at);
 
         const t2 = gsap.timeline({
           defaults: { ease: "none" },
           scrollTrigger: sc("#ch2", {
             start: "top bottom",
-            onUpdate: (s) => stage?.setStorm(s.progress),
-            onLeave: () => {
-              const gl = q("#sk-gl");
-              if (gl) gl.style.visibility = "hidden";
-            },
-            onEnterBack: () => {
-              const gl = q("#sk-gl");
-              if (gl) gl.style.visibility = "visible";
+            onUpdate: (s) => {
+              stage?.setStorm(s.progress);
+              // The map fades in as the photos head for it; the DOM grids take over from the tiles.
+              const map = q("#c2-map");
+              if (map) {
+                map.style.opacity = String(seg(s.progress, T2.mapIn.at, T2.mapIn.at + T2.mapIn.dur));
+                map.style.visibility = s.progress > T2.mapIn.at ? "visible" : "hidden";
+              }
+              const grids = q("#c2-grids");
+              if (grids) grids.style.opacity = String(seg(s.progress, T2.gridsIn.at, T2.gridsIn.at + T2.gridsIn.dur));
+              const nowSettled = s.progress >= T2.gridsIn.at + T2.gridsIn.dur;
+              if (nowSettled !== settled) {
+                settled = nowSettled;
+                window.dispatchEvent(new CustomEvent("saakshi:c2-settled", { detail: settled }));
+              }
             },
           }),
         });
+        // The fixed layers stay until chapter 3 has covered the screen (it slides over them), then hide.
+        const fixedLayers = (on: boolean) => {
+          for (const id of ["#sk-gl", "#c2-map"]) {
+            const el = q(id);
+            if (el) el.style.visibility = on ? "visible" : "hidden";
+          }
+        };
+        ScrollTrigger.create({ trigger: q("#ch3"), start: "top top", onEnter: () => fixedLayers(false), onLeaveBack: () => fixedLayers(true) });
         t2.to("#h-proof", { opacity: 0, duration: T2.proofOut.dur }, T2.proofOut.at)
           .to("#gl-labels", { opacity: 0, duration: T2.labelsOut.dur }, T2.labelsOut.at)
           .fromTo("#c2-t1", { opacity: 0, y: T2.t1In.y }, { opacity: 1, y: 0, duration: T2.t1In.dur, ease: "expo.out" }, T2.t1In.at)
           .to("#c2-t1", { opacity: 0, y: T2.t1Out.y, duration: T2.t1Out.dur }, T2.t1Out.at)
           .fromTo("#sk-sky", { backgroundColor: tok("--l-background") }, { backgroundColor: tok("--n-border"), duration: T2.dusk.dur, immediateRender: false }, T2.dusk.at)
           .fromTo("#c2-t2", { opacity: 0, y: T2.t2In.y }, { opacity: 1, y: 0, duration: T2.t2In.dur, ease: "expo.out" }, T2.t2In.at)
-          .to("#sk-sky", { backgroundColor: tok("--n-background"), duration: T2.night.dur }, T2.night.at)
-          .to("#gl-projects", { opacity: 0, duration: T2.projectsOut.dur }, T2.projectsOut.at);
+          .to("#sk-sky", { backgroundColor: tok("--n-background"), duration: T2.night.dur }, T2.night.at);
       }
 
       // Chapter 3: the catch
       {
         const holes = qa("#c3-grid [data-hole]").filter((el) => el.dataset.hole !== "");
         const items = qa("#c3-slot [data-flag]");
+        // The heading and grid arrive while the chapter scrolls in, so it never shows an empty screen.
+        gsap
+          .timeline({ defaults: { ease: "none" }, scrollTrigger: { trigger: q("#ch3"), start: T3.entry.start, end: T3.entry.end, scrub: true } })
+          .fromTo("#c3-title", { opacity: 0, y: T3.entry.y }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 0)
+          .fromTo("#c3-grid [data-hole]", { opacity: 0, scale: T3.entry.scale }, { opacity: 1, scale: 1, stagger: T3.entry.stagger, duration: 0.4, ease: "power2.out" }, 0.2);
         const t3 = gsap.timeline({ defaults: { ease: "none" }, scrollTrigger: sc("#ch3", { invalidateOnRefresh: true }) });
-        t3.fromTo("#c3-title", { opacity: 0, y: T3.title.y }, { opacity: 1, y: 0, duration: T3.title.dur, ease: "expo.out" }, T3.title.at).fromTo(
-          "#c3-grid [data-hole]",
-          { opacity: 0, scale: T3.grid.scale },
-          { opacity: 1, scale: 1, stagger: T3.grid.stagger, duration: T3.grid.dur, ease: "expo.out" },
-          T3.grid.at,
-        );
         const slot = q("#c3-slot")!;
         items.forEach((it, k) => {
           const hole = holes.find((h) => h.dataset.hole === String(k));
@@ -654,9 +563,19 @@ export function setupLanding(root: HTMLElement, d: LandingData, opts: { mode: Mo
             .fromTo(rs, { opacity: 0, y: f.reasonY }, { opacity: 1, y: 0, duration: f.reasonDur, ease: "expo.out", immediateRender: false }, t + f.reasonAt);
           if (k < items.length - 1) t3.to(it, { opacity: 0, duration: f.outDur }, t + f.outAt);
         });
+        // The grid leaves completely before the close comes in: no text over text.
         t3.to("#c3-main", { opacity: T3.close.mainDim, duration: T3.close.mainDur }, T3.close.mainAt)
-          .fromTo("#c3-close", { opacity: 0, y: T3.close.y }, { opacity: 1, y: 0, duration: T3.close.inDur, ease: "expo.out" }, T3.close.in)
-          .to({}, { duration: T3.close.holdDur }, T3.close.holdAt);
+          .set("#c3-main", { visibility: "hidden" }, T3.close.mainAt + T3.close.mainDur)
+          .set("#c3-close", { visibility: "visible" }, T3.close.in)
+          .fromTo("#c3-close", { opacity: 0, y: T3.close.y }, { opacity: 1, y: 0, duration: T3.close.inDur, ease: "expo.out", immediateRender: false }, T3.close.in)
+          .fromTo("#c3-ledger [data-lrow]", { opacity: 0, x: 14 }, { opacity: 1, x: 0, stagger: T3.close.rowsStagger, duration: T3.close.rowDur, ease: "expo.out" }, T3.close.rowsAt);
+        const ls = q("#c3-lscore");
+        if (ls) {
+          const fin = Number(ls.dataset.final ?? ls.textContent ?? 0);
+          const n = { v: 0 };
+          t3.fromTo(n, { v: 0 }, { v: fin, duration: T3.close.scoreDur, onUpdate: () => void (ls.textContent = String(Math.round(n.v))) }, T3.close.scoreAt);
+        }
+        t3.to({}, { duration: T3.close.holdDur }, T3.close.holdAt);
       }
 
       // Chapter 4: measured
@@ -701,13 +620,12 @@ export function setupLanding(root: HTMLElement, d: LandingData, opts: { mode: Mo
       threadsInit();
       {
         const keys = ["verified", "flagged", "before", "after"].filter((k) => q(`[data-num="${k}"]`));
+        // The card and the wall arrive while the chapter scrolls in (no empty screen before it pins).
+        gsap
+          .timeline({ defaults: { ease: "none" }, scrollTrigger: { trigger: q("#ch5"), start: T5.entry.start, end: T5.entry.end, scrub: true, onUpdate: () => threadsLayout() } })
+          .fromTo("#c5-report", { y: T5.report.y, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power2.out" }, 0)
+          .fromTo("#c5-field [data-tile]", { opacity: 0, y: 18 }, { opacity: T5.hover.tileIdle, y: 0, stagger: T5.entry.stagger, duration: 0.3, ease: "power2.out" }, 0.15);
         const t5 = gsap.timeline({ defaults: { ease: "none" }, scrollTrigger: sc("#ch5", { onUpdate: () => threadsLayout() }) });
-        t5.fromTo("#c5-report", { rotateX: T5.report.rotateFrom, y: T5.report.y, opacity: 0 }, { rotateX: T5.report.rotateTo, y: 0, opacity: 1, duration: T5.report.dur, ease: "expo.out" }, T5.report.at).fromTo(
-          "#c5-field",
-          { opacity: 0 },
-          { opacity: 1, duration: T5.field.dur },
-          T5.field.at,
-        );
         keys.forEach((k, i) => {
           const t = T5.numbers.first + i * T5.numbers.every;
           t5.fromTo(`[data-num="${k}"]`, { borderColor: tok("--l-border") }, { borderColor: tok("--l-primary"), duration: T5.numbers.border }, t)
@@ -727,23 +645,36 @@ export function setupLanding(root: HTMLElement, d: LandingData, opts: { mode: Mo
       }
 
       // Chapter 7: it keeps watching (P1)
-      if (q("#ch7") && d.checkins?.points.length) {
-        const g = ch7Draw();
-        ch7Set(0, g);
-        gsap
-          .timeline({
-            defaults: { ease: "none" },
-            scrollTrigger: sc("#ch7", {
-              onUpdate: (s) => {
-                const k = Math.min(g.length - 1, Math.floor(Math.max(0, (s.progress - T7.from) / T7.span) * (g.length - 1) + 0.0001));
-                ch7Set(k, g);
-              },
-            }),
-          })
-          .fromTo("#c7-line", { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: T7.span }, T7.from)
-          .to({}, { duration: T7.holdDur }, T7.holdAt);
+      if (q("#ch7") && (d.checkins?.points.length ?? 0) > 1) {
+        const n = d.checkins!.points.length;
+        ch7Set(0);
+        ScrollTrigger.create({
+          ...sc("#ch7"),
+          // Discrete steps through the visits: one index per stretch of scroll, cross-faded by CSS.
+          onUpdate: (s) => ch7Set(Math.min(n - 1, Math.max(0, Math.floor(((s.progress - T7.from) / T7.span) * n)))),
+        });
       }
     });
+
+    // Chapter 10: scrolling walks through the pipeline's stages (reversible); the rail fills with the scroll.
+    if (q("#ch10") && d.nodes.length) {
+      const n = d.nodes.length;
+      let at = -1;
+      ctx.add(() => ScrollTrigger.create({
+        trigger: q("#ch10"),
+        start: "top top",
+        end: "bottom bottom",
+        onUpdate: (s) => {
+          const fill = q("#c10-fill");
+          if (fill) fill.style.transform = `scaleX(${s.progress.toFixed(4)})`;
+          const i = Math.min(n - 1, Math.floor(s.progress * n));
+          if (i !== at) {
+            at = i;
+            window.dispatchEvent(new CustomEvent("saakshi:c10", { detail: i }));
+          }
+        },
+      }));
+    }
 
     requestAnimationFrame(() => ScrollTrigger.refresh());
     let rt = 0;
@@ -771,8 +702,6 @@ export function setupLanding(root: HTMLElement, d: LandingData, opts: { mode: Mo
       stage = null;
       lenis?.destroy();
       lenis = null;
-      es?.close();
-      cancelAnimationFrame(mapRaf);
       for (const c of cleanups.splice(0)) c();
       ctx.revert();
     },
