@@ -23,7 +23,7 @@ import { chooseBaseline, evaluatePair, exclusionsOf, findPairs, type PairCandida
 export const CAVEAT = "Measured on photo pixels. Camera angle, framing, season and light affect the result.";
 export { FRAME, VIEW } from "../media/derivatives";
 export const FRAME_KEY = compileTransform(FRAME);
-export const LITTER_PROMPTS = ["litter", "garbage", "plastic waste", "floating waste"];
+export const LITTER_PROMPTS = ["litter", "garbage", "plastic-waste", "floating-waste"];
 export const GREEN_PROMPTS = ["trees", "plants", "grass"];
 export const DEFAULT_MEASURE_MAX = 40;
 

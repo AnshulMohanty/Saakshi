@@ -59,7 +59,7 @@ describe("measurement against the database (mock masks)", () => {
     }
     const rows = await ctx.db.select().from(measurements).where(eq(measurements.metric, "litter_cover"));
     expect(rows).toHaveLength(3);
-    expect(rows.every((r) => r.frame === FRAME_KEY && r.method === "measured" && r.maskUrl?.includes("e_extract:prompt_(litter;garbage;plastic%20waste;floating%20waste);multiple_true;mode_mask"))).toBe(true);
+    expect(rows.every((r) => r.frame === FRAME_KEY && r.method === "measured" && r.maskUrl?.includes("e_extract:prompt_(litter;garbage;plastic-waste;floating-waste);multiple_true;mode_mask"))).toBe(true);
     const v = Object.fromEntries(rows.map((r) => [r.assetId, r.value]));
     expect(v[before.id]).toBeGreaterThan(v[during.id]);
     expect(v[during.id]).toBeGreaterThan(v[after.id]);
