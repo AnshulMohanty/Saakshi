@@ -1,7 +1,10 @@
 # Map data
 
-Every map of India in Saakshi (landing chapters 2 and 9, the library, "Be a witness") draws one
-file, `public/geo/india.json`, through one component, `src/components/map/india-map.tsx`.
+Every map of India in Saakshi (landing chapters 2 and 9, "Be a witness", the library) draws one
+file, `public/geo/india.json`, through one component, `src/components/map/india-map.tsx`. The Witness
+Wall (`/witness`, its own WebGL stage) draws the same file's dots, so no screen shows generic land or
+a neighbouring country's outline. (`data/land-dots.json`, Natural Earth land, remains only in the
+design-parity fixtures.)
 
 ## Source and licence
 

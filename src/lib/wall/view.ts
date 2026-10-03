@@ -5,7 +5,7 @@ import "server-only";
  * pool of real demo photos to rehearse with (labelled as rehearsals, never counted).
  */
 import { and, count, desc, eq, gte, inArray, isNotNull } from "drizzle-orm";
-import landDots from "../../../data/land-dots.json";
+import india from "../../../public/geo/india.json";
 import type { DB } from "../db/client";
 import { assets, projects, spots, type Asset } from "../db/schema";
 import { startOfIstDay } from "../demo-apis";
@@ -54,7 +54,8 @@ export async function wallView(db: DB, media: MediaProvider, o: { appUrl: string
   const url = `${o.appUrl}/capture`;
   return {
     frame: { ...FRAME },
-    land: landDots.dots as Array<[number, number]>,
+    // The official outline of India's dots (docs/map-data.md), not generic land: no neighbouring country is drawn.
+    land: (india.dots as Array<[number, number]>).filter(([lng, lat]) => lng >= FRAME.lng0 - 1 && lng <= FRAME.lng1 + 1 && lat >= FRAME.lat0 - 1 && lat <= FRAME.lat1 + 1),
     dust: dust.map((d) => hexToBits(d.phash!)),
     spots: spotsOut,
     qr: { url, label: url.replace(/^https?:\/\//, "") },
