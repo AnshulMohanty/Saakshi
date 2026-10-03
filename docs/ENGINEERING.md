@@ -966,3 +966,34 @@ Newest last. After every phase or fix: what changed, why, the evidence, any new 
     - `pnpm typecheck` and `pnpm lint` are clean.
     - No real provider was called.
   - **New issue:** the fallback reads the same unblurred, signed analysis copy as Cloudinary AI Vision, because the children's-faces question needs it. That is a second third party seeing unblurred faces (`store: false`). `describePhoto` still gets the blurred copy. The trade-off is noted in docs/providers.md.
+- **Production deploy finished: demo data complete, four root causes fixed, live site verified** (3 Oct)
+  - **Observability first:**
+    - `ProviderHttpError` now carries Cloudinary's `x-cld-error` header. Delivery errors have an empty body, so measure failures had read "HTTP 400:" with no reason.
+    - `callWithRetry` takes a total deadline, and a derived request (423 retries included) is bounded to 3 min.
+    - Demo runs print one line per photo (status, band, measure outcome, seconds) plus a 30 s heartbeat, and the settle phase logs its progress.
+    - New `pnpm demo:status` (read-only: statuses, grouped step errors, spend, `--cld` usage).
+  - **P2 (silent 15+ min runs):** slow, not hung. `provider_usage` showed no real call over 6.2 s and no retries; the time went to many sequential DB round trips to Supabase, and the run printed only failures. The resumed run printed every photo and took 136 s.
+  - **P1 (measure 400):** `x-cld-error: Invalid input for extract`.
+    - Probes on one photo: `litter` alone 200, `garbage` alone 200, `litter;garbage` 400, `plastic-waste` 400. On a clean plantation photo, `litter` gave 400.
+    - Fix: a refused prompt list is asked prompt by prompt and the masks are joined. Every prompt refused = "unmeasurable": the reason is recorded, no number is stored, finalize runs, the photo is kept out of pairs and baselines, and the evidence page says "Not measurable: …".
+    - The 21 "HTTP 401" failures were the old space-containing prompts (already fixed); they measured on resume.
+  - **Resume:** `demo:import` now resumes every photo whose pipeline didn't complete. Scoring sets the status before measure, so 31 failed photos weren't "processing".
+  - **Watermark detector false positives:** 11 real Commons photos were FLAGGED STOCK_SUSPECTED. One was a rubbish heap with no mark, which Cloudinary detected at confidence 1.0. A hard stock flag now needs the detector and the vision check to agree; one alone is the review reason `WATERMARK_UNCONFIRMED`.
+  - **Planted "reused" not flagged:** Cloudinary's pHash moved 14 bits on the 2% re-crop. Ours (`lib/phash.ts`, which the thresholds, tests and browser preview use) moves 8.
+    - Real mode now fingerprints with ours: from the upload bytes, or the stored original.
+    - `pnpm media:rehash` recomputed 62 of 62 fingerprints (audited) and re-scored; 5 results changed, and "reused" is FLAGGED REUSED (30).
+  - **Data (production):** 62 assets, every step done, no step errors, audit chains intact (63 chains).
+    - Archive: 46 VERIFIED; 11 NEEDS_REVIEW (`WATERMARK_UNCONFIRMED`: detector only); 1 FLAGGED (commons:162170480, a burned-in photographer signature both checks see).
+    - Planted: reused 30 REUSED, stock 35 STOCK_SUSPECTED, location_mismatch 25 LOCATION_MISMATCH, stamp_mismatch 40 STAMP_MISMATCH.
+    - Pairs: hero 1 (litter 3.5% → 5.2%, 2020); 150 of its candidates fail the 0.5 h gap because the 2017 series was shot within minutes. 3 hero photos are unmeasurable. Trees 2 pairs; Lake 0 (all gaps too short).
+    - `demo:stage` done at 12.841115, 77.644521.
+  - **C3 verified:** a real litter mask is white exactly over the dump pile in its photo; the spot page overlay sits on the plastic on the bank.
+  - **Live site (Edge, Playwright), 16 routes:** every one 200 with no console errors and no failed requests. All Cloudinary images are signed, with no unblurred authenticated copy.
+    - Tamper: original 200; signature removed, blur removed or blur swapped 401.
+    - Library search "flagged" gives 5 matches and the map updates; the drawer shows the ledger and history.
+    - Sandbox: Commons `Example.jpg` scored 50, NEEDS_REVIEW (no location).
+    - Report for the hero: 201, 3 claims, 24 links to evidence pages, PDF 496,575 bytes.
+    - `/capture?spot=live-stage-demo-table` with a fake camera shows the HUD, "Inside the spot".
+  - **Spend this session:** OpenAI $0.0049 (provider_usage); Cloudinary credits 3.04 → 8.89 (+5.85, mostly e_extract at 75 transformations each, prompt-by-prompt fallbacks included); watermark calls 188 → 195.
+  - **Evidence:** `pnpm test` 600 passing in 62 files; `pnpm typecheck`, `pnpm lint` and `pnpm build` clean.
+  - **New issue:** the prompt-by-prompt fallback can cost up to 4 × 75 transformations for one photo. On the free plan that adds up quickly; consider fewer litter prompts if credits get tight.
